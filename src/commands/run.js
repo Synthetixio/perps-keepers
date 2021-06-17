@@ -3,6 +3,7 @@ const ethers = require('ethers');
 const { gray } = require('chalk');
 const Keeper = require('../keeper');
 const { NonceManager } = require('@ethersproject/experimental');
+const snx = require('synthetix')
 
 const DEFAULTS = {
 	fromBlock: 'latest',
@@ -15,12 +16,9 @@ async function run({
 	providerUrl = DEFAULTS.providerUrl,
 	numAccounts = DEFAULTS.numAccounts,
 } = {}) {
-	const { FUTURES_MARKET_ADDRESS, EXCHANGE_RATES_ADDRESS, ETH_HDWALLET_MNEMONIC } = process.env;
-	if (!FUTURES_MARKET_ADDRESS) {
-		throw new Error('FUTURES_MARKET_ADDRESS environment variable is not configured.');
-	}
-	if (!EXCHANGE_RATES_ADDRESS) {
-		throw new Error('EXCHANGE_RATES_ADDRESS environment variable is not configured.');
+	const { NETWORK, ETH_HDWALLET_MNEMONIC } = process.env;
+	if (!NETWORK) {
+		throw new Error('NETWORK environment variable is not configured.');
 	}
 	if (!ETH_HDWALLET_MNEMONIC) {
 		throw new Error('ETH_HDWALLET_MNEMONIC environment variable is not configured.');
@@ -47,9 +45,14 @@ async function run({
 		})
 	);
 
+	// Get addresses.
+	const futuresMarketETH = snx.getTarget({ contract: "ProxyFuturesMarketETH", network: NETWORK, useOvm: true });
+	const exchangeRates = snx.getTarget({ contract: "ExchangeRates", network: NETWORK, useOvm: true });
+
 	const keeper = new Keeper({
-		proxyFuturesMarket: FUTURES_MARKET_ADDRESS,
-		exchangeRates: EXCHANGE_RATES_ADDRESS,
+		network: NETWORK,
+		proxyFuturesMarket: futuresMarketETH.address,
+		exchangeRates: exchangeRates.address,
 		signer: signers[0],
 		signers,
 		provider,

@@ -1,12 +1,9 @@
 const ethers = require('ethers');
 const { gray, blue, red, green, yellow } = require('chalk');
-const FuturesMarketABI = require('synthetix/build/artifacts/contracts/FuturesMarket.sol/FuturesMarket.json')
-	.abi;
-const ExchangeRatesABI = require('synthetix/build/artifacts/contracts/ExchangeRates.sol/ExchangeRates.json')
-	.abi;
 
 const DEFAULT_GAS_PRICE = '0';
 const SignerPool = require('./signer-pool');
+const snx = require('synthetix')
 
 async function runWithRetries(cb, retries=3) {
 	try {
@@ -25,7 +22,12 @@ class Keeper {
 		signer,
 		signers,
 		provider,
+		network,
 	}) {
+		// Get ABIs.
+		const FuturesMarketABI = snx.getSource({ network, contract: "FuturesMarket", useOvm: true }).abi
+		const ExchangeRatesABI = snx.getSource({ network, contract: "ExchangeRatesWithoutInvPricing", useOvm: true }).abi
+		
 		// The index.
 		this.orders = {};
 		this.positions = {};
