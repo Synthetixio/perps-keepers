@@ -8,6 +8,15 @@ const ExchangeRatesABI = require('synthetix/build/artifacts/contracts/ExchangeRa
 const DEFAULT_GAS_PRICE = '0';
 const SignerPool = require('./signer-pool');
 
+async function runWithRetries(cb, retries=3) {
+	try {
+		await cb()
+	} catch(ex) {
+		if(retries === 0) throw ex
+		else await runWithRetries(cb, retries - 1)
+	}
+}
+
 class Keeper {
 	// The index.
 	constructor({
@@ -183,7 +192,7 @@ class Keeper {
 
 		console.log(gray(`KeeperTask running [id=${id}]`));
 		try {
-			await cb();
+			await runWithRetries(cb)
 		} catch (err) {
 			console.error(red(`KeeperTask error [id=${id}]`), '\n', red(err.toString()));
 		}
