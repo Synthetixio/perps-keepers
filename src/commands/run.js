@@ -4,17 +4,25 @@ const { gray } = require('chalk');
 const Keeper = require('../keeper');
 const { NonceManager } = require('@ethersproject/experimental');
 const snx = require('synthetix')
+const SignerPool = require('../signer-pool');
+
+// TODO load the supported markets from the `synthetix` repo for the environment.
+const getFuturesMarkets = () => {
+	return ['BTC', 'ETH', 'LINK']
+}
 
 const DEFAULTS = {
 	fromBlock: 'latest',
 	providerUrl: 'ws://localhost:8546',
 	numAccounts: 10,
+	markets: getFuturesMarkets().join(',')
 };
 
 async function run({
 	fromBlock = DEFAULTS.fromBlock,
 	providerUrl = DEFAULTS.providerUrl,
 	numAccounts = DEFAULTS.numAccounts,
+	markets = DEFAULTS.markets,
 } = {}) {
 	const { NETWORK, ETH_HDWALLET_MNEMONIC } = process.env;
 	if (!NETWORK) {
@@ -44,20 +52,38 @@ async function run({
 			return wrappedSigner;
 		})
 	);
+	const signerPool = new SignerPool(signers)
 
 	// Get addresses.
-	const futuresMarketETH = snx.getTarget({ contract: "ProxyFuturesMarketETH", network: NETWORK, useOvm: true });
+	markets = markets.split(',')
+	// Verify markets.
+	const supportedMarkets = getFuturesMarkets({ network: NETWORK })
+	markets.forEach(currencyKey => {
+		if(!supportedMarkets.includes(currencyKey)) {
+			throw new Error(`No futures market for currencyKey: ${currencyKey}`)
+		}
+	})
+	
+	// Load contracts.
+	const marketContracts = markets.map(currencyKey => snx.getTarget({ 
+		contract: `ProxyFuturesMarket${currencyKey}`, 
+		network: NETWORK, 
+		useOvm: true 
+	}))
 	const exchangeRates = snx.getTarget({ contract: "ExchangeRates", network: NETWORK, useOvm: true });
 
-	const keeper = new Keeper({
-		network: NETWORK,
-		proxyFuturesMarket: futuresMarketETH.address,
-		exchangeRates: exchangeRates.address,
-		signer: signers[0],
-		signers,
-		provider,
-	});
-	keeper.run({ fromBlock });
+	for(let marketContract of marketContracts) {
+		const keeper = new Keeper({
+			network: NETWORK,
+			proxyFuturesMarket: marketContract.address,
+			exchangeRates: exchangeRates.address,
+			signerPool,
+			provider,
+		});
+
+		keeper.run({ fromBlock });
+	}
+	
 
 	await new Promise((resolve, reject) => {});
 }
@@ -92,6 +118,11 @@ module.exports = {
 				'-n, --num-accounts <value>',
 				'Number of accounts from the HD wallet to use for parallel tx submission. Improves performance.',
 				DEFAULTS.numAccounts
+			)
+			.option(
+				'-m, --markets <value>',
+				'Runs keeper operations for the specified currencies. Supported values: ETH, BTC, LINK.',
+				DEFAULTS.markets
 			)
 			.action(run),
 };

@@ -2,7 +2,6 @@ const ethers = require('ethers');
 const { gray, blue, red, green, yellow } = require('chalk');
 
 const DEFAULT_GAS_PRICE = '0';
-const SignerPool = require('./signer-pool');
 const snx = require('synthetix')
 
 async function runWithRetries(cb, retries=3) {
@@ -19,8 +18,7 @@ class Keeper {
 	constructor({
 		proxyFuturesMarket: proxyFuturesMarketAddress,
 		exchangeRates: exchangeRatesAddress,
-		signer,
-		signers,
+		signerPool,
 		provider,
 		network,
 	}) {
@@ -51,7 +49,7 @@ class Keeper {
 
 		this.blockTip = null;
 		this.provider = provider;
-		this.signerPool = new SignerPool(signers);
+		this.signerPool = signerPool
 	}
 
 	async run({ fromBlock }) {
