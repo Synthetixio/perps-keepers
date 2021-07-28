@@ -1,9 +1,11 @@
 require('dotenv').config();
 const ethers = require('ethers');
-const { gray } = require('chalk');
+const { utils: { formatEther } } = ethers
+const { gray, yellow } = require('chalk');
 const Keeper = require('../keeper');
 const { NonceManager } = require('@ethersproject/experimental');
 const snx = require('synthetix')
+const { getSource, getTarget } = snx
 const SignerPool = require('../signer-pool');
 
 // TODO load the supported markets from the `synthetix` repo for the environment.
@@ -16,6 +18,39 @@ const DEFAULTS = {
 	providerUrl: 'ws://localhost:8546',
 	numAccounts: 10,
 	markets: getFuturesMarkets().join(',')
+};
+
+const getSynthetixContracts = ({
+	network,
+	signer,
+	provider,
+	useOvm
+}) => {
+	const sources = getSource({ network, useOvm });
+	const targets = getTarget({ network, useOvm });
+
+	return Object.values(targets)
+		.map((target) => {
+			if (target.name === 'Synthetix') {
+				target.address = targets.ProxyERC20.address;
+			} else if (target.name === 'SynthsUSD') {
+				target.address = targets.ProxyERC20sUSD.address;
+			} else if (target.name === 'FeePool') {
+				target.address = targets.ProxyFeePool.address;
+			} else if (target.name.match(/Synth(s|i)[a-zA-Z]+$/)) {
+				const newTarget = target.name.replace('Synth', 'Proxy');
+				target.address = targets[newTarget].address;
+			}
+			return target;
+		})
+		.reduce((acc, { name, source, address }) => {
+			acc[name] = new ethers.Contract(
+				address,
+				sources[source].abi,
+				signer || provider || ethers.getDefaultProvider(network)
+			);
+			return acc;
+		}, {});
 };
 
 async function run({
@@ -39,20 +74,53 @@ async function run({
 	const provider = new ethers.providers.WebSocketProvider(providerUrl);
 	console.log(gray(`Connected to Ethereum node at ${providerUrl}`));
 
+
 	let signers = createWallets({ provider, mnemonic: ETH_HDWALLET_MNEMONIC, num: numAccounts });
 	console.log(gray`Using ${signers.length} account(s) to submit transactions:`);
 	signers = await Promise.all(
 		signers.map(async (signer, i) => {
-			console.log(gray(`Account #${i}: ${await signer.getAddress()}`));
 			let wrappedSigner = new NonceManager(signer);
 
 			// Each signer gets its own WebSocket RPC connection.
 			// This seems to improve the transaction speed even further.
 			wrappedSigner = wrappedSigner.connect(new ethers.providers.WebSocketProvider(providerUrl));
+
 			return wrappedSigner;
 		})
 	);
 	const signerPool = new SignerPool(signers)
+
+	// Check balances of accounts.
+	const { SynthsUSD } = getSynthetixContracts({
+		network: NETWORK,
+		provider: provider,
+		useOvm: true
+	})
+
+	for (const [i, signer] of signers.entries()) {
+		// ETH.
+		const balance = await signer.getBalance()
+		// sUSD.
+		const sUSDBalance = await SynthsUSD.balanceOf(await signer.getAddress())
+
+		const balances = [
+			['ETH', balance],
+			['sUSD', sUSDBalance]
+		]
+
+		const balanceText = balances
+			.map(([key, balance]) => {
+				let balanceText = formatEther(balance)
+				if (balance.isZero()) {
+					balanceText = yellow(balanceText)
+				}
+				return `${balanceText} ${key}`
+			})
+			.join(', ')
+
+		console.log(gray(`Account #${i}: ${await signer.getAddress()} (${balanceText})`));
+	}
+
 
 	// Get addresses.
 	markets = markets.split(',')
