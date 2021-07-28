@@ -8,9 +8,8 @@ const snx = require('synthetix')
 const { getSource, getTarget } = snx
 const SignerPool = require('../signer-pool');
 
-// TODO load the supported markets from the `synthetix` repo for the environment.
 const getFuturesMarkets = () => {
-	return ['BTC', 'ETH', 'LINK']
+	return snx.defaults.FUTURES_ASSETS
 }
 
 const DEFAULTS = {
