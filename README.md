@@ -3,5 +3,5 @@
 ## Usage.
 
 ```sh
-NETWORK=local ETH_HDWALLET_MNEMONIC='' node src/ run
+NETWORK=kovan-ovm-futures node src/ run -p ws://kovan.optimism.io:8546 --from-block 0 -n 1
 ```
