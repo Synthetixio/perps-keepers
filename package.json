@@ -10,7 +10,7 @@
 		"dotenv": "^10.0.0",
 		"ethers": "^5.2.0",
 		"pretty-error": "^3.0.4",
-		"synthetix": "github:Synthetixio/synthetix#futures-implementation",
+		"synthetix": "github:Synthetixio/synthetix#kovan-ovm-futures",
 		"ts-node": "^10.0.0",
 		"typescript": "^4.3.2"
 	}
