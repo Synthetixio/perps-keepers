@@ -5,18 +5,18 @@ const { gray, yellow } = require('chalk');
 const Keeper = require('../keeper');
 const { NonceManager } = require('@ethersproject/experimental');
 const snx = require('synthetix')
-const { getSource, getTarget } = snx
+const { getSource, getTarget, getFuturesMarkets } = snx
 const SignerPool = require('../signer-pool');
 
-const getFuturesMarkets = () => {
-	return snx.defaults.FUTURES_ASSETS
-}
-
+const futuresMarkets = getFuturesMarkets({
+	network: process.env.NETWORK,
+	useOvm: true
+})
 const DEFAULTS = {
 	fromBlock: 'latest',
 	providerUrl: 'ws://localhost:8546',
 	numAccounts: 10,
-	markets: getFuturesMarkets().join(',')
+	markets: futuresMarkets.map(market => market.asset).join(',')
 };
 
 const getSynthetixContracts = ({
@@ -124,16 +124,16 @@ async function run({
 	// Get addresses.
 	markets = markets.split(',')
 	// Verify markets.
-	const supportedMarkets = getFuturesMarkets({ network: NETWORK })
-	markets.forEach(currencyKey => {
-		if(!supportedMarkets.includes(currencyKey)) {
-			throw new Error(`No futures market for currencyKey: ${currencyKey}`)
+	const supportedAssets = futuresMarkets.map(({ asset }) => asset)
+	markets.forEach(asset => {
+		if (!supportedAssets.includes(asset)) {
+			throw new Error(`No futures market for currencyKey: ${asset}`)
 		}
 	})
 	
 	// Load contracts.
-	const marketContracts = markets.map(currencyKey => snx.getTarget({ 
-		contract: `ProxyFuturesMarket${currencyKey}`, 
+	const marketContracts = markets.map(market => snx.getTarget({
+		contract: `ProxyFuturesMarket${market.slice(1)}`,
 		network: NETWORK, 
 		useOvm: true 
 	}))
