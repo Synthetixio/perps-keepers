@@ -1,4 +1,5 @@
 const ethers = require('ethers');
+const { BigNumber: BN } = ethers
 const { gray, blue, red, green, yellow } = require('chalk');
 
 const DEFAULT_GAS_PRICE = '0';
@@ -27,9 +28,7 @@ class Keeper {
 		const ExchangeRatesABI = snx.getSource({ network, contract: "ExchangeRatesWithoutInvPricing", useOvm: true }).abi
 		
 		// The index.
-		this.orders = {};
 		this.positions = {};
-		this.currentExchangeRatesRound = null;
 
 		// A mapping of already running keeper tasks.
 		this.activeKeeperTasks = {};
@@ -53,7 +52,6 @@ class Keeper {
 	}
 
 	async run({ fromBlock }) {
-		this.currentExchangeRatesRound = await this.futuresMarket.currentRoundId();
 		const events = await this.futuresMarket.queryFilter('*', fromBlock, 'latest');
 		console.log(gray(`Rebuilding index from `), `${fromBlock} ... latest`);
 		console.log(gray`${events.length} events to process`);
@@ -99,10 +97,6 @@ class Keeper {
 			.filter(({ event, args }) => event === 'RatesUpdated' || event === 'RateDeleted')
 			.forEach(({ event }) => {
 				console.log('ExchangeRates', blue(event));
-
-				if (event === 'RatesUpdated') {
-					this.currentExchangeRatesRound = this.currentExchangeRatesRound.add(1);
-				}
 			});
 		console.log('FuturesMarket', gray`${events.length} events to process`);
 		this.updateIndex(events);
@@ -111,40 +105,27 @@ class Keeper {
 
 	updateIndex(events) {
 		events.forEach(({ event, args }) => {
-			if (event === 'OrderSubmitted') {
-				const { id: orderId, account, roundId } = args;
+			if (event === 'PositionModified') {
+				const { id, account, size } = args;
+
 				console.log(
 					'FuturesMarket',
-					blue('OrderSubmitted'),
-					`[id=${orderId} account=${account} roundId=${roundId}]`
+					blue('PositionModified'),
+					`[id=${id} account=${account}]`
 				);
 
-				this.orders[orderId] = {
-					account,
-					orderId,
-					event,
-					roundId,
-				};
-			} else if (event === 'OrderConfirmed') {
-				const { id: orderId, account, margin } = args;
-				console.log(
-					'FuturesMarket',
-					blue('OrderConfirmed'),
-					`[id=${orderId} account=${account} margin=${margin}]`
-				);
-
-				delete this.orders[orderId];
-
-				if (margin === 0) {
+				if (size.eq(BN.from(0))) {
 					// Position has been closed.
-					delete this.positions[account];
-				} else {
-					this.positions[account] = {
-						event,
-						orderId,
-						account,
-					};
+					delete this.positions[account]
+					return
 				}
+
+				this.positions[account] = {
+					id,
+					event,
+					account
+				}
+			
 			} else if (event === 'PositionLiquidated') {
 				const { account, liquidator } = args;
 				console.log(
@@ -154,11 +135,8 @@ class Keeper {
 				);
 
 				delete this.positions[account];
-			} else if (event === 'OrderCancelled') {
-				const { id: orderId, account } = args;
-				console.log('FuturesMarket', blue('OrderCancelled'), `[id=${orderId} account=${account}]`);
-
-				delete this.orders[orderId];
+			} else if (!event || event.match(/OrderSubmitted/)) {
+				return
 			} else {
 				console.log('FuturesMarket', blue(event), 'No handler');
 			}
@@ -166,20 +144,11 @@ class Keeper {
 	}
 
 	async runKeepers() {
-		console.log(
-			gray`${Object.keys(this.orders).length} orders to confirm, ${
-				Object.keys(this.positions).length
-			} positions to keep`
-		);
-
-		// Unconfirmed orders.
-		for (const { orderId, account } of Object.values(this.orders)) {
-			this.runKeeperTask(`${orderId}-confirm`, () => this.confirmOrder(orderId, account));
-		}
+		console.log(`${Object.keys(this.positions).length} positions to keep`);
 
 		// Open positions.
-		for (const { orderId, account } of Object.values(this.positions)) {
-			this.runKeeperTask(`${orderId}-liquidation`, () => this.liquidateOrder(orderId, account));
+		for (const { id, account } of Object.values(this.positions)) {
+			this.runKeeperTask(`${id}-liquidation`, () => this.liquidateOrder(id, account));
 		}
 	}
 
@@ -199,41 +168,6 @@ class Keeper {
 		console.log(gray(`KeeperTask done [id=${id}]`));
 
 		delete this.activeKeeperTasks[id];
-	}
-
-	async confirmOrder(id, account) {
-		const canConfirmOrder = await this.futuresMarket.canConfirmOrder(account);
-		if (!canConfirmOrder) {
-			console.error(
-				gray(`FuturesMarket [${this.futuresMarket.address}]`, `cannot confirm order [id=${id}]`)
-			);
-			return;
-		}
-
-		console.log(`FuturesMarket [${this.futuresMarket.address}]`, `begin confirmOrder [id=${id}]`);
-		let tx, receipt;
-
-		try {
-			await this.signerPool.withSigner(async signer => {
-				tx = await this.futuresMarket.connect(signer).confirmOrder(account, {
-					gasPrice: DEFAULT_GAS_PRICE,
-				});
-
-				console.log(tx.nonce);
-				receipt = await tx.wait(1);
-			});
-		} catch (err) {
-			throw err;
-		}
-
-		console.log(
-			`FuturesMarket [${this.futuresMarket.address}]`,
-			green`done confirmOrder [id=${id}]`,
-			`block=${receipt.blockNumber}`,
-			`success=${!!receipt.status}`,
-			`tx=${receipt.transactionHash}`,
-			yellow(`gasUsed=${receipt.gasUsed}`)
-		);
 	}
 
 	async liquidateOrder(id, account) {

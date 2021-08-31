@@ -188,7 +188,7 @@ module.exports = {
 			)
 			.option(
 				'-m, --markets <value>',
-				'Runs keeper operations for the specified currencies. Supported values: ETH, BTC, LINK.',
+				'Runs keeper operations for the specified markets, delimited by a comma. Supported markets: sETH, sBTC, sLINK.',
 				DEFAULTS.markets
 			)
 			.action(run),
