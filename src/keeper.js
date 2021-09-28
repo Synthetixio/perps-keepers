@@ -169,7 +169,7 @@ class Keeper {
         delete this.positions[account];
       } else if (!event || event.match(/OrderSubmitted/)) {
       } else {
-        console.log("FuturesMarket", blue(event), "No handler");
+        console.log("FuturesMarket", this.baseAsset, blue(event), "No handler");
       }
     });
   }
