@@ -232,7 +232,7 @@ class Keeper {
         tx = await this.futuresMarket
           .connect(signer)
           .liquidatePosition(account);
-        console.log(tx.nonce);
+        // console.log(tx.nonce);
         receipt = await tx.wait(1);
       });
     } catch (err) {
