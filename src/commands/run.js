@@ -11,7 +11,8 @@ const { getSource, getTarget, getFuturesMarkets } = snx;
 const SignerPool = require("../signer-pool");
 
 const futuresMarkets = getFuturesMarkets({
-  network: process.env.NETWORK,
+  // TODO: change this to mainnet when it's eventually deployed
+  network: "kovan-ovm-futures",
   useOvm: true
 });
 
@@ -19,7 +20,8 @@ const DEFAULTS = {
   fromBlock: "latest",
   providerUrl: "http://localhost:8545",
   numAccounts: 10,
-  markets: futuresMarkets.map(market => market.asset).join(",")
+  markets: futuresMarkets.map(market => market.asset).join(","),
+  network: "kovan-ovm-futures"
 };
 
 // This is lifted from the synthetix-js package, since the package doesn't
@@ -71,12 +73,10 @@ async function run({
   fromBlock = DEFAULTS.fromBlock,
   providerUrl = DEFAULTS.providerUrl,
   numAccounts = DEFAULTS.numAccounts,
-  markets = DEFAULTS.markets
+  markets = DEFAULTS.markets,
+  network = DEFAULTS.network
 } = {}) {
-  const { NETWORK, ETH_HDWALLET_MNEMONIC } = process.env;
-  if (!NETWORK) {
-    throw new Error("NETWORK environment variable is not configured.");
-  }
+  const { ETH_HDWALLET_MNEMONIC } = process.env;
   if (!ETH_HDWALLET_MNEMONIC) {
     throw new Error(
       "ETH_HDWALLET_MNEMONIC environment variable is not configured."
@@ -112,7 +112,7 @@ async function run({
 
   // Check balances of accounts.
   const { SynthsUSD } = getSynthetixContracts({
-    network: NETWORK,
+    network,
     provider: provider,
     useOvm: true
   });
@@ -157,19 +157,19 @@ async function run({
   const marketContracts = markets.map(market =>
     snx.getTarget({
       contract: `ProxyFuturesMarket${market.slice(1)}`,
-      network: NETWORK,
+      network,
       useOvm: true
     })
   );
   const exchangeRates = snx.getTarget({
     contract: "ExchangeRates",
-    network: NETWORK,
+    network,
     useOvm: true
   });
 
   for (const marketContract of marketContracts) {
     const keeper = new Keeper({
-      network: NETWORK,
+      network,
       proxyFuturesMarket: marketContract.address,
       exchangeRates: exchangeRates.address,
       signerPool,
@@ -214,6 +214,11 @@ module.exports = {
         "-p, --provider-url <value>",
         "Ethereum RPC URL",
         DEFAULTS.providerUrl
+      )
+      .option(
+        "--network <value>",
+        "Ethereum network to connect to.",
+        "kovan-ovm-futures"
       )
       .option(
         "-n, --num-accounts <value>",
