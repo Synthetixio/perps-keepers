@@ -63,6 +63,10 @@ class Keeper {
   }
 
   async run({ fromBlock }) {
+    const baseAsset = await this.futuresMarket.baseAsset()
+    this.baseAsset = snx.fromBytes32(baseAsset)
+    console.log(`FuturesMarket [${this.baseAsset} ${this.futuresMarket.address}]`)
+
     const events = await this.futuresMarket.queryFilter(
       "*",
       fromBlock,
@@ -125,7 +129,7 @@ class Keeper {
       .forEach(({ event }) => {
         console.log("ExchangeRates", blue(event));
       });
-    console.log("FuturesMarket", gray`${events.length} events to process`);
+    console.log("FuturesMarket", this.baseAsset, gray`${events.length} events to process`);
     this.updateIndex(events);
     await this.runKeepers();
   }
@@ -137,6 +141,7 @@ class Keeper {
 
         console.log(
           "FuturesMarket",
+          this.baseAsset,
           blue("PositionModified"),
           `[id=${id} account=${account}]`
         );
@@ -156,6 +161,7 @@ class Keeper {
         const { account, liquidator } = args;
         console.log(
           "FuturesMarket",
+          this.baseAsset,
           blue("PositionLiquidated"),
           `[account=${account} liquidator=${liquidator}]`
         );
@@ -209,14 +215,14 @@ class Keeper {
     const canLiquidateOrder = await this.futuresMarket.canLiquidate(account);
     if (!canLiquidateOrder) {
       console.log(
-      	`FuturesMarket [${this.futuresMarket.address}]`,
+        `FuturesMarket [${this.baseAsset}]`,
       	`cannot liquidate order [id=${id}]`
       );
       return;
     }
 
     console.log(
-      `FuturesMarket [${this.futuresMarket.address}]`,
+      `FuturesMarket [${this.baseAsset}]`,
       `begin liquidatePosition [id=${id}]`
     );
     let tx, receipt;
@@ -234,7 +240,7 @@ class Keeper {
     }
 
     console.log(
-      `FuturesMarket [${this.futuresMarket.address}]`,
+      `FuturesMarket [${this.baseAsset}]`,
       green(`done liquidatePosition [id=${id}]`),
       `block=${receipt.blockNumber}`,
       `success=${!!receipt.status}`,
