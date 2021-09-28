@@ -1,10 +1,11 @@
 require('dotenv').config();
 const ethers = require('ethers');
-const { utils: { formatEther } } = ethers
+const assert = require('assert/strict');
 const { gray, yellow } = require('chalk');
+const snx = require('synthetix')
 const Keeper = require('../keeper');
 const { NonceManager } = require('@ethersproject/experimental');
-const snx = require('synthetix')
+const { utils: { formatEther } } = ethers
 const { getSource, getTarget, getFuturesMarkets } = snx
 const SignerPool = require('../signer-pool');
 
@@ -12,6 +13,7 @@ const futuresMarkets = getFuturesMarkets({
 	network: process.env.NETWORK,
 	useOvm: true
 })
+
 const DEFAULTS = {
 	fromBlock: 'latest',
 	providerUrl: 'ws://localhost:8546',
@@ -19,6 +21,8 @@ const DEFAULTS = {
 	markets: futuresMarkets.map(market => market.asset).join(',')
 };
 
+// This is lifted from the synthetix-js package, since the package doesn't
+// support local-ovm/kovan-ovm-futures artifacts, which impeded testing.
 const getSynthetixContracts = ({
 	network,
 	signer,
@@ -52,6 +56,11 @@ const getSynthetixContracts = ({
 		}, {});
 };
 
+function validateProviderUrl(urlString) {
+	const url = new URL(urlString)
+	if(url.protocol != 'https:') throw new Error("Provider URL must be a HTTPS endpoint")
+}
+
 async function run({
 	fromBlock = DEFAULTS.fromBlock,
 	providerUrl = DEFAULTS.providerUrl,
@@ -70,19 +79,20 @@ async function run({
 
 	// Setup.
 	//
-	const provider = new ethers.providers.WebSocketProvider(providerUrl);
+	validateProviderUrl(providerUrl)
+	const provider = new ethers.providers.JsonRpcProvider(providerUrl);
 	console.log(gray(`Connected to Ethereum node at ${providerUrl}`));
 
 
 	let signers = createWallets({ provider, mnemonic: ETH_HDWALLET_MNEMONIC, num: numAccounts });
 	console.log(gray`Using ${signers.length} account(s) to submit transactions:`);
 	signers = await Promise.all(
-		signers.map(async (signer, i) => {
+		signers.map(async function initialiseSigner(signer, i) {
 			let wrappedSigner = new NonceManager(signer);
 
 			// Each signer gets its own WebSocket RPC connection.
 			// This seems to improve the transaction speed even further.
-			wrappedSigner = wrappedSigner.connect(new ethers.providers.WebSocketProvider(providerUrl));
+			wrappedSigner = wrappedSigner.connect(new ethers.providers.JsonRpcProvider(providerUrl));
 
 			return wrappedSigner;
 		})
