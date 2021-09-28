@@ -17,7 +17,7 @@ const futuresMarkets = getFuturesMarkets({
 
 const DEFAULTS = {
   fromBlock: "latest",
-  providerUrl: "ws://localhost:8546",
+  providerUrl: "http://localhost:8545",
   numAccounts: 10,
   markets: futuresMarkets.map(market => market.asset).join(",")
 };
