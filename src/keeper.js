@@ -2,7 +2,6 @@ const ethers = require("ethers");
 const { BigNumber: BN } = ethers;
 const { gray, blue, red, green, yellow } = require("chalk");
 
-const DEFAULT_GAS_PRICE = "0";
 const snx = require("synthetix");
 
 async function runWithRetries(cb, retries = 3) {
@@ -15,7 +14,7 @@ async function runWithRetries(cb, retries = 3) {
 }
 
 class Keeper {
-  // The index.
+  // The inx.
   constructor({
     proxyFuturesMarket: proxyFuturesMarketAddress,
     exchangeRates: exchangeRatesAddress,
@@ -209,10 +208,10 @@ class Keeper {
     // );
     const canLiquidateOrder = await this.futuresMarket.canLiquidate(account);
     if (!canLiquidateOrder) {
-      // console.log(
-      // 	`FuturesMarket [${this.futuresMarket.address}]`,
-      // 	`cannot liquidate order [id=${id}]`
-      // );
+      console.log(
+      	`FuturesMarket [${this.futuresMarket.address}]`,
+      	`cannot liquidate order [id=${id}]`
+      );
       return;
     }
 
@@ -226,9 +225,7 @@ class Keeper {
       await this.signerPool.withSigner(async signer => {
         tx = await this.futuresMarket
           .connect(signer)
-          .liquidatePosition(account, {
-            gasPrice: DEFAULT_GAS_PRICE
-          });
+          .liquidatePosition(account);
         console.log(tx.nonce);
         receipt = await tx.wait(1);
       });
