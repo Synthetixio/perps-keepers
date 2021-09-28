@@ -61,6 +61,14 @@ function validateProviderUrl(urlString) {
 	if(url.protocol != 'https:') throw new Error("Provider URL must be a HTTPS endpoint")
 }
 
+function getProvider(url) {
+	new ethers.providers.JsonRpcProvider({
+		url,
+		pollingInterval: 50,
+		timeout: 1200000, // 20 minutes
+	})
+}
+
 async function run({
 	fromBlock = DEFAULTS.fromBlock,
 	providerUrl = DEFAULTS.providerUrl,
@@ -80,7 +88,7 @@ async function run({
 	// Setup.
 	//
 	validateProviderUrl(providerUrl)
-	const provider = new ethers.providers.JsonRpcProvider(providerUrl);
+	const provider = getProvider(providerUrl);
 	console.log(gray(`Connected to Ethereum node at ${providerUrl}`));
 
 
@@ -90,9 +98,9 @@ async function run({
 		signers.map(async function initialiseSigner(signer, i) {
 			let wrappedSigner = new NonceManager(signer);
 
-			// Each signer gets its own WebSocket RPC connection.
+			// Each signer gets its own RPC connection.
 			// This seems to improve the transaction speed even further.
-			wrappedSigner = wrappedSigner.connect(new ethers.providers.JsonRpcProvider(providerUrl));
+			wrappedSigner = wrappedSigner.connect(getProvider(providerUrl));
 
 			return wrappedSigner;
 		})
