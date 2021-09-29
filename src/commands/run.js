@@ -56,17 +56,54 @@ const getSynthetixContracts = ({ network, signer, provider, useOvm }) => {
 
 function validateProviderUrl(urlString) {
   const url = new URL(urlString);
-  if (url.protocol !== "https:") {
-    throw new Error("Provider URL must be a HTTPS endpoint");
+  if (url.protocol !== "ws:") {
+    throw new Error("Provider URL must be a WS endpoint");
   }
 }
 
 function getProvider(url) {
-  return new ethers.providers.JsonRpcProvider({
+  const provider = new ethers.providers.WebSocketProvider({
     url,
     pollingInterval: 50,
     timeout: 1200000 // 20 minutes
   });
+
+  //
+  // Setup the Websocket provider to exit the process if a connection is closed.
+  //
+  const HEARTBEAT_TIMEOUT = 7500;
+  const HEARTBEAT_INTERVAL = 10000;
+  let heartbeat, heartbeatTimeout;
+
+  provider._websocket.on("open", () => {
+    heartbeat = setInterval(() => {
+      console.debug("Checking if the connection is alive, sending a ping");
+
+      provider._websocket.ping();
+
+      // Use `WebSocket#terminate()`, which immediately destroys the connection,
+      // instead of `WebSocket#close()`, which waits for the close timer.
+      heartbeatTimeout = setTimeout(() => {
+        provider._websocket.terminate();
+      }, HEARTBEAT_TIMEOUT);
+    }, HEARTBEAT_INTERVAL);
+  });
+
+  provider._websocket.on("close", () => {
+    console.error("The websocket connection was closed");
+    clearInterval(heartbeat);
+    clearTimeout(heartbeatTimeout);
+    process.exit(1);
+  });
+
+  provider._websocket.on("pong", () => {
+    console.debug(
+      "Received pong, so connection is alive, clearing the timeout"
+    );
+    clearInterval(heartbeatTimeout);
+  });
+
+  return provider;
 }
 
 async function run({

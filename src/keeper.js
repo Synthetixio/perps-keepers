@@ -14,7 +14,6 @@ async function runWithRetries(cb, retries = 3) {
 }
 
 class Keeper {
-  // The inx.
   constructor({
     proxyFuturesMarket: proxyFuturesMarketAddress,
     exchangeRates: exchangeRatesAddress,
@@ -63,9 +62,11 @@ class Keeper {
   }
 
   async run({ fromBlock }) {
-    const baseAsset = await this.futuresMarket.baseAsset()
-    this.baseAsset = snx.fromBytes32(baseAsset)
-    console.log(`FuturesMarket [${this.baseAsset} ${this.futuresMarket.address}]`)
+    const baseAsset = await this.futuresMarket.baseAsset();
+    this.baseAsset = snx.fromBytes32(baseAsset);
+    console.log(
+      `FuturesMarket [${this.baseAsset} ${this.futuresMarket.address}]`
+    );
 
     const events = await this.futuresMarket.queryFilter(
       "*",
@@ -129,7 +130,11 @@ class Keeper {
       .forEach(({ event }) => {
         console.log("ExchangeRates", blue(event));
       });
-    console.log("FuturesMarket", this.baseAsset, gray`${events.length} events to process`);
+    console.log(
+      "FuturesMarket",
+      this.baseAsset,
+      gray`${events.length} events to process`
+    );
     this.updateIndex(events);
     await this.runKeepers();
   }
@@ -216,7 +221,7 @@ class Keeper {
     if (!canLiquidateOrder) {
       console.log(
         `FuturesMarket [${this.baseAsset}]`,
-      	`cannot liquidate order [id=${id}]`
+        `cannot liquidate order [id=${id}]`
       );
       return;
     }
