@@ -9,20 +9,22 @@ A basic liquidations keeper bot for Synthetix Futures Alpha. The [PR here](https
 ## Usage.
 
 ```
-Usage: node src/index.js run [options]
+Usage: index run [options]
 
 Run the keeper
 
 Options:
   -b, --from-block <value>    Rebuild the keeper index from a starting block, before initiating keeper actions. (default: "latest")
   -p, --provider-url <value>  Ethereum RPC URL (default: "ws://localhost:8546")
+  --network <value>           Ethereum network to connect to. (default: "kovan-ovm-futures")
   -n, --num-accounts <value>  Number of accounts from the HD wallet to use for parallel tx submission. Improves performance. (default: 10)
-  -m, --markets <value>       Runs keeper operations for the specified currencies. Supported values: ETH, BTC, LINK. (default: "sBTC,sETH,sLINK")
+  -m, --markets <value>       Runs keeper operations for the specified markets, delimited by a comma. Supported markets: sETH, sBTC, sLINK. (default:
+                              "sBTC,sETH,sLINK")
   -h, --help                  display help for command
 ```
 
 ```sh
-NETWORK=kovan-ovm-futures node src/ run -p ws://kovan.optimism.io:8546 --from-block 0 -n 1
+NETWORK=kovan-ovm-futures node src/ run -p ws://kovan.optimism.io:8546 --from-block 0 -n 1 --network kovan-ovm-futures
 ```
 
 ### Environment configuration.
@@ -30,5 +32,4 @@ NETWORK=kovan-ovm-futures node src/ run -p ws://kovan.optimism.io:8546 --from-bl
 Any variables specified in `.env` at the project root will be loaded using [dotenv](https://www.npmjs.com/package/dotenv).
 
  - **`ETH_HDWALLET_MNEMONIC`**: the HD wallet mnemonic used to unlock the bot's wallet. The bot does not support private keys.
- - **`NETWORK`**: the network passed into the `synthetix` NPM package to fetch contracts.
 
