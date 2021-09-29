@@ -56,8 +56,8 @@ const getSynthetixContracts = ({ network, signer, provider, useOvm }) => {
 
 function validateProviderUrl(urlString) {
   const url = new URL(urlString);
-  if (url.protocol !== "ws:") {
-    throw new Error("Provider URL must be a WS endpoint");
+  if (url.protocol !== "wss:") {
+    throw new Error("Provider URL must be a wss:// endpoint");
   }
 }
 
@@ -65,7 +65,7 @@ function getProvider(url) {
   const provider = new ethers.providers.WebSocketProvider({
     url,
     pollingInterval: 50,
-    timeout: 1200000 // 20 minutes
+    timeout: 1000 * 60 // 1 minute
   });
 
   //
@@ -77,8 +77,6 @@ function getProvider(url) {
 
   provider._websocket.on("open", () => {
     heartbeat = setInterval(() => {
-      console.debug("Checking if the connection is alive, sending a ping");
-
       provider._websocket.ping();
 
       // Use `WebSocket#terminate()`, which immediately destroys the connection,
@@ -97,9 +95,6 @@ function getProvider(url) {
   });
 
   provider._websocket.on("pong", () => {
-    console.debug(
-      "Received pong, so connection is alive, clearing the timeout"
-    );
     clearInterval(heartbeatTimeout);
   });
 

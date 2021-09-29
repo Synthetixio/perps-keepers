@@ -4,14 +4,14 @@ const { gray, blue, red, green, yellow } = require("chalk");
 
 const snx = require("synthetix");
 
-async function runWithRetries(cb, retries = 3) {
-  try {
-    await cb();
-  } catch (ex) {
-    if (retries === 0) throw ex;
-    else await runWithRetries(cb, retries - 1);
-  }
-}
+// async function runWithRetries(cb, retries = 3) {
+//   try {
+//     await cb();
+//   } catch (ex) {
+//     if (retries === 0) throw ex;
+//     else await runWithRetries(cb, retries - 1);
+//   }
+// }
 
 class Keeper {
   constructor({
@@ -199,7 +199,7 @@ class Keeper {
 
     console.log(gray(`KeeperTask running [id=${id}]`));
     try {
-      await runWithRetries(cb);
+      await cb()
     } catch (err) {
       console.error(
         red(`KeeperTask error [id=${id}]`),
@@ -237,7 +237,7 @@ class Keeper {
         tx = await this.futuresMarket
           .connect(signer)
           .liquidatePosition(account);
-        // console.log(tx.nonce);
+        console.log(tx.nonce);
         receipt = await tx.wait(1);
       });
     } catch (err) {
