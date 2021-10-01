@@ -2,14 +2,14 @@ require("dotenv").config();
 const ethers = require("ethers");
 const { gray, yellow } = require("chalk");
 const snx = require("synthetix");
-const Keeper = require("../keeper");
+const Keeper = require("./keeper");
 const { NonceManager } = require("@ethersproject/experimental");
 const {
   utils: { formatEther }
 } = ethers;
 const { getSource, getTarget, getFuturesMarkets } = snx;
-const SignerPool = require("../signer-pool");
-const metrics = require('../metrics')
+const SignerPool = require("./signer-pool");
+const metrics = require('./metrics')
 
 const futuresMarkets = getFuturesMarkets({
   // TODO: change this to mainnet when it's eventually deployed
