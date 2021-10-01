@@ -9,7 +9,7 @@ const {
 } = ethers;
 const { getSource, getTarget, getFuturesMarkets } = snx;
 const SignerPool = require("./signer-pool");
-const metrics = require('./metrics')
+const metrics = require("./metrics");
 
 const futuresMarkets = getFuturesMarkets({
   // TODO: change this to mainnet when it's eventually deployed
@@ -116,7 +116,7 @@ async function run({
     );
   }
 
-  metrics.runServer()
+  metrics.runServer();
 
   fromBlock = fromBlock === "latest" ? fromBlock : parseInt(fromBlock);
 
@@ -177,7 +177,7 @@ async function run({
       gray(`Account #${i}: ${await signer.getAddress()} (${balanceText})`)
     );
   }
-  metrics.trackKeeperBalance(signers[0], SynthsUSD)
+  metrics.trackKeeperBalance(signers[0], SynthsUSD);
 
   // Get addresses.
   markets = markets.split(",");

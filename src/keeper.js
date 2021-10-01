@@ -199,7 +199,7 @@ class Keeper {
 
     console.log(gray(`KeeperTask running [id=${id}]`));
     try {
-      await cb()
+      await cb();
     } catch (err) {
       console.error(
         red(`KeeperTask error [id=${id}]`),
