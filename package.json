@@ -26,8 +26,10 @@
 		"eslint-plugin-promise": "^4.0.1",
 		"eslint-plugin-standard": "^4.0.0",
 		"ethers": "^5.2.0",
+		"express": "^4.17.1",
 		"prettier": "~1.19.1",
 		"pretty-error": "^3.0.4",
+		"prom-client": "^14.0.0",
 		"synthetix": "github:Synthetixio/synthetix#kovan-ovm-futures"
 	}
 }
