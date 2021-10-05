@@ -96,6 +96,7 @@ function getProvider(url) {
   });
 
   provider._websocket.on("pong", () => {
+    metrics.ethNodeUptime.set(1)
     clearInterval(heartbeatTimeout);
   });
 
@@ -117,6 +118,7 @@ async function run({
   }
 
   metrics.runServer();
+  metrics.trackUptime();
 
   fromBlock = fromBlock === "latest" ? fromBlock : parseInt(fromBlock);
 

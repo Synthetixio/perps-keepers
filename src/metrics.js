@@ -14,6 +14,14 @@ const keeperSusdBalance = new client.Gauge({
   name: "keeper_sUSD_balance",
   help: "The sUSD balance of the keeper"
 });
+const uptime = new client.Gauge({
+  name: "keeper_uptime",
+  help: "Whether the keeper is running"
+});
+const ethNodeUptime = new client.Gauge({
+  name: "eth_uptime",
+  help: "Whether the Ethereum node is responding is running"
+})
 
 function runServer() {
   const app = express();
@@ -25,8 +33,13 @@ function runServer() {
 
   // Register metrics.
   collectDefaultMetrics({ register });
-  register.registerMetric(keeperEthBalance);
-  register.registerMetric(keeperSusdBalance);
+  let metrics = [
+    keeperEthBalance,
+    keeperSusdBalance,
+    uptime,
+    ethNodeUptime
+  ]
+  metrics.map((metric) => register.registerMetric(metric));
 
   // Register Prometheus endpoint.
   app.get("/metrics", async (req, res) => {
@@ -55,7 +68,15 @@ function trackKeeperBalance(signer, SynthsUSD) {
   }, 2500);
 }
 
+function trackUptime() {
+  setInterval(async () => {
+    uptime.set(1)
+  }, 2500)
+}
+
 module.exports = {
   trackKeeperBalance,
-  runServer
+  trackUptime,
+  runServer,
+  ethNodeUptime
 };
