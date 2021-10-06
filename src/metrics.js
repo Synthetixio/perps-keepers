@@ -71,12 +71,13 @@ function runServer() {
 
 function trackKeeperBalance(signer, SynthsUSD) {
   setInterval(async () => {
+    const account = await signer.getAddress()
     const balance = await signer.getBalance();
-    const sUSDBalance = await SynthsUSD.balanceOf(await signer.getAddress());
+    const sUSDBalance = await SynthsUSD.balanceOf(account);
 
     const bnToNumber = bn => parseFloat(formatEther(bn));
-    keeperEthBalance.set(bnToNumber(balance));
-    keeperSusdBalance.set(bnToNumber(sUSDBalance));
+    keeperEthBalance.set({ account }, bnToNumber(balance));
+    keeperSusdBalance.set({ account }, bnToNumber(sUSDBalance));
   }, 2500);
 }
 
