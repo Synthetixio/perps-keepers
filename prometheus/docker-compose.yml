@@ -1,0 +1,11 @@
+version: '3'
+
+services:
+  prometheus:
+    build: .
+    ports:
+     - 9090:9090
+    environment:
+     - PROM_REMOTE_WRITE_HOST
+     - PROM_REMOTE_WRITE_USERNAME
+     - PROM_REMOTE_WRITE_PASSWORD

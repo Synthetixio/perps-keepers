@@ -3,6 +3,7 @@ const { BigNumber: BN } = ethers;
 const { gray, blue, red, green, yellow } = require("chalk");
 
 const snx = require("synthetix");
+const metrics = require("./metrics")
 
 // async function runWithRetries(cb, retries = 3) {
 //   try {
@@ -180,7 +181,9 @@ class Keeper {
   }
 
   async runKeepers() {
-    console.log(`${Object.keys(this.positions).length} positions to keep`);
+    const numPositions = Object.keys(this.positions).length
+    metrics.futuresOpenPositions.set({ market: this.baseAsset }, numPositions)
+    console.log(`${numPositions} positions to keep`);
 
     // Open positions.
     for (const { id, account } of Object.values(this.positions)) {
@@ -199,7 +202,7 @@ class Keeper {
 
     console.log(gray(`KeeperTask running [id=${id}]`));
     try {
-      await cb()
+      await cb();
     } catch (err) {
       console.error(
         red(`KeeperTask error [id=${id}]`),
@@ -239,6 +242,11 @@ class Keeper {
           .liquidatePosition(account);
         console.log(tx.nonce);
         receipt = await tx.wait(1);
+
+        metrics.futuresLiquidations.observe(
+          { market: this.baseAsset }, 
+          1
+        )
       });
     } catch (err) {
       throw err;

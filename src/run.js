@@ -2,13 +2,14 @@ require("dotenv").config();
 const ethers = require("ethers");
 const { gray, yellow } = require("chalk");
 const snx = require("synthetix");
-const Keeper = require("../keeper");
+const Keeper = require("./keeper");
 const { NonceManager } = require("@ethersproject/experimental");
 const {
   utils: { formatEther }
 } = ethers;
 const { getSource, getTarget, getFuturesMarkets } = snx;
-const SignerPool = require("../signer-pool");
+const SignerPool = require("./signer-pool");
+const metrics = require("./metrics");
 
 const futuresMarkets = getFuturesMarkets({
   // TODO: change this to mainnet when it's eventually deployed
@@ -95,6 +96,7 @@ function getProvider(url) {
   });
 
   provider._websocket.on("pong", () => {
+    metrics.ethNodeUptime.set(1)
     clearInterval(heartbeatTimeout);
   });
 
@@ -114,6 +116,9 @@ async function run({
       "ETH_HDWALLET_MNEMONIC environment variable is not configured."
     );
   }
+
+  metrics.runServer();
+  metrics.trackUptime();
 
   fromBlock = fromBlock === "latest" ? fromBlock : parseInt(fromBlock);
 
@@ -174,6 +179,7 @@ async function run({
       gray(`Account #${i}: ${await signer.getAddress()} (${balanceText})`)
     );
   }
+  metrics.trackKeeperBalance(signers[0], SynthsUSD);
 
   // Get addresses.
   markets = markets.split(",");
