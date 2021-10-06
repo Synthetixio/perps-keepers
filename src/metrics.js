@@ -22,6 +22,16 @@ const ethNodeUptime = new client.Gauge({
   name: "eth_uptime",
   help: "Whether the Ethereum node is responding is running"
 })
+const futuresOpenPositions = new client.Gauge({
+  name: "futures_open_positions",
+  help: "Positions being monitored for liquidation",
+  labelNames: ['market'],
+})
+const futuresLiquidations = new client.Summary({
+  name: "futures_liquidations",
+  help: "Number of liquidations",
+  labelNames: ['market'],
+})
 
 function runServer() {
   const app = express();
@@ -37,7 +47,9 @@ function runServer() {
     keeperEthBalance,
     keeperSusdBalance,
     uptime,
-    ethNodeUptime
+    ethNodeUptime,
+    futuresOpenPositions,
+    futuresLiquidations
   ]
   metrics.map((metric) => register.registerMetric(metric));
 
@@ -77,6 +89,10 @@ function trackUptime() {
 module.exports = {
   trackKeeperBalance,
   trackUptime,
+
   runServer,
-  ethNodeUptime
+  
+  ethNodeUptime,
+  futuresOpenPositions,
+  futuresLiquidations
 };
