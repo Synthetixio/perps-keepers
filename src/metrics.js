@@ -8,11 +8,13 @@ const {
 
 const keeperEthBalance = new client.Gauge({
   name: "keeper_eth_balance",
-  help: "The ETH balance of the keeper"
+  help: "The ETH balance of the keeper",
+  labelNames: ['account'],
 });
 const keeperSusdBalance = new client.Gauge({
   name: "keeper_sUSD_balance",
-  help: "The sUSD balance of the keeper"
+  help: "The sUSD balance of the keeper",
+  labelNames: ['account'],
 });
 const uptime = new client.Gauge({
   name: "keeper_uptime",
@@ -60,9 +62,9 @@ function runServer() {
   });
 
   // Run Express HTTP server.
-  app.listen(8080, () => {
+  app.listen(8084, () => {
     console.log(
-      "Prometheus HTTP server is running on http://localhost:8080, metrics are exposed on http://localhost:8080/metrics"
+      "Prometheus HTTP server is running on http://localhost:8084, metrics are exposed on http://localhost:8084/metrics"
     );
   });
 }

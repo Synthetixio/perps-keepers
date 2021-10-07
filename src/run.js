@@ -174,7 +174,7 @@ async function run({
         return `${balanceText} ${key}`;
       })
       .join(", ");
-
+    
     console.log(
       gray(`Account #${i}: ${await signer.getAddress()} (${balanceText})`)
     );
