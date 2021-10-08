@@ -30,6 +30,6 @@
 		"prettier": "~1.19.1",
 		"pretty-error": "^3.0.4",
 		"prom-client": "^14.0.0",
-		"synthetix": "github:Synthetixio/synthetix#kovan-ovm-futures"
+		"synthetix": "github:Synthetixio/synthetix#futures-implementation"
 	}
 }
