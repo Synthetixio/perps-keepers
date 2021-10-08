@@ -5,7 +5,7 @@ global:
 scrape_configs:
   - job_name: keeper
     static_configs:
-      - targets: ['host.docker.internal:8084']
+      - targets: ['{{ getenv "PROM_ENDPOINT_TO_SCRAPE" }}']
 
 remote_write:
 - url: {{ getenv "PROM_REMOTE_WRITE_HOST" }}
