@@ -30,6 +30,7 @@
 		"prettier": "~1.19.1",
 		"pretty-error": "^3.0.4",
 		"prom-client": "^14.0.0",
-		"synthetix": "github:Synthetixio/synthetix#futures-implementation"
+		"synthetix": "github:Synthetixio/synthetix#futures-implementation",
+		"winston": "^3.3.3"
 	}
 }
