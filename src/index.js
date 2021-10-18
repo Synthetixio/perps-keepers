@@ -7,4 +7,4 @@ require("dotenv").config();
 
 require("./run").cmd(program);
 
-program.parse(process.argv);
+program.parseAsync(process.argv).catch(err => { throw err })
