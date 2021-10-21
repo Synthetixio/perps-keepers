@@ -145,7 +145,7 @@ async function run({
       return wrappedSigner;
     })
   );
-  const signerPool = new SignerPool(signers);
+  const signerPool = await SignerPool.create({ signers });
 
   // Check balances of accounts.
   const { SynthsUSD } = getSynthetixContracts({
@@ -154,7 +154,7 @@ async function run({
     useOvm: true
   });
 
-  for (const [i, signer] of signers.entries()) {
+  const signerBalances = await Promise.all(signers.map(async signer => {
     // ETH.
     const balance = await signer.getBalance();
     // sUSD.
@@ -164,8 +164,12 @@ async function run({
       ["ETH", balance],
       ["sUSD", sUSDBalance]
     ];
+    
+    return balances
+  }))
 
-    const balanceText = balances
+  for (const [i, signer] of signers.entries()) {
+    const balanceText = signerBalances[i]
       .map(([key, balance]) => {
         let balanceText = formatEther(balance);
         if (balance.isZero()) {
