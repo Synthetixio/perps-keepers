@@ -45,7 +45,7 @@ class Providers {
     let heartbeat, heartbeatTimeout;
 
     if (provider._websocket) {
-      const HEARTBEAT_TIMEOUT = 7500;
+      const HEARTBEAT_TIMEOUT = 60000;
 
       provider._websocket.on("open", () => {
         heartbeat = setInterval(() => {
@@ -71,7 +71,7 @@ class Providers {
         clearInterval(heartbeatTimeout);
       });
     } else {
-      const HEARTBEAT_TIMEOUT = 25000;
+      const HEARTBEAT_TIMEOUT = 60000;
 
       const onClose = async () => {
         console.error("The heartbeat to the RPC provider timed out.");
