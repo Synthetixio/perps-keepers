@@ -57,8 +57,8 @@ const getSynthetixContracts = ({ network, signer, provider, useOvm }) => {
 
 function validateProviderUrl(urlString) {
   const url = new URL(urlString);
-  if (url.protocol !== "wss:") {
-    throw new Error("Provider URL must be a wss:// endpoint");
+  if (url.protocol !== "ws:" && url.protocol !== "wss:") {
+    throw new Error("Provider URL must be a ws[s]:// endpoint");
   }
 }
 
@@ -118,7 +118,6 @@ async function run({
   }
 
   metrics.runServer();
-  metrics.trackUptime();
 
   fromBlock = fromBlock === "latest" ? fromBlock : parseInt(fromBlock);
 

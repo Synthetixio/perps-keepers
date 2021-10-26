@@ -16,10 +16,6 @@ const keeperSusdBalance = new client.Gauge({
   help: "The sUSD balance of the keeper",
   labelNames: ['account'],
 });
-const uptime = new client.Gauge({
-  name: "keeper_uptime",
-  help: "Whether the keeper is running"
-});
 const ethNodeUptime = new client.Gauge({
   name: "eth_uptime",
   help: "Whether the Ethereum node is responding is running"
@@ -34,6 +30,7 @@ const futuresLiquidations = new client.Summary({
   help: "Number of liquidations",
   labelNames: ['market'],
 })
+
 
 function runServer() {
   const app = express();
@@ -81,12 +78,6 @@ function trackKeeperBalance(signer, SynthsUSD) {
     keeperEthBalance.set({ account }, bnToNumber(balance));
     keeperSusdBalance.set({ account }, bnToNumber(sUSDBalance));
   }, 2500);
-}
-
-function trackUptime() {
-  setInterval(async () => {
-    uptime.set(1)
-  }, 2500)
 }
 
 module.exports = {
