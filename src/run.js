@@ -10,6 +10,7 @@ const {
 const { getSource, getTarget, getFuturesMarkets } = snx;
 const SignerPool = require("./signer-pool");
 const metrics = require("./metrics");
+const { Providers } = require("./provider");
 
 const futuresMarkets = getFuturesMarkets({
   // TODO: change this to mainnet when it's eventually deployed
@@ -55,54 +56,6 @@ const getSynthetixContracts = ({ network, signer, provider, useOvm }) => {
     }, {});
 };
 
-function validateProviderUrl(urlString) {
-  const url = new URL(urlString);
-  if (url.protocol !== "ws:" && url.protocol !== "wss:") {
-    throw new Error("Provider URL must be a ws[s]:// endpoint");
-  }
-}
-
-function getProvider(url) {
-  const provider = new ethers.providers.WebSocketProvider({
-    url,
-    pollingInterval: 50,
-    timeout: 1000 * 60 // 1 minute
-  });
-
-  //
-  // Setup the Websocket provider to exit the process if a connection is closed.
-  //
-  const HEARTBEAT_TIMEOUT = 7500;
-  const HEARTBEAT_INTERVAL = 10000;
-  let heartbeat, heartbeatTimeout;
-
-  provider._websocket.on("open", () => {
-    heartbeat = setInterval(() => {
-      provider._websocket.ping();
-
-      // Use `WebSocket#terminate()`, which immediately destroys the connection,
-      // instead of `WebSocket#close()`, which waits for the close timer.
-      heartbeatTimeout = setTimeout(() => {
-        provider._websocket.terminate();
-      }, HEARTBEAT_TIMEOUT);
-    }, HEARTBEAT_INTERVAL);
-  });
-
-  provider._websocket.on("close", () => {
-    console.error("The websocket connection was closed");
-    clearInterval(heartbeat);
-    clearTimeout(heartbeatTimeout);
-    process.exit(1);
-  });
-
-  provider._websocket.on("pong", () => {
-    metrics.ethNodeUptime.set(1);
-    clearInterval(heartbeatTimeout);
-  });
-
-  return provider;
-}
-
 async function run({
   fromBlock = DEFAULTS.fromBlock,
   providerUrl = DEFAULTS.providerUrl,
@@ -123,8 +76,8 @@ async function run({
 
   // Setup.
   //
-  validateProviderUrl(providerUrl);
-  const provider = getProvider(providerUrl);
+  const provider = Providers.create(providerUrl);
+  Providers.monitor(provider);
   console.log(gray(`Connected to Ethereum node at ${providerUrl}`));
 
   let signers = createWallets({
@@ -139,7 +92,7 @@ async function run({
 
       // Each signer gets its own RPC connection.
       // This seems to improve the transaction speed even further.
-      wrappedSigner = wrappedSigner.connect(getProvider(providerUrl));
+      wrappedSigner = wrappedSigner.connect(Providers.create(providerUrl));
 
       return wrappedSigner;
     })

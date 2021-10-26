@@ -237,26 +237,30 @@ class Keeper {
 
     // Get current liquidation price for each position (including funding).
 
-    const BATCH_SIZE = 20
-    const WAIT = 2000
-    const positions = Object.values(this.positions)
+    // const BATCH_SIZE = 20;
+    // const WAIT = 2000;
+    const BATCH_SIZE = 500;
+    const WAIT = 20;
+    const positions = Object.values(this.positions);
 
     for (const batch of _.chunk(positions, BATCH_SIZE)) {
-      await Promise.all(batch.map(async (position) => {
-        const { id, account } = position
-        await this.runKeeperTask(id, 'liquidation', () =>
-          this.liquidateOrder(id, account)
-        );
-      }));
-      await new Promise((res, rej) => setTimeout(res, WAIT))
+      await Promise.all(
+        batch.map(async position => {
+          const { id, account } = position;
+          await this.runKeeperTask(id, "liquidation", () =>
+            this.liquidateOrder(id, account)
+          );
+        })
+      );
+      await new Promise((res, rej) => setTimeout(res, WAIT));
     }
 
     // Serial tx submission for now until Optimism can stop rate-limiting us.
-    for (const { id, account } of Object.values(this.positions)) {
-      await this.runKeeperTask(id, "liquidation", () =>
-        this.liquidateOrder(id, account)
-      );
-    }
+    // for (const { id, account } of Object.values(this.positions)) {
+    //   await this.runKeeperTask(id, "liquidation", () =>
+    //     this.liquidateOrder(id, account)
+    //   );
+    // }
   }
 
   async runKeeperTask(id, taskLabel, cb) {
