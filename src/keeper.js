@@ -315,7 +315,7 @@ class Keeper {
     } catch (err) {
       metrics.futuresLiquidations.observe(
         { market: this.baseAsset, success: false },
-        1
+        0
       );
 
       if (err.code) {
