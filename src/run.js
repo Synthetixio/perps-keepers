@@ -96,7 +96,7 @@ function getProvider(url) {
   });
 
   provider._websocket.on("pong", () => {
-    metrics.ethNodeUptime.set(1)
+    metrics.ethNodeUptime.set(1);
     clearInterval(heartbeatTimeout);
   });
 
@@ -153,19 +153,21 @@ async function run({
     useOvm: true
   });
 
-  const signerBalances = await Promise.all(signers.map(async signer => {
-    // ETH.
-    const balance = await signer.getBalance();
-    // sUSD.
-    const sUSDBalance = await SynthsUSD.balanceOf(await signer.getAddress());
+  const signerBalances = await Promise.all(
+    signers.map(async signer => {
+      // ETH.
+      const balance = await signer.getBalance();
+      // sUSD.
+      const sUSDBalance = await SynthsUSD.balanceOf(await signer.getAddress());
 
-    const balances = [
-      ["ETH", balance],
-      ["sUSD", sUSDBalance]
-    ];
-    
-    return balances
-  }))
+      const balances = [
+        ["ETH", balance],
+        ["sUSD", sUSDBalance]
+      ];
+
+      return balances;
+    })
+  );
 
   for (const [i, signer] of signers.entries()) {
     const balanceText = signerBalances[i]
@@ -177,7 +179,7 @@ async function run({
         return `${balanceText} ${key}`;
       })
       .join(", ");
-    
+
     console.log(
       gray(`Account #${i}: ${await signer.getAddress()} (${balanceText})`)
     );
