@@ -86,7 +86,10 @@ class Providers {
         }, HEARTBEAT_TIMEOUT);
 
         // ping
-        await provider.getBlock("latest");
+        await new Promise((res, rej) => {
+          process.nextTick(() => provider.getBlock("latest").then(res).catch(rej))
+        })
+        // await provider.getBlock("latest");
 
         // pong
         metrics.ethNodeUptime.set(1);
