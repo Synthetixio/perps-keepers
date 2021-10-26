@@ -24,7 +24,7 @@ class Providers {
       provider = new ethers.providers.JsonRpcProvider({
         url: providerUrl,
         pollingInterval: 50,
-        timeout: 1000 * 60 // 1 minute
+        timeout: 3 * 1000 * 60 // 3 minutes
       });
       // provider = new ethers.providers.InfuraProvider({
       //     url: "https://optimism-kovan.infura.io/v3/***REMOVED***",
@@ -71,7 +71,7 @@ class Providers {
         clearInterval(heartbeatTimeout);
       });
     } else {
-      const HEARTBEAT_TIMEOUT = 60000;
+      const HEARTBEAT_TIMEOUT = 3 * 60000;
 
       const onClose = async () => {
         console.error("The heartbeat to the RPC provider timed out.");
