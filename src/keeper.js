@@ -6,17 +6,57 @@ const { format, transports } = require("winston");
 const snx = require("synthetix");
 const metrics = require("./metrics");
 
-// async function runWithRetries(cb, retries = 3) {
-//   try {
-//     await cb();
-//   } catch (ex) {
-//     if (retries === 0) throw ex;
-//     else await runWithRetries(cb, retries - 1);
-//   }
-// }
-
 class Keeper {
   constructor({
+    futuresMarket,
+    exchangeRates,
+    baseAsset,
+    signerPool,
+    provider
+  }) {
+    this.baseAsset = baseAsset;
+
+    // Contracts.
+    this.futuresMarket = futuresMarket;
+    this.exchangeRates = exchangeRates;
+
+    this.logger = winston.createLogger({
+      level: "info",
+      format: format.combine(
+        format.colorize(),
+        format.timestamp(),
+        format.label({ label: `FuturesMarket [${baseAsset}]` }),
+        format.printf(info => {
+          return [
+            info.timestamp,
+            info.level,
+            info.label,
+            info.component,
+            info.message
+          ]
+            .filter(x => !!x)
+            .join(" ");
+        })
+      ),
+      transports: [new transports.Console()]
+    });
+    this.logger.info(`market deployed at ${futuresMarket.address}`);
+
+    // The index.
+    this.positions = {};
+
+    // A mapping of already running keeper tasks.
+    this.activeKeeperTasks = {};
+
+    // A FIFO queue of blocks to be processed.
+    this.blockQueue = [];
+
+    this.blockTip = null;
+    this.provider = provider;
+    this.signerPool = signerPool;
+  }
+
+  static async create({
     proxyFuturesMarket: proxyFuturesMarketAddress,
     exchangeRates: exchangeRatesAddress,
     signerPool,
@@ -35,60 +75,32 @@ class Keeper {
       useOvm: true
     }).abi;
 
-    // The index.
-    this.positions = {};
-
-    // A mapping of already running keeper tasks.
-    this.activeKeeperTasks = {};
-
-    // A FIFO queue of blocks to be processed.
-    this.blockQueue = [];
-
+    // Contracts.
     const futuresMarket = new ethers.Contract(
       proxyFuturesMarketAddress,
       FuturesMarketABI,
       provider
     );
-    this.futuresMarket = futuresMarket;
 
     const exchangeRates = new ethers.Contract(
       exchangeRatesAddress,
       ExchangeRatesABI,
       provider
     );
-    this.exchangeRates = exchangeRates;
 
-    this.blockTip = null;
-    this.provider = provider;
-    this.signerPool = signerPool;
+    let baseAsset = await futuresMarket.baseAsset();
+    baseAsset = snx.fromBytes32(baseAsset);
+
+    return new Keeper({
+      futuresMarket,
+      exchangeRates,
+      baseAsset,
+      signerPool,
+      provider
+    });
   }
 
   async run({ fromBlock }) {
-    const baseAsset = await this.futuresMarket.baseAsset();
-    this.baseAsset = snx.fromBytes32(baseAsset);
-    this.logger = winston.createLogger({
-      level: "info",
-      format: format.combine(
-        format.colorize(),
-        format.timestamp(),
-        format.label({ label: `FuturesMarket [${this.baseAsset}]` }),
-        format.printf(info => {
-          return [
-            info.timestamp,
-            info.level,
-            info.label,
-            info.component,
-            info.message
-          ]
-            .filter(x => !!x)
-            .join(" ");
-        })
-      ),
-      transports: [new transports.Console()]
-    });
-
-    this.logger.info(`market deployed at ${this.futuresMarket.address}`);
-
     const events = await this.futuresMarket.queryFilter(
       "*",
       fromBlock,

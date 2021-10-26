@@ -1,6 +1,6 @@
 const winston = require("winston");
 const { format, transports } = require("winston");
-const { label } = format;
+
 class SignerPool {
   constructor(signers) {
     this.signers = signers;

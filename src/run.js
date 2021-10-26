@@ -211,7 +211,7 @@ async function run({
   });
 
   for (const marketContract of marketContracts) {
-    const keeper = new Keeper({
+    const keeper = await Keeper.create({
       network,
       proxyFuturesMarket: marketContract.address,
       exchangeRates: exchangeRates.address,
