@@ -25,6 +25,10 @@ class SignerPool {
     });
   }
 
+  static async create({ signers }) {
+    return new SignerPool(signers)
+  }
+
   async acquire() {
     this.logger.info('awaiting signer')
     while (!this.pool.length) {
