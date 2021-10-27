@@ -25,7 +25,7 @@ class Stopwatch {
   start() {
     this.hrTime = process.hrtime()
   }
-  
+
   stop() {
     const hrTime = process.hrtime(this.hrTime)
     let ms = (hrTime[0] * 1000) + (hrTime[1] / 1000000)
@@ -100,6 +100,7 @@ class Providers {
             
             logger.info(`pong rtt=${ms}`)
             metrics.ethNodeUptime.set(1);
+            metrics.ethNodeHeartbeatRTT.observe(ms)
 
           } catch (ex) {
             logger.error('Error while pinging provider: ' + ex.toString())
@@ -167,6 +168,9 @@ class Providers {
             await runNextTick(() => provider.getBlock("latest"))
             const ms = stopwatch.stop()
             logger.info(`pong rtt=${ms}`)
+
+            metrics.ethNodeUptime.set(1)
+            metrics.ethNodeHeartbeatRTT.observe(ms)
           } catch (ex) {
             logger.error('Error while pinging provider: ' + ex.toString())
             process.exit(-1)

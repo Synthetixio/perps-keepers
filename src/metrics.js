@@ -20,6 +20,10 @@ const ethNodeUptime = new client.Gauge({
   name: "eth_uptime",
   help: "Whether the Ethereum node is responding is running"
 });
+const ethNodeHeartbeatRTT = new client.Summary({
+  name: "eth_heartbeat_rtt",
+  help: "Round trip time of the heartbeat to the ETH RPC node."
+});
 const futuresOpenPositions = new client.Gauge({
   name: "futures_open_positions",
   help: "Positions being monitored for liquidation",
@@ -50,9 +54,10 @@ function runServer() {
     keeperEthBalance,
     keeperSusdBalance,
     ethNodeUptime,
+    ethNodeHeartbeatRTT,
     futuresOpenPositions,
     futuresLiquidations,
-    keeperErrors
+    keeperErrors,
   ];
   metrics.map(metric => register.registerMetric(metric));
 
@@ -90,6 +95,7 @@ module.exports = {
   runServer,
 
   ethNodeUptime,
+  ethNodeHeartbeatRTT,
   futuresOpenPositions,
   futuresLiquidations
 };
