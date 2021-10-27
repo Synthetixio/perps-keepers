@@ -1,32 +1,11 @@
-const winston = require("winston");
-const { format, transports } = require("winston");
+const { createLogger } = require('./logging')
 
 class SignerPool {
   constructor(signers) {
     this.signers = signers;
     this.pool = Array.from(Array(this.signers.length).keys());
     this.acquireCallbacks = [];
-
-    this.logger = winston.createLogger({
-      level: "info",
-      format: format.combine(
-        format.colorize(),
-        format.timestamp(),
-        format.label({ label: `SignerPool` }),
-        format.printf(info => {
-          return [
-            info.timestamp,
-            info.level,
-            info.label,
-            info.component,
-            info.message
-          ]
-            .filter(x => !!x)
-            .join(" ");
-        })
-      ),
-      transports: [new transports.Console()]
-    });
+    this.logger = createLogger({ componentName: 'SignerPool' })
   }
 
   static async create({ signers }) {

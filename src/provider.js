@@ -1,5 +1,6 @@
 const ethers = require("ethers");
 const metrics = require("./metrics");
+const { createLogger } = require('./logging')
 
 function validateProviderUrl(urlString) {
   const url = new URL(urlString);
@@ -7,6 +8,8 @@ function validateProviderUrl(urlString) {
     throw new Error("Provider URL must be a ws[s]:// endpoint");
   }
 }
+
+const logger = createLogger({ componentName: "ProviderHeartbeat" })
 
 class Providers {
   static create(providerUrl) {
@@ -60,7 +63,7 @@ class Providers {
       });
 
       provider._websocket.on("close", () => {
-        console.error("The websocket connection was closed");
+        logger.error("The websocket connection was closed");
         clearInterval(heartbeat);
         clearTimeout(heartbeatTimeout);
         process.exit(1);
@@ -74,26 +77,29 @@ class Providers {
       const HEARTBEAT_TIMEOUT = 3 * 60000;
 
       const onClose = async () => {
-        console.error("The heartbeat to the RPC provider timed out.");
+        logger.error("The heartbeat to the RPC provider timed out.");
         clearInterval(heartbeat);
         clearTimeout(heartbeatTimeout);
         process.exit(1);
       };
 
       heartbeat = setInterval(async () => {
+        // ping
+        process.nextTick(async () => {
+          try {
+            await provider.getBlock("latest")
+            // pong
+            metrics.ethNodeUptime.set(1);
+            clearInterval(heartbeatTimeout);
+          } catch(ex) {
+            logger.error('Error sending heartbeat to RPC provider:')
+            process.exit(1);
+          }
+        })
+
         heartbeatTimeout = setTimeout(() => {
           onClose();
         }, HEARTBEAT_TIMEOUT);
-
-        // ping
-        await new Promise((res, rej) => {
-          process.nextTick(() => provider.getBlock("latest").then(res).catch(rej))
-        })
-        // await provider.getBlock("latest");
-
-        // pong
-        metrics.ethNodeUptime.set(1);
-        clearInterval(heartbeatTimeout);
       }, HEARTBEAT_INTERVAL);
     }
   }
