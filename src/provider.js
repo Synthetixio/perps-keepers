@@ -11,6 +11,28 @@ function validateProviderUrl(urlString) {
 
 const logger = createLogger({ componentName: "ProviderHeartbeat" })
 
+async function runNextTick(fn) {
+  await new Promise((resolve, reject) => {
+    process.nextTick(() => {
+      fn().then(resolve).catch(reject)
+    })
+  })
+}
+
+class Stopwatch {
+  constructor() {}
+
+  start() {
+    this.hrTime = process.hrtime()
+  }
+  
+  stop() {
+    const hrTime = process.hrtime(this.hrTime)
+    let ms = (hrTime[0] * 1000) + (hrTime[1] / 1000000)
+    return ms
+  }
+}
+
 class Providers {
   static create(providerUrl) {
     const url = new URL(providerUrl);
@@ -46,61 +68,116 @@ class Providers {
   static monitor(provider) {
     const HEARTBEAT_INTERVAL = 10000;
     let heartbeat, heartbeatTimeout;
+    let stopwatch = new Stopwatch()
 
     if (provider._websocket) {
       const HEARTBEAT_TIMEOUT = 60000;
 
-      provider._websocket.on("open", () => {
-        heartbeat = setInterval(() => {
-          provider._websocket.ping();
-
-          // Use `WebSocket#terminate()`, which immediately destroys the connection,
-          // instead of `WebSocket#close()`, which waits for the close timer.
+      async function monitor() {
+        while (true) {
+          // Listen for timeout.
           heartbeatTimeout = setTimeout(() => {
+            logger.error("The heartbeat to the RPC provider timed out.");
+            clearTimeout(heartbeatTimeout);
+
+            // Use `WebSocket#terminate()`, which immediately destroys the connection,
+            // instead of `WebSocket#close()`, which waits for the close timer.
             provider._websocket.terminate();
+            process.exit(1);
           }, HEARTBEAT_TIMEOUT);
-        }, HEARTBEAT_INTERVAL);
+
+          // Heartbeat.
+          try {
+            logger.info('ping')
+            const pong = new Promise((res, rej) => {
+              provider._websocket.on("pong", res)
+            })
+
+            stopwatch.start()
+            await runNextTick(async () => provider._websocket.ping())
+            await pong
+            const ms = stopwatch.stop()
+            
+            logger.info(`pong rtt=${ms}`)
+            metrics.ethNodeUptime.set(1);
+
+          } catch (ex) {
+            logger.error('Error while pinging provider: ' + ex.toString())
+            process.exit(-1)
+          }
+          clearTimeout(heartbeatTimeout);
+
+          await new Promise((res, rej) => setTimeout(res, HEARTBEAT_INTERVAL))
+        }
+      }
+
+      provider._websocket.on("open", () => {
+        monitor()
       });
 
       provider._websocket.on("close", () => {
         logger.error("The websocket connection was closed");
-        clearInterval(heartbeat);
         clearTimeout(heartbeatTimeout);
         process.exit(1);
       });
 
-      provider._websocket.on("pong", () => {
-        metrics.ethNodeUptime.set(1);
-        clearInterval(heartbeatTimeout);
-      });
+      // provider._websocket.on("open", () => {
+      //   heartbeat = setInterval(() => {
+      //     logger.info('ping')
+      //     stopwatch.start()
+      //     await runNextTick(() => provider._websocket.ping())
+
+      //     // Use `WebSocket#terminate()`, which immediately destroys the connection,
+      //     // instead of `WebSocket#close()`, which waits for the close timer.
+      //     heartbeatTimeout = setTimeout(() => {
+      //       provider._websocket.terminate();
+      //     }, HEARTBEAT_TIMEOUT);
+      //   }, HEARTBEAT_INTERVAL);
+      // });
+
+      // provider._websocket.on("close", () => {
+      //   logger.error("The websocket connection was closed");
+      //   clearInterval(heartbeat);
+      //   clearTimeout(heartbeatTimeout);
+      //   process.exit(1);
+      // });
+
+      // provider._websocket.on("pong", () => {
+      //   const ms = stopwatch.stop()
+      //   logger.info(`pong rtt=${ms}`)
+      //   metrics.ethNodeUptime.set(1);
+      //   clearInterval(heartbeatTimeout);
+      // });
     } else {
       const HEARTBEAT_TIMEOUT = 3 * 60000;
 
-      const onClose = async () => {
-        logger.error("The heartbeat to the RPC provider timed out.");
-        clearInterval(heartbeat);
-        clearTimeout(heartbeatTimeout);
-        process.exit(1);
-      };
-
-      heartbeat = setInterval(async () => {
-        // ping
-        process.nextTick(async () => {
-          try {
-            await provider.getBlock("latest")
-            // pong
-            metrics.ethNodeUptime.set(1);
-            clearInterval(heartbeatTimeout);
-          } catch(ex) {
-            logger.error('Error sending heartbeat to RPC provider:')
+      async function monitor() {
+        while(true) {
+          // Listen for timeout.
+          heartbeatTimeout = setTimeout(() => {
+            logger.error("The heartbeat to the RPC provider timed out.");
+            clearTimeout(heartbeatTimeout);
             process.exit(1);
-          }
-        })
+          }, HEARTBEAT_TIMEOUT);
 
-        heartbeatTimeout = setTimeout(() => {
-          onClose();
-        }, HEARTBEAT_TIMEOUT);
-      }, HEARTBEAT_INTERVAL);
+          // Heartbeat.
+          try {
+            logger.info('ping')
+            stopwatch.start()
+            await runNextTick(() => provider.getBlock("latest"))
+            const ms = stopwatch.stop()
+            logger.info(`pong rtt=${ms}`)
+          } catch (ex) {
+            logger.error('Error while pinging provider: ' + ex.toString())
+            process.exit(-1)
+          }
+          clearTimeout(heartbeatTimeout);
+          
+          await new Promise((res, rej) => setTimeout(res, HEARTBEAT_INTERVAL))
+        }
+      }
+
+      monitor()
     }
   }
 }
