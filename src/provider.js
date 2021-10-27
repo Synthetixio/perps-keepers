@@ -33,6 +33,9 @@ class Stopwatch {
   }
 }
 
+const WS_PROVIDER_TIMEOUT = 2 * 60 * 1000
+const HTTP_PROVIDER_TIMEOUT = WS_PROVIDER_TIMEOUT
+
 class Providers {
   static create(providerUrl) {
     const url = new URL(providerUrl);
@@ -43,13 +46,13 @@ class Providers {
       provider = new ethers.providers.WebSocketProvider({
         url: providerUrl,
         pollingInterval: 50,
-        timeout: 1000 * 60 // 1 minute
+        timeout: WS_PROVIDER_TIMEOUT
       });
     } else if (url.protocol.match(/http[s]:/)) {
       provider = new ethers.providers.JsonRpcProvider({
         url: providerUrl,
         pollingInterval: 50,
-        timeout: 3 * 1000 * 60 // 3 minutes
+        timeout: HTTP_PROVIDER_TIMEOUT
       });
       // provider = new ethers.providers.InfuraProvider({
       //     url: "https://optimism-kovan.infura.io/v3/***REMOVED***",
@@ -71,8 +74,6 @@ class Providers {
     let stopwatch = new Stopwatch()
 
     if (provider._websocket) {
-      const HEARTBEAT_TIMEOUT = 60000;
-
       async function monitor() {
         while (true) {
           // Listen for timeout.
@@ -84,7 +85,7 @@ class Providers {
             // instead of `WebSocket#close()`, which waits for the close timer.
             provider._websocket.terminate();
             process.exit(1);
-          }, HEARTBEAT_TIMEOUT);
+          }, WS_PROVIDER_TIMEOUT);
 
           // Heartbeat.
           try {
@@ -98,7 +99,7 @@ class Providers {
             await pong
             const ms = stopwatch.stop()
             
-            logger.info(`pong rtt=${ms}`)
+            logger.info(`pong rtt=${ms}ms`)
             metrics.ethNodeUptime.set(1);
             metrics.ethNodeHeartbeatRTT.observe(ms)
 
@@ -150,8 +151,6 @@ class Providers {
       //   clearInterval(heartbeatTimeout);
       // });
     } else {
-      const HEARTBEAT_TIMEOUT = 3 * 60000;
-
       async function monitor() {
         while(true) {
           // Listen for timeout.
@@ -159,7 +158,7 @@ class Providers {
             logger.error("The heartbeat to the RPC provider timed out.");
             clearTimeout(heartbeatTimeout);
             process.exit(1);
-          }, HEARTBEAT_TIMEOUT);
+          }, HTTP_PROVIDER_TIMEOUT);
 
           // Heartbeat.
           try {
@@ -167,7 +166,7 @@ class Providers {
             stopwatch.start()
             await runNextTick(() => provider.getBlock("latest"))
             const ms = stopwatch.stop()
-            logger.info(`pong rtt=${ms}`)
+            logger.info(`pong rtt=${ms}ms`)
 
             metrics.ethNodeUptime.set(1)
             metrics.ethNodeHeartbeatRTT.observe(ms)
