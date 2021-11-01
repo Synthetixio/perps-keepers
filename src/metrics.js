@@ -57,7 +57,7 @@ function runServer() {
     ethNodeHeartbeatRTT,
     futuresOpenPositions,
     futuresLiquidations,
-    keeperErrors,
+    keeperErrors
   ];
   metrics.map(metric => register.registerMetric(metric));
 

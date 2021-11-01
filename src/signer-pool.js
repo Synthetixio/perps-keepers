@@ -1,11 +1,11 @@
-const { createLogger } = require('./logging')
+const { createLogger } = require("./logging");
 
 class SignerPool {
   constructor(signers) {
     this.signers = signers;
     this.pool = Array.from(Array(this.signers.length).keys());
     this.acquireCallbacks = [];
-    this.logger = createLogger({ componentName: 'SignerPool' })
+    this.logger = createLogger({ componentName: "SignerPool" });
   }
 
   static async create({ signers }) {

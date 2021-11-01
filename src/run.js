@@ -174,8 +174,6 @@ async function run({
 
     keeper.run({ fromBlock });
   }
-
-  await new Promise((resolve, reject) => {});
 }
 
 function createWallets({ provider, mnemonic, num }) {
