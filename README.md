@@ -55,3 +55,9 @@ done
 
 Prometheus is a pull-based instrumentation system. We must run a separate Prometheus server to scrape the metrics and upload them to a remote endpoint. See [`prometheus/`](prometheus/) for more.
 
+## Development & Handover notes
+- Testing new changes: the current way of testing is manual, vs. a local instance of OVM deployment. Some simple integration test vs. local network should be added (add some positions, modify prices, see that liquidations happen).
+- Updating with new deployments: the contracts repo reference needs to be udpated, the `node_modules/` folder for it needs to be removed (npm not detecting cache issue)
+- Infra: currently runs on AWS (Syntetix account), will be run by community member / 3rd party instead.
+- Monitoring: the current setup is being monitored via Prometheus + Grafana + alerts to discord.
+- Future maintenence work: the current flow is very inefficient (checks all positions every block), which means that it's possible that liquidations won't keep up due to node chatter bottleneck. The implementation should maintain a view of position liquidation prices (by following events / subgraph) and only check liquidation status for the positions most at risk (liquidation price closeest to current price).
