@@ -28,7 +28,7 @@ export const DEFAULTS = {
   fromBlock: "latest",
   providerUrl: "http://localhost:8545",
   numAccounts: "10",
-  markets: futuresMarkets.map((market) => market.asset).join(","),
+  markets: futuresMarkets.map(market => market.asset).join(","),
   network: "kovan-ovm-futures",
 };
 
@@ -57,7 +57,7 @@ const getSynthetixContracts = ({
   });
 
   return Object.values(targets)
-    .map((target) => {
+    .map(target => {
       if (target.name === "Synthetix") {
         target.address = targets.ProxyERC20.address;
       } else if (target.name === "SynthsUSD") {
@@ -134,7 +134,7 @@ export async function run({
   });
 
   const signerBalances = await Promise.all(
-    signers.map(async (signer) => {
+    signers.map(async signer => {
       // ETH.
       const balance = await signer.getBalance();
       // sUSD.
@@ -170,14 +170,14 @@ export async function run({
   const marketsArray = markets.split(",");
   // Verify markets.
   const supportedAssets = futuresMarkets.map(({ asset }) => asset);
-  marketsArray.forEach((asset) => {
+  marketsArray.forEach(asset => {
     if (!supportedAssets.includes(asset)) {
       throw new Error(`No futures market for currencyKey: ${asset}`);
     }
   });
 
   // Load contracts.
-  const marketContracts = marketsArray.map((market) =>
+  const marketContracts = marketsArray.map(market =>
     snx.getTarget({
       contract: `ProxyFuturesMarket${market.slice(1)}`,
       network,

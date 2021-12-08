@@ -66,7 +66,7 @@ class Keeper {
         format.colorize(),
         format.timestamp(),
         format.label({ label: `FuturesMarket [${baseAsset}]` }),
-        format.printf((info) => {
+        format.printf(info => {
           return [
             info.timestamp,
             info.level,
@@ -74,7 +74,7 @@ class Keeper {
             info.component,
             info.message,
           ]
-            .filter((x) => !!x)
+            .filter(x => !!x)
             .join(" ");
         })
       ),
@@ -167,7 +167,7 @@ class Keeper {
     await this.runKeepers();
 
     this.logger.log("info", `Listening for events`);
-    this.provider.on("block", async (blockNumber) => {
+    this.provider.on("block", async blockNumber => {
       if (!this.blockTip) {
         // Don't process the first block we see.
         this.blockTip = blockNumber;
@@ -295,7 +295,7 @@ class Keeper {
 
     for (const batch of chunk(positions, BATCH_SIZE)) {
       await Promise.all(
-        batch.map(async (position) => {
+        batch.map(async position => {
           const { id, account } = position;
           await this.runKeeperTask(id, "liquidation", () =>
             this.liquidateOrder(id, account)
@@ -356,7 +356,7 @@ class Keeper {
     let receipt: TransactionReceipt | undefined;
 
     try {
-      await this.signerPool.withSigner(async (signer) => {
+      await this.signerPool.withSigner(async signer => {
         const tx: TransactionResponse = await this.futuresMarket
           .connect(signer)
           .liquidatePosition(account);

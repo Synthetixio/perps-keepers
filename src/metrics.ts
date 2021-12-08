@@ -58,7 +58,7 @@ export function runServer() {
     futuresLiquidations,
     keeperErrors,
   ];
-  metrics.map((metric) => register.registerMetric(metric));
+  metrics.map(metric => register.registerMetric(metric));
 
   // Register Prometheus endpoint.
   app.get("/metrics", async (req, res) => {

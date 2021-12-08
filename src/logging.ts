@@ -7,7 +7,7 @@ export function createLogger({ componentName }: { componentName: string }) {
       format.colorize(),
       format.timestamp(),
       format.label({ label: componentName }),
-      format.printf((info) => {
+      format.printf(info => {
         return [
           info.timestamp,
           info.level,
@@ -15,7 +15,7 @@ export function createLogger({ componentName }: { componentName: string }) {
           info.component,
           info.message,
         ]
-          .filter((x) => !!x)
+          .filter(x => !!x)
           .join(" ");
       })
     ),
