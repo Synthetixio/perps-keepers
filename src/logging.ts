@@ -1,31 +1,26 @@
-const winston = require("winston");
-const { format, transports } = require("winston");
+import winston, { format, transports } from "winston";
 
-function createLogger({ componentName }) {
+export function createLogger({ componentName }: { componentName: string }) {
   const logger = winston.createLogger({
     level: "info",
     format: format.combine(
       format.colorize(),
       format.timestamp(),
       format.label({ label: componentName }),
-      format.printf(info => {
+      format.printf((info) => {
         return [
           info.timestamp,
           info.level,
           info.label,
           info.component,
-          info.message
+          info.message,
         ]
-          .filter(x => !!x)
+          .filter((x) => !!x)
           .join(" ");
       })
     ),
-    transports: [new transports.Console()]
+    transports: [new transports.Console()],
   });
 
   return logger;
 }
-
-module.exports = {
-  createLogger
-};

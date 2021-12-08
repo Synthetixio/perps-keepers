@@ -1,18 +1,58 @@
-const _ = require("lodash");
-const ethers = require("ethers");
-const { BigNumber: BN } = ethers;
-const winston = require("winston");
-const { format, transports } = require("winston");
-const snx = require("synthetix");
-const metrics = require("./metrics");
+import { Contract } from "@ethersproject/contracts";
+import { chunk } from "lodash";
+
+import ethers, { BigNumber } from "ethers";
+import winston, { format, Logger, transports } from "winston";
+
+import snx from "synthetix";
+import * as metrics from "./metrics";
+import SignerPool from "./signer-pool";
+import {
+  TransactionReceipt,
+  TransactionResponse,
+} from "@ethersproject/abstract-provider";
+
+function isObjectOrErrorWithCode(x: unknown): x is { code: string } {
+  if (typeof x !== "object") return false;
+  if (x === null) return false;
+  return "code" in x;
+}
 
 class Keeper {
+  baseAsset: string;
+  futuresMarket: Contract;
+  exchangeRates: Contract;
+  logger: Logger;
+  positions: {
+    [account: string]: {
+      id: string;
+      event: string;
+      account: string;
+      size: number;
+    };
+  };
+  activeKeeperTasks: { [id: string]: boolean | undefined };
+  provider:
+    | ethers.providers.WebSocketProvider
+    | ethers.providers.JsonRpcProvider;
+  blockQueue: string[];
+  blockTip: string | null;
+  signerPool: SignerPool;
+
   constructor({
     futuresMarket,
     exchangeRates,
     baseAsset,
     signerPool,
-    provider
+    provider,
+  }: {
+    futuresMarket: ethers.Contract;
+    exchangeRates: ethers.Contract;
+    baseAsset: string;
+    signerPool: SignerPool;
+    provider:
+      | ethers.providers.WebSocketProvider
+      | ethers.providers.JsonRpcProvider;
   }) {
     this.baseAsset = baseAsset;
 
@@ -26,19 +66,19 @@ class Keeper {
         format.colorize(),
         format.timestamp(),
         format.label({ label: `FuturesMarket [${baseAsset}]` }),
-        format.printf(info => {
+        format.printf((info) => {
           return [
             info.timestamp,
             info.level,
             info.label,
             info.component,
-            info.message
+            info.message,
           ]
-            .filter(x => !!x)
+            .filter((x) => !!x)
             .join(" ");
         })
       ),
-      transports: [new transports.Console()]
+      transports: [new transports.Console()],
     });
     this.logger.info(`market deployed at ${futuresMarket.address}`);
 
@@ -61,18 +101,26 @@ class Keeper {
     exchangeRates: exchangeRatesAddress,
     signerPool,
     provider,
-    network
+    network,
+  }: {
+    proxyFuturesMarket: string;
+    exchangeRates: string;
+    signerPool: SignerPool;
+    network: string;
+    provider:
+      | ethers.providers.JsonRpcProvider
+      | ethers.providers.WebSocketProvider;
   }) {
     // Get ABIs.
     const FuturesMarketABI = snx.getSource({
       network,
       contract: "FuturesMarket",
-      useOvm: true
+      useOvm: true,
     }).abi;
     const ExchangeRatesABI = snx.getSource({
       network,
       contract: "ExchangeRatesWithoutInvPricing",
-      useOvm: true
+      useOvm: true,
     }).abi;
 
     // Contracts.
@@ -96,21 +144,21 @@ class Keeper {
       exchangeRates,
       baseAsset,
       signerPool,
-      provider
+      provider,
     });
   }
 
-  async run({ fromBlock }) {
+  async run({ fromBlock }: { fromBlock: string | number }) {
     const events = await this.futuresMarket.queryFilter(
-      "*",
+      "*" as any, // TODO typescript doesn't like this as a string
       fromBlock,
       "latest"
     );
     this.logger.log("info", `Rebuilding index from ${fromBlock} ... latest`, {
-      component: "Indexer"
+      component: "Indexer",
     });
     this.logger.log("info", `${events.length} events to process`, {
-      component: "Indexer"
+      component: "Indexer",
     });
     this.updateIndex(events);
 
@@ -119,7 +167,7 @@ class Keeper {
     await this.runKeepers();
 
     this.logger.log("info", `Listening for events`);
-    this.provider.on("block", async blockNumber => {
+    this.provider.on("block", async (blockNumber) => {
       if (!this.blockTip) {
         // Don't process the first block we see.
         this.blockTip = blockNumber;
@@ -140,25 +188,27 @@ class Keeper {
       }
 
       const blockNumber = this.blockQueue.shift();
-      await this.processNewBlock(blockNumber);
+      if (blockNumber) {
+        await this.processNewBlock(blockNumber);
+      }
     }
   }
 
-  async processNewBlock(blockNumber) {
+  async processNewBlock(blockNumber: string) {
     this.blockTip = blockNumber;
     const events = await this.futuresMarket.queryFilter(
-      "*",
+      "*" as any,
       blockNumber,
       blockNumber
     );
     const exchangeRateEvents = await this.exchangeRates.queryFilter(
-      "*",
+      "*" as any,
       blockNumber,
       blockNumber
     );
 
     this.logger.log("debug", `\nProcessing block: ${blockNumber}`, {
-      component: "Indexer"
+      component: "Indexer",
     });
     exchangeRateEvents
       .filter(
@@ -169,15 +219,15 @@ class Keeper {
       });
 
     this.logger.log("debug", `${events.length} events to process`, {
-      component: "Indexer"
+      component: "Indexer",
     });
     await this.updateIndex(events);
     await this.runKeepers();
   }
 
-  async updateIndex(events) {
+  async updateIndex(events: ethers.Event[]) {
     events.forEach(({ event, args }) => {
-      if (event === "PositionModified") {
+      if (event === "PositionModified" && args) {
         const { id, account, size } = args;
 
         this.logger.log(
@@ -186,7 +236,7 @@ class Keeper {
           { component: "Indexer" }
         );
 
-        if (size.eq(BN.from(0))) {
+        if (size.eq(BigNumber.from(0))) {
           // Position has been closed.
           delete this.positions[account];
           return;
@@ -196,9 +246,9 @@ class Keeper {
           id,
           event,
           account,
-          size
+          size,
         };
-      } else if (event === "PositionLiquidated") {
+      } else if (event === "PositionLiquidated" && args) {
         const { account, liquidator } = args;
         this.logger.log(
           "info",
@@ -218,7 +268,7 @@ class Keeper {
       } else if (!event || event.match(/OrderSubmitted/)) {
       } else {
         this.logger.log("info", `No handler for event ${event}`, {
-          component: "Indexer"
+          component: "Indexer",
         });
       }
     });
@@ -228,7 +278,7 @@ class Keeper {
     const numPositions = Object.keys(this.positions).length;
     metrics.futuresOpenPositions.set({ market: this.baseAsset }, numPositions);
     this.logger.log("info", `${numPositions} positions to keep`, {
-      component: "Keeper"
+      component: "Keeper",
     });
 
     // Open positions.
@@ -243,9 +293,9 @@ class Keeper {
     const WAIT = 20;
     const positions = Object.values(this.positions);
 
-    for (const batch of _.chunk(positions, BATCH_SIZE)) {
+    for (const batch of chunk(positions, BATCH_SIZE)) {
       await Promise.all(
-        batch.map(async position => {
+        batch.map(async (position) => {
           const { id, account } = position;
           await this.runKeeperTask(id, "liquidation", () =>
             this.liquidateOrder(id, account)
@@ -263,7 +313,7 @@ class Keeper {
     // }
   }
 
-  async runKeeperTask(id, taskLabel, cb) {
+  async runKeeperTask(id: string, taskLabel: string, cb: () => Promise<void>) {
     if (this.activeKeeperTasks[id]) {
       // Skip task as its already running.
       return;
@@ -271,41 +321,43 @@ class Keeper {
     this.activeKeeperTasks[id] = true;
 
     this.logger.log("info", `running`, {
-      component: `Keeper [${taskLabel}] id=${id}`
+      component: `Keeper [${taskLabel}] id=${id}`,
     });
     try {
       await cb();
     } catch (err) {
-      this.logger.log("error", `error \n${err.toString()}`, {
-        component: `Keeper [${taskLabel}] id=${id}`
-      });
+      if (err && typeof err === "object" && err.toString) {
+        this.logger.log("error", `error \n${err.toString()}`, {
+          component: `Keeper [${taskLabel}] id=${id}`,
+        });
+      }
       metrics.keeperErrors.observe({ market: this.baseAsset }, 1);
     }
     this.logger.log("info", `done`, {
-      component: `Keeper [${taskLabel}] id=${id}`
+      component: `Keeper [${taskLabel}] id=${id}`,
     });
 
     delete this.activeKeeperTasks[id];
   }
 
-  async liquidateOrder(id, account) {
+  async liquidateOrder(id: string, account: string) {
     const taskLabel = "liquidation";
     const canLiquidateOrder = await this.futuresMarket.canLiquidate(account);
     if (!canLiquidateOrder) {
       this.logger.log("info", `Cannot liquidate order`, {
-        component: `Keeper [${taskLabel}] id=${id}`
+        component: `Keeper [${taskLabel}] id=${id}`,
       });
       return;
     }
 
     this.logger.log("info", `begin liquidatePosition`, {
-      component: `Keeper [${taskLabel}] id=${id}`
+      component: `Keeper [${taskLabel}] id=${id}`,
     });
-    let tx, receipt;
+    let receipt: TransactionReceipt | undefined;
 
     try {
-      await this.signerPool.withSigner(async signer => {
-        tx = await this.futuresMarket
+      await this.signerPool.withSigner(async (signer) => {
+        const tx: TransactionResponse = await this.futuresMarket
           .connect(signer)
           .liquidatePosition(account);
         this.logger.log(
@@ -318,11 +370,11 @@ class Keeper {
       });
     } catch (err) {
       metrics.futuresLiquidations.observe(
-        { market: this.baseAsset, success: false },
+        { market: this.baseAsset, success: "false" },
         0
       );
 
-      if (err.code) {
+      if (isObjectOrErrorWithCode(err)) {
         // Ethers error.
         if (err.code === "NONCE_EXPIRED") {
           // We can't recover from this one yet, restart.
@@ -335,20 +387,20 @@ class Keeper {
     }
 
     metrics.futuresLiquidations.observe(
-      { market: this.baseAsset, success: true },
+      { market: this.baseAsset, success: "true" },
       1
     );
 
     this.logger.log(
       "info",
       `done liquidatePosition`,
-      `block=${receipt.blockNumber}`,
-      `success=${!!receipt.status}`,
-      `tx=${receipt.transactionHash}`,
-      `gasUsed=${receipt.gasUsed}`,
+      `block=${receipt?.blockNumber}`,
+      `success=${!!receipt?.status}`,
+      `tx=${receipt?.transactionHash}`,
+      `gasUsed=${receipt?.gasUsed}`,
       { component: `Keeper [${taskLabel}] id=${id}` }
     );
   }
 }
 
-module.exports = Keeper;
+export default Keeper;

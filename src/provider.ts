@@ -1,17 +1,21 @@
-const ethers = require("ethers");
-const metrics = require("./metrics");
-const { createLogger } = require("./logging");
+import { ethers } from "ethers";
 
-function validateProviderUrl(urlString) {
-  const url = new URL(urlString);
-  if (url.protocol !== "ws:" && url.protocol !== "wss:") {
-    throw new Error("Provider URL must be a ws[s]:// endpoint");
-  }
-}
+import * as metrics from "./metrics";
+import { createLogger } from "./logging";
+
+const getErrorMessage = (e: unknown) => {
+  if (e instanceof Error) return e.message;
+  return e &&
+    typeof e === "object" &&
+    "toString" in e &&
+    typeof e.toString === "function"
+    ? e.toString()
+    : String(e);
+};
 
 const logger = createLogger({ componentName: "ProviderHeartbeat" });
 
-async function runNextTick(fn) {
+async function runNextTick(fn: () => Promise<void>) {
   await new Promise((resolve, reject) => {
     process.nextTick(() => {
       fn()
@@ -22,6 +26,7 @@ async function runNextTick(fn) {
 }
 
 class Stopwatch {
+  hrTime: [number, number] | undefined;
   start() {
     this.hrTime = process.hrtime();
   }
@@ -36,23 +41,23 @@ class Stopwatch {
 const WS_PROVIDER_TIMEOUT = 2 * 60 * 1000;
 const HTTP_PROVIDER_TIMEOUT = WS_PROVIDER_TIMEOUT;
 
-class Providers {
-  static create(providerUrl) {
+export class Providers {
+  static create(providerUrl: string) {
     const url = new URL(providerUrl);
-    // validateProviderUrl(providerUrl);
 
-    let provider;
-    if (url.protocol.match(/ws[s]:/)) {
-      provider = new ethers.providers.WebSocketProvider({
+    if (url.protocol.match(/^(ws|wss):/)) {
+      // @ts-ignore TODO, it seems like we instantiate this incorrectly
+      return new ethers.providers.WebSocketProvider({
         url: providerUrl,
         pollingInterval: 50,
-        timeout: WS_PROVIDER_TIMEOUT
+        timeout: WS_PROVIDER_TIMEOUT,
       });
-    } else if (url.protocol.match(/http[s]:/)) {
-      provider = new ethers.providers.JsonRpcProvider({
+    }
+    if (url.protocol.match(/^(http|https):/)) {
+      return new ethers.providers.JsonRpcProvider({
         url: providerUrl,
-        pollingInterval: 50,
-        timeout: HTTP_PROVIDER_TIMEOUT
+        // pollingInterval: 50,  pollingInterval is not a valid option
+        timeout: HTTP_PROVIDER_TIMEOUT,
       });
       // provider = new ethers.providers.InfuraProvider({
       //     url: "https://optimism-kovan.infura.io/v3/***REMOVED***",
@@ -60,26 +65,27 @@ class Providers {
       //     pollingInterval: 50,
       //     timeout: 1000 * 60 // 1 minute
       // });
-    } else {
-      throw new Error("Unknown provider protocol scheme - " + url.protocol);
     }
-
-    return provider;
+    throw new Error("Unknown provider protocol scheme - " + url.protocol);
   }
 
   // Setup the provider to exit the process if a connection is closed.
-  static monitor(provider) {
+  static monitor(
+    provider:
+      | ethers.providers.JsonRpcProvider
+      | ethers.providers.WebSocketProvider
+  ) {
     const HEARTBEAT_INTERVAL = 10000;
-    let heartbeatTimeout;
+    let heartbeatTimeout: NodeJS.Timeout | undefined;
     const stopwatch = new Stopwatch();
 
-    if (provider._websocket) {
-      async function monitor() {
+    if ("_websocket" in provider) {
+      async function monitorWs(provider: ethers.providers.WebSocketProvider) {
         while (true) {
           // Listen for timeout.
           heartbeatTimeout = setTimeout(() => {
             logger.error("The heartbeat to the RPC provider timed out.");
-            clearTimeout(heartbeatTimeout);
+            heartbeatTimeout && clearTimeout(heartbeatTimeout);
 
             // Use `WebSocket#terminate()`, which immediately destroys the connection,
             // instead of `WebSocket#close()`, which waits for the close timer.
@@ -102,8 +108,9 @@ class Providers {
             logger.info(`pong rtt=${ms}ms`);
             metrics.ethNodeUptime.set(1);
             metrics.ethNodeHeartbeatRTT.observe(ms);
-          } catch (ex) {
-            logger.error("Error while pinging provider: " + ex.toString());
+          } catch (e) {
+            const errorMessage = getErrorMessage(e);
+            logger.error("Error while pinging provider: " + errorMessage);
             process.exit(-1);
           }
           clearTimeout(heartbeatTimeout);
@@ -113,49 +120,22 @@ class Providers {
       }
 
       provider._websocket.on("open", () => {
-        monitor();
+        monitorWs(provider);
       });
 
       provider._websocket.on("close", () => {
         logger.error("The websocket connection was closed");
-        clearTimeout(heartbeatTimeout);
+
+        heartbeatTimeout && clearTimeout(heartbeatTimeout);
         process.exit(1);
       });
-
-      // provider._websocket.on("open", () => {
-      //   heartbeat = setInterval(() => {
-      //     logger.info('ping')
-      //     stopwatch.start()
-      //     await runNextTick(() => provider._websocket.ping())
-
-      //     // Use `WebSocket#terminate()`, which immediately destroys the connection,
-      //     // instead of `WebSocket#close()`, which waits for the close timer.
-      //     heartbeatTimeout = setTimeout(() => {
-      //       provider._websocket.terminate();
-      //     }, HEARTBEAT_TIMEOUT);
-      //   }, HEARTBEAT_INTERVAL);
-      // });
-
-      // provider._websocket.on("close", () => {
-      //   logger.error("The websocket connection was closed");
-      //   clearInterval(heartbeat);
-      //   clearTimeout(heartbeatTimeout);
-      //   process.exit(1);
-      // });
-
-      // provider._websocket.on("pong", () => {
-      //   const ms = stopwatch.stop()
-      //   logger.info(`pong rtt=${ms}`)
-      //   metrics.ethNodeUptime.set(1);
-      //   clearInterval(heartbeatTimeout);
-      // });
     } else {
       async function monitor() {
         while (true) {
           // Listen for timeout.
           heartbeatTimeout = setTimeout(() => {
             logger.error("The heartbeat to the RPC provider timed out.");
-            clearTimeout(heartbeatTimeout);
+            heartbeatTimeout && clearTimeout(heartbeatTimeout);
             process.exit(1);
           }, HTTP_PROVIDER_TIMEOUT);
 
@@ -163,14 +143,17 @@ class Providers {
           try {
             logger.info("ping");
             stopwatch.start();
-            await runNextTick(() => provider.getBlock("latest"));
+            await runNextTick(async () => {
+              provider.getBlock("latest");
+            });
             const ms = stopwatch.stop();
             logger.info(`pong rtt=${ms}ms`);
 
             metrics.ethNodeUptime.set(1);
             metrics.ethNodeHeartbeatRTT.observe(ms);
-          } catch (ex) {
-            logger.error("Error while pinging provider: " + ex.toString());
+          } catch (e) {
+            const errorMessage = getErrorMessage(e);
+            logger.error("Error while pinging provider: " + errorMessage);
             process.exit(-1);
           }
           clearTimeout(heartbeatTimeout);
@@ -183,7 +166,3 @@ class Providers {
     }
   }
 }
-
-module.exports = {
-  Providers
-};
