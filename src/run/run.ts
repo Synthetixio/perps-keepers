@@ -8,8 +8,7 @@ import SignerPool from "../signer-pool";
 import * as metrics from "../metrics";
 import { Providers } from "../provider";
 import { CommanderStatic } from "commander";
-import { formatEther, HDNode } from "ethers/lib/utils";
-import getSynthetixContracts from "./getSynthetixContracts";
+import createWallets from "./createWallets";
 
 const futuresMarkets: { asset: string }[] = snx.getFuturesMarkets({
   // TODO: change this to mainnet when it's eventually deployed
@@ -153,30 +152,6 @@ export async function run(
 
     keeper.run({ fromBlock });
   }
-}
-
-function createWallets({
-  provider,
-  mnemonic,
-  num,
-}: {
-  provider: providers.JsonRpcProvider | providers.WebSocketProvider;
-  mnemonic: string;
-  num: number;
-}) {
-  const masterNode = HDNode.fromMnemonic(mnemonic);
-  const wallets = [];
-
-  for (let i = 0; i < num; i++) {
-    wallets.push(
-      new Wallet(
-        masterNode.derivePath(`m/44'/60'/0'/0/${i}`).privateKey,
-        provider
-      )
-    );
-  }
-
-  return wallets;
 }
 
 export const cmd = (program: CommanderStatic) =>
