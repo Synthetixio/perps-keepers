@@ -147,19 +147,20 @@ export async function run(
       // ETH.
       const balance = await signer.getBalance();
       // sUSD.
-      const sUSDBalance = await SynthsUSD.balanceOf(await signer.getAddress());
+      const address = await signer.getAddress();
+      const sUSDBalance = await SynthsUSD.balanceOf(address);
 
       const balances = [
         ["ETH", balance],
         ["sUSD", sUSDBalance],
       ];
 
-      return balances;
+      return { balances, address };
     })
   );
-
-  for (const [i, signer] of signers.entries()) {
-    const balanceText = signerBalances[i]
+  // Log and track account balances
+  signerBalances.forEach(({ address, balances }, i) => {
+    const balanceText = balances
       .map(([key, balance]) => {
         let balanceText = formatEther(balance);
         if (balance.isZero()) {
@@ -169,11 +170,9 @@ export async function run(
       })
       .join(", ");
 
-    console.log(
-      gray(`Account #${i}: ${await signer.getAddress()} (${balanceText})`)
-    );
-  }
-  deps.metrics.trackKeeperBalance(signers[0], SynthsUSD);
+    console.log(gray(`Account #${i}: ${address} (${balanceText})`));
+    deps.metrics.trackKeeperBalance(signers[i], SynthsUSD);
+  });
 
   // Get addresses.
   const marketsArray = markets.split(",");
