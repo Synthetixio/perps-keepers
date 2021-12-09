@@ -1,14 +1,14 @@
 require("dotenv").config();
-import { providers, Wallet } from "ethers";
-import { gray, yellow } from "chalk";
+import { gray } from "chalk";
 import { NonceManager } from "@ethersproject/experimental";
 import snx from "synthetix";
 import Keeper from "../keeper";
 import SignerPool from "../signer-pool";
-import * as metrics from "../metrics";
+import { runServer as runMetricServer } from "../metrics";
 import { Providers } from "../provider";
 import { CommanderStatic } from "commander";
 import createWallets from "./createWallets";
+import logAndStartTrackingBalances from "./logAndStartTrackingBalances";
 
 const futuresMarkets: { asset: string }[] = snx.getFuturesMarkets({
   // TODO: change this to mainnet when it's eventually deployed
@@ -34,11 +34,13 @@ export async function run(
   } = {},
   deps = {
     ETH_HDWALLET_MNEMONIC: process.env.ETH_HDWALLET_MNEMONIC,
-    Providers: Providers,
-    NonceManager: NonceManager,
-    SignerPool: SignerPool,
-    Keeper: Keeper,
+    Providers,
+    NonceManager,
+    SignerPool,
+    Keeper,
     createWallets,
+    logAndStartTrackingBalances,
+    runMetricServer,
     futuresMarkets,
   }
 ) {
@@ -57,7 +59,7 @@ export async function run(
     }
   });
 
-  deps.metrics.runServer();
+  deps.runMetricServer();
 
   let fromBlock =
     fromBlockRaw === "latest" ? fromBlockRaw : parseInt(fromBlockRaw);
@@ -86,55 +88,7 @@ export async function run(
   );
 
   const signerPool = await deps.SignerPool.create({ signers });
-
-  // Check balances of accounts.
-  const { SynthsUSD } = deps.getSynthetixContracts({
-    network,
-    provider: provider,
-    useOvm: true,
-  });
-
-  const signerBalances = await Promise.all(
-    signers.map(async signer => {
-      // ETH.
-      const balance = await signer.getBalance();
-      // sUSD.
-      const address = await signer.getAddress();
-      const sUSDBalance = await SynthsUSD.balanceOf(address);
-
-      const balances = [
-        ["ETH", balance],
-        ["sUSD", sUSDBalance],
-      ];
-
-      return { balances, address };
-    })
-  );
-  // Log and track account balances
-  signerBalances.forEach(({ address, balances }, i) => {
-    const balanceText = balances
-      .map(([key, balance]) => {
-        let balanceText = formatEther(balance);
-        if (balance.isZero()) {
-          balanceText = yellow(balanceText);
-        }
-        return `${balanceText} ${key}`;
-      })
-      .join(", ");
-
-    console.log(gray(`Account #${i}: ${address} (${balanceText})`));
-    deps.metrics.trackKeeperBalance(signers[i], SynthsUSD);
-  });
-
-  // Get addresses.
-  const marketsArray = markets.split(",");
-  // Verify markets.
-  const supportedAssets = futuresMarkets.map(({ asset }) => asset);
-  marketsArray.forEach(asset => {
-    if (!supportedAssets.includes(asset)) {
-      throw new Error(`No futures market for currencyKey: ${asset}`);
-    }
-  });
+  await deps.logAndStartTrackingBalances({ network, provider, signers });
 
   // Load contracts.
   const marketContracts = marketsArray.map(market =>
