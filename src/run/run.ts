@@ -39,8 +39,7 @@ export async function run(
     SignerPool: SignerPool,
     Keeper: Keeper,
     createWallets,
-    getSynthetixContracts,
-    metrics: metrics,
+    futuresMarkets,
   }
 ) {
   if (!deps.ETH_HDWALLET_MNEMONIC) {
@@ -48,6 +47,15 @@ export async function run(
       "ETH_HDWALLET_MNEMONIC environment variable is not configured."
     );
   }
+  // Get addresses.
+  const marketsArray = markets.split(",");
+  // Verify markets.
+  const supportedAssets = deps.futuresMarkets.map(({ asset }) => asset);
+  marketsArray.forEach(asset => {
+    if (!supportedAssets.includes(asset)) {
+      throw new Error(`No futures market for currencyKey: ${asset}`);
+    }
+  });
 
   deps.metrics.runServer();
 
