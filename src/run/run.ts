@@ -1,24 +1,17 @@
 require("dotenv").config();
-import {
-  Contract,
-  ContractInterface,
-  getDefaultProvider,
-  providers,
-  Signer,
-  Wallet,
-} from "ethers";
+import { providers, Wallet } from "ethers";
 import { gray, yellow } from "chalk";
 import { NonceManager } from "@ethersproject/experimental";
 import snx from "synthetix";
-import Keeper from "./keeper";
-import SignerPool from "./signer-pool";
-import * as metrics from "./metrics";
-import { Providers } from "./provider";
+import Keeper from "../keeper";
+import SignerPool from "../signer-pool";
+import * as metrics from "../metrics";
+import { Providers } from "../provider";
 import { CommanderStatic } from "commander";
 import { formatEther, HDNode } from "ethers/lib/utils";
+import getSynthetixContracts from "./getSynthetixContracts";
 
-const { getSource, getTarget, getFuturesMarkets } = snx;
-const futuresMarkets: { asset: string }[] = getFuturesMarkets({
+const futuresMarkets: { asset: string }[] = snx.getFuturesMarkets({
   // TODO: change this to mainnet when it's eventually deployed
   network: "kovan-ovm-futures",
   useOvm: true,
@@ -30,54 +23,6 @@ export const DEFAULTS = {
   numAccounts: "10",
   markets: futuresMarkets.map(market => market.asset).join(","),
   network: "kovan-ovm-futures",
-};
-
-// This is lifted from the synthetix-js package, since the package doesn't
-// support local-ovm/kovan-ovm-futures artifacts, which impeded testing.
-const getSynthetixContracts = ({
-  network,
-  signer,
-  provider,
-  useOvm,
-}: {
-  network: string;
-  signer?: Signer;
-  provider: providers.JsonRpcProvider | providers.WebSocketProvider;
-  useOvm: boolean;
-}) => {
-  const sources: { [key: string]: { abi: ContractInterface } } = getSource({
-    network,
-    useOvm,
-  });
-  const targets: {
-    [key: string]: { name: string; source: string; address: string };
-  } = getTarget({
-    network,
-    useOvm,
-  });
-
-  return Object.values(targets)
-    .map(target => {
-      if (target.name === "Synthetix") {
-        target.address = targets.ProxyERC20.address;
-      } else if (target.name === "SynthsUSD") {
-        target.address = targets.ProxyERC20sUSD.address;
-      } else if (target.name === "FeePool") {
-        target.address = targets.ProxyFeePool.address;
-      } else if (target.name.match(/Synth(s|i)[a-zA-Z]+$/)) {
-        const newTarget = target.name.replace("Synth", "Proxy");
-        target.address = targets[newTarget].address;
-      }
-      return target;
-    })
-    .reduce((acc: { [name: string]: Contract }, { name, source, address }) => {
-      acc[name] = new Contract(
-        address,
-        sources[source].abi,
-        signer || provider || getDefaultProvider(network)
-      );
-      return acc;
-    }, {});
 };
 
 export async function run(
@@ -94,8 +39,8 @@ export async function run(
     NonceManager: NonceManager,
     SignerPool: SignerPool,
     Keeper: Keeper,
-    createWallets: createWallets,
-    getSynthetixContracts: getSynthetixContracts,
+    createWallets,
+    getSynthetixContracts,
     metrics: metrics,
   }
 ) {

@@ -1,5 +1,5 @@
 import { BigNumber } from "@ethersproject/bignumber";
-import { DEFAULTS, run } from "./run";
+import { DEFAULTS, run } from "./index";
 
 describe("run", () => {
   test("throws when no MNEMONIC", () => {
