@@ -9,6 +9,14 @@ describe("run", () => {
       Error("ETH_HDWALLET_MNEMONIC environment variable is not configured.")
     );
   });
+  test("throws when called with unsupported market", () => {
+    expect(() =>
+      run({ markets: "sDOGE" }, {
+        futuresMarkets: [{ asset: "sBTC" }],
+        ETH_HDWALLET_MNEMONIC: "some words",
+      } as any)
+    ).rejects.toEqual(Error("No futures market for currencyKey: sDOGE"));
+  });
   test("happy path", async () => {
     const providerCreateMock = jest.fn().mockReturnValue("__PROVIDER__");
     const providerMonitorMock = jest.fn();
