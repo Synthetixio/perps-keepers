@@ -13,27 +13,13 @@ describe("run", () => {
     const providerCreateMock = jest.fn().mockReturnValue("__PROVIDER__");
     const providerMonitorMock = jest.fn();
     const NonceManagerMock = jest.fn();
-    const NonceManagerGetBalanceMock = jest
-      .fn()
-      .mockResolvedValue(BigNumber.from(1));
-    const NonceManagerGetAddressMock = jest
-      .fn()
-      .mockResolvedValue("__ADDRESS__");
-    const NonceManagerConnectMock = jest.fn().mockReturnValue({
-      getBalance: NonceManagerGetBalanceMock,
-      getAddress: NonceManagerGetAddressMock,
-    });
-
-    const SignerPoolCreateMock = jest.fn();
-
+    const NonceManagerConnectMock = jest.fn().mockReturnValue("__SIGNER__");
+    const SignerPoolCreateMock = jest.fn().mockReturnValue("__SIGNER_POOL__");
     const createWalletsMock = jest.fn().mockReturnValue(["___WALLET1___"]);
     const KeeperMockRun = jest.fn();
     const KeeperMockCreate = jest.fn().mockReturnValue({ run: KeeperMockRun });
-
-    const getSynthetixContractsMock = jest.fn();
-    const sUSDBalanceOfMock = jest.fn().mockResolvedValue(BigNumber.from(1000));
     const metricsRunServerMock = jest.fn();
-    const metricsTrackKeeperBalance = jest.fn();
+    const logAndStartTrackingBalancesMock = jest.fn();
 
     const deps = {
       ETH_HDWALLET_MNEMONIC: "fake words",
@@ -46,40 +32,58 @@ describe("run", () => {
       }),
       SignerPool: { create: SignerPoolCreateMock },
       Keeper: { create: KeeperMockCreate },
-      getSynthetixContracts: getSynthetixContractsMock.mockReturnValue({
-        SynthsUSD: { balanceOf: sUSDBalanceOfMock },
-      }),
-      metrics: {
-        runServer: metricsRunServerMock,
-        trackKeeperBalance: metricsTrackKeeperBalance,
-      },
+      runMetricServer: metricsRunServerMock,
       createWallets: createWalletsMock,
+      logAndStartTrackingBalances: logAndStartTrackingBalancesMock,
+      futuresMarkets: [
+        { asset: "sBTC" },
+        { asset: "sETH" },
+        { asset: "sLINK" },
+      ],
     } as any;
 
-    await run({ numAccounts: "1" }, deps);
+    await run({ numAccounts: "1", markets: "sBTC,sETH,sLINK" }, deps);
+
     expect(metricsRunServerMock).toBeCalledTimes(1);
+
     expect(providerCreateMock).toBeCalledTimes(1);
     expect(providerCreateMock).toBeCalledWith(DEFAULTS.providerUrl);
+    expect(providerMonitorMock).toBeCalledTimes(1);
+    expect(providerMonitorMock).toBeCalledWith("__PROVIDER__");
+
     expect(createWalletsMock).toBeCalledTimes(1);
     expect(createWalletsMock).toBeCalledWith({
       provider: "__PROVIDER__",
       mnemonic: deps.ETH_HDWALLET_MNEMONIC,
       num: 1,
     });
-    expect(providerMonitorMock).toBeCalledTimes(1);
-    expect(providerMonitorMock).toBeCalledWith("__PROVIDER__");
+
     expect(NonceManagerMock).toBeCalledTimes(1);
+    expect(NonceManagerMock).toBeCalledWith("___WALLET1___");
     expect(NonceManagerConnectMock).toBeCalledTimes(1);
     expect(NonceManagerConnectMock).toBeCalledWith("__PROVIDER__");
+
     expect(SignerPoolCreateMock).toBeCalledTimes(1);
     expect(SignerPoolCreateMock).toBeCalledWith({
-      signers: expect.any(Array),
+      signers: ["__SIGNER__"],
     });
-    expect(NonceManagerGetBalanceMock).toBeCalledTimes(1);
-    expect(sUSDBalanceOfMock).toBeCalledTimes(1);
-    expect(NonceManagerGetAddressMock).toBeCalledTimes(1);
-    expect(sUSDBalanceOfMock).toBeCalledWith("__ADDRESS__");
 
-    expect(1).toBe(1);
+    expect(logAndStartTrackingBalancesMock).toBeCalledTimes(1);
+    expect(logAndStartTrackingBalancesMock).toBeCalledWith({
+      network: DEFAULTS.network,
+      provider: "__PROVIDER__",
+      signers: ["__SIGNER__"],
+    });
+
+    expect(KeeperMockCreate).toBeCalledTimes(3);
+    expect(KeeperMockCreate).toBeCalledWith({
+      exchangeRates: expect.any(String),
+      network: "kovan-ovm-futures",
+      provider: "__PROVIDER__",
+      proxyFuturesMarket: expect.any(String),
+      signerPool: "__SIGNER_POOL__",
+    });
+    expect(KeeperMockRun).toBeCalledTimes(3);
+    expect(KeeperMockRun).toBeCalledWith({ fromBlock: DEFAULTS.fromBlock });
   });
 });
