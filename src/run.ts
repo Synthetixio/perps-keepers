@@ -80,34 +80,44 @@ const getSynthetixContracts = ({
     }, {});
 };
 
-export async function run({
-  fromBlockRaw = DEFAULTS.fromBlock,
-  providerUrl = DEFAULTS.providerUrl,
-  numAccounts = DEFAULTS.numAccounts,
-  markets = DEFAULTS.markets,
-  network = DEFAULTS.network,
-} = {}) {
-  const { ETH_HDWALLET_MNEMONIC } = process.env;
-  if (!ETH_HDWALLET_MNEMONIC) {
+export async function run(
+  {
+    fromBlockRaw = DEFAULTS.fromBlock,
+    providerUrl = DEFAULTS.providerUrl,
+    numAccounts = DEFAULTS.numAccounts,
+    markets = DEFAULTS.markets,
+    network = DEFAULTS.network,
+  } = {},
+  deps = {
+    ETH_HDWALLET_MNEMONIC: process.env.ETH_HDWALLET_MNEMONIC,
+    Providers: Providers,
+    NonceManager: NonceManager,
+    SignerPool: SignerPool,
+    Keeper: Keeper,
+    createWallets: createWallets,
+    getSynthetixContracts: getSynthetixContracts,
+    metrics: metrics,
+  }
+) {
+  if (!deps.ETH_HDWALLET_MNEMONIC) {
     throw new Error(
       "ETH_HDWALLET_MNEMONIC environment variable is not configured."
     );
   }
 
-  metrics.runServer();
+  deps.metrics.runServer();
 
   let fromBlock =
     fromBlockRaw === "latest" ? fromBlockRaw : parseInt(fromBlockRaw);
 
   // Setup.
-  //
-  const provider = Providers.create(providerUrl);
-  Providers.monitor(provider);
+  const provider = deps.Providers.create(providerUrl);
+  deps.Providers.monitor(provider);
   console.log(gray(`Connected to Ethereum node at ${providerUrl}`));
 
-  let unWrappedSigners = createWallets({
+  let unWrappedSigners = deps.createWallets({
     provider,
-    mnemonic: ETH_HDWALLET_MNEMONIC,
+    mnemonic: deps.ETH_HDWALLET_MNEMONIC,
     num: parseInt(numAccounts),
   });
   console.log(
@@ -115,19 +125,18 @@ export async function run({
   );
   const signers = await Promise.all(
     unWrappedSigners.map(async (signer, i) => {
-      let wrappedSigner = new NonceManager(signer);
+      let wrappedSigner = new deps.NonceManager(signer);
 
       // Each signer gets its own RPC connection.
       // This seems to improve the transaction speed even further.
-      wrappedSigner = wrappedSigner.connect(Providers.create(providerUrl));
-
-      return wrappedSigner;
+      return wrappedSigner.connect(provider);
     })
   );
-  const signerPool = await SignerPool.create({ signers });
+
+  const signerPool = await deps.SignerPool.create({ signers });
 
   // Check balances of accounts.
-  const { SynthsUSD } = getSynthetixContracts({
+  const { SynthsUSD } = deps.getSynthetixContracts({
     network,
     provider: provider,
     useOvm: true,
@@ -164,7 +173,7 @@ export async function run({
       gray(`Account #${i}: ${await signer.getAddress()} (${balanceText})`)
     );
   }
-  metrics.trackKeeperBalance(signers[0], SynthsUSD);
+  deps.metrics.trackKeeperBalance(signers[0], SynthsUSD);
 
   // Get addresses.
   const marketsArray = markets.split(",");
@@ -189,9 +198,8 @@ export async function run({
     network,
     useOvm: true,
   });
-
   for (const marketContract of marketContracts) {
-    const keeper = await Keeper.create({
+    const keeper = await deps.Keeper.create({
       network,
       proxyFuturesMarket: marketContract.address,
       exchangeRates: exchangeRates.address,
@@ -256,4 +264,4 @@ export const cmd = (program: CommanderStatic) =>
       "Runs keeper operations for the specified markets, delimited by a comma. Supported markets: sETH, sBTC, sLINK.",
       DEFAULTS.markets
     )
-    .action(run);
+    .action(x => run(x));
