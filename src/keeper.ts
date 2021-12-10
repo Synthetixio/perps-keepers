@@ -28,7 +28,7 @@ class Keeper {
       id: string;
       event: string;
       account: string;
-      size: number;
+      size: BigNumber;
     };
   };
   activeKeeperTasks: { [id: string]: boolean | undefined };
