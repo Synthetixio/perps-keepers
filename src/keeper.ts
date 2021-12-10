@@ -150,7 +150,22 @@ class Keeper {
       provider,
     });
   }
+  async startProcessNewBlockConsumer() {
+    // The L2 node is constantly mining blocks, one block per transaction. When a new block is received, we queue it
+    // for processing in a FIFO queue. `processNewBlock` will scan its events, rebuild the index, and then run any
+    // keeper tasks that need running that aren't already active.
+    while (1) {
+      if (!this.blockQueue.length) {
+        await new Promise((resolve, reject) => setTimeout(resolve, 0.001));
+        continue;
+      }
 
+      const blockNumber = this.blockQueue.shift();
+      if (blockNumber) {
+        await this.processNewBlock(blockNumber);
+      }
+    }
+  }
   async run({ fromBlock }: { fromBlock: string | number }) {
     const events = await this.futuresMarket.queryFilter(
       "*" as any, // TODO typescript doesn't like this as a string
@@ -181,20 +196,7 @@ class Keeper {
       this.blockQueue.push(blockNumber);
     });
 
-    // The L2 node is constantly mining blocks, one block per transaction. When a new block is received, we queue it
-    // for processing in a FIFO queue. `processNewBlock` will scan its events, rebuild the index, and then run any
-    // keeper tasks that need running that aren't already active.
-    while (1) {
-      if (!this.blockQueue.length) {
-        await new Promise((resolve, reject) => setTimeout(resolve, 0.001));
-        continue;
-      }
-
-      const blockNumber = this.blockQueue.shift();
-      if (blockNumber) {
-        await this.processNewBlock(blockNumber);
-      }
-    }
+    this.startProcessNewBlockConsumer();
   }
 
   async processNewBlock(blockNumber: string) {

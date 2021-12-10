@@ -56,4 +56,34 @@ describe("keeper", () => {
     expect(snx.fromBytes32).toBeCalledTimes(1);
     expect(result).toBeInstanceOf(Keeper);
   });
+  test("run", async () => {
+    const arg = {
+      baseAsset: "sUSD",
+      futuresMarket: {
+        queryFilter: jest.fn().mockResolvedValue(["__EVENT1__"]),
+      },
+      exchangeRates: jest.fn(),
+      signerPool: jest.fn(),
+      provider: { on: jest.fn() },
+    } as any;
+    const keeper = new Keeper(arg);
+    const updateIndexSpy = jest.spyOn(keeper, "updateIndex");
+    const runKeepersSpy = jest.spyOn(keeper, "runKeepers");
+    const startProcessNewBlockConsumerSpy = jest
+      .spyOn(keeper, "startProcessNewBlockConsumer")
+      .mockImplementation(); // avoid starting while(1)
+    await keeper.run({ fromBlock: 0 });
+    expect(arg.futuresMarket.queryFilter).toBeCalledTimes(1);
+    expect(arg.futuresMarket.queryFilter).toHaveBeenCalledWith(
+      "*",
+      0,
+      "latest"
+    );
+    expect(updateIndexSpy).toBeCalledTimes(1);
+    expect(updateIndexSpy).toHaveBeenCalledWith(["__EVENT1__"]);
+    expect(runKeepersSpy).toBeCalledTimes(1);
+    expect(arg.provider.on).toBeCalledTimes(1);
+    expect(arg.provider.on).toHaveBeenCalledWith("block", expect.any(Function));
+    expect(startProcessNewBlockConsumerSpy).toBeCalledTimes(1);
+  });
 });
