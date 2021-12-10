@@ -1,6 +1,26 @@
 import { BigNumber } from "@ethersproject/bignumber";
 import Keeper from "./keeper";
-
+import * as metrics from "./metrics";
+const getMockPositions = () => ({
+  ___ACCOUNT1__: {
+    id: "1",
+    event: "__OLD_EVENT__",
+    account: "___ACCOUNT1__",
+    size: BigNumber.from(10),
+  },
+  ___ACCOUNT2__: {
+    id: "1",
+    event: "__OLD_EVENT__",
+    account: "___ACCOUNT2__",
+    size: BigNumber.from(10),
+  },
+  ___ACCOUNT3__: {
+    id: "1",
+    event: "__OLD_EVENT__",
+    account: "___ACCOUNT3__",
+    size: BigNumber.from(10),
+  },
+});
 describe("keeper", () => {
   test("create works", async () => {
     const snx = {
@@ -96,26 +116,7 @@ describe("keeper", () => {
       provider: jest.fn(),
     } as any;
     const keeper = new Keeper(arg);
-    keeper.positions = {
-      ___ACCOUNT1__: {
-        id: "1",
-        event: "__OLD_EVENT__",
-        account: "___ACCOUNT1__",
-        size: BigNumber.from(10),
-      },
-      ___ACCOUNT2__: {
-        id: "1",
-        event: "__OLD_EVENT__",
-        account: "___ACCOUNT2__",
-        size: BigNumber.from(10),
-      },
-      ___ACCOUNT3__: {
-        id: "1",
-        event: "__OLD_EVENT__",
-        account: "___ACCOUNT3__",
-        size: BigNumber.from(10),
-      },
-    };
+    keeper.positions = getMockPositions();
     /**
      * PositionModified
      */
@@ -162,5 +163,67 @@ describe("keeper", () => {
         size: BigNumber.from(10),
       },
     });
+  });
+  test("runKeepers", async () => {
+    const arg = {
+      baseAsset: "sUSD",
+      futuresMarket: jest.fn(),
+      exchangeRates: jest.fn(),
+      signerPool: jest.fn(),
+      provider: jest.fn(),
+    } as any;
+    const keeper = new Keeper(arg);
+    const mockPosition = getMockPositions();
+    keeper.positions = mockPosition;
+    const runKeeperTaskSpy = jest.spyOn(keeper, "runKeeperTask");
+    const liquidateOrderSpy = jest.spyOn(keeper, "liquidateOrder");
+    const futuresOpenPositionsSetMock = jest.fn();
+    await keeper.runKeepers({
+      BATCH_SIZE: 1,
+      WAIT: 1,
+      metrics: {
+        futuresOpenPositions: { set: futuresOpenPositionsSetMock },
+      } as any,
+    });
+    expect(futuresOpenPositionsSetMock).toBeCalledTimes(1);
+    expect(futuresOpenPositionsSetMock).toHaveBeenCalledWith(
+      { market: "sUSD" },
+      3
+    );
+    expect(runKeeperTaskSpy).toBeCalledTimes(3);
+    expect(runKeeperTaskSpy).toHaveBeenNthCalledWith(
+      1,
+      mockPosition["___ACCOUNT1__"].id,
+      "liquidation",
+      expect.any(Function)
+    );
+    expect(runKeeperTaskSpy).toHaveBeenNthCalledWith(
+      2,
+      mockPosition["___ACCOUNT2__"].id,
+      "liquidation",
+      expect.any(Function)
+    );
+    expect(runKeeperTaskSpy).toHaveBeenNthCalledWith(
+      3,
+      mockPosition["___ACCOUNT3__"].id,
+      "liquidation",
+      expect.any(Function)
+    );
+    expect(liquidateOrderSpy).toBeCalledTimes(3);
+    expect(liquidateOrderSpy).toHaveBeenNthCalledWith(
+      1,
+      mockPosition["___ACCOUNT1__"].id,
+      "___ACCOUNT1__"
+    );
+    expect(liquidateOrderSpy).toHaveBeenNthCalledWith(
+      2,
+      mockPosition["___ACCOUNT2__"].id,
+      "___ACCOUNT2__"
+    );
+    expect(liquidateOrderSpy).toHaveBeenNthCalledWith(
+      3,
+      mockPosition["___ACCOUNT3__"].id,
+      "___ACCOUNT3__"
+    );
   });
 });

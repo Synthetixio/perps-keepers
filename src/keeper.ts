@@ -279,9 +279,12 @@ class Keeper {
     });
   }
 
-  async runKeepers() {
+  async runKeepers(deps = { BATCH_SIZE: 500, WAIT: 2000, metrics }) {
     const numPositions = Object.keys(this.positions).length;
-    metrics.futuresOpenPositions.set({ market: this.baseAsset }, numPositions);
+    deps.metrics.futuresOpenPositions.set(
+      { market: this.baseAsset },
+      numPositions
+    );
     this.logger.log("info", `${numPositions} positions to keep`, {
       component: "Keeper",
     });
@@ -291,14 +294,9 @@ class Keeper {
     // Sort positions by size and liquidationPrice.
 
     // Get current liquidation price for each position (including funding).
-
-    // const BATCH_SIZE = 20;
-    // const WAIT = 2000;
-    const BATCH_SIZE = 500;
-    const WAIT = 20;
     const positions = Object.values(this.positions);
 
-    for (const batch of chunk(positions, BATCH_SIZE)) {
+    for (const batch of chunk(positions, deps.BATCH_SIZE)) {
       await Promise.all(
         batch.map(async position => {
           const { id, account } = position;
@@ -307,7 +305,7 @@ class Keeper {
           );
         })
       );
-      await new Promise((res, rej) => setTimeout(res, WAIT));
+      await new Promise((res, rej) => setTimeout(res, deps.WAIT));
     }
 
     // Serial tx submission for now until Optimism can stop rate-limiting us.
