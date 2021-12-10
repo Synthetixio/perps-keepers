@@ -343,7 +343,11 @@ class Keeper {
     delete this.activeKeeperTasks[id];
   }
 
-  async liquidateOrder(id: string, account: string) {
+  async liquidateOrder(
+    id: string,
+    account: string,
+    deps = { metricFuturesLiquidations: metrics.futuresLiquidations }
+  ) {
     const taskLabel = "liquidation";
     const canLiquidateOrder = await this.futuresMarket.canLiquidate(account);
     if (!canLiquidateOrder) {
@@ -372,7 +376,7 @@ class Keeper {
         receipt = await tx.wait(1);
       });
     } catch (err) {
-      metrics.futuresLiquidations.observe(
+      deps.metricFuturesLiquidations.observe(
         { market: this.baseAsset, success: "false" },
         0
       );
@@ -389,7 +393,7 @@ class Keeper {
       throw err;
     }
 
-    metrics.futuresLiquidations.observe(
+    deps.metricFuturesLiquidations.observe(
       { market: this.baseAsset, success: "true" },
       1
     );

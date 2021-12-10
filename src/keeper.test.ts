@@ -176,8 +176,11 @@ describe("keeper", () => {
     const mockPosition = getMockPositions();
     keeper.positions = mockPosition;
     const runKeeperTaskSpy = jest.spyOn(keeper, "runKeeperTask");
-    const liquidateOrderSpy = jest.spyOn(keeper, "liquidateOrder");
+    const liquidateOrderSpy = jest
+      .spyOn(keeper, "liquidateOrder")
+      .mockImplementation();
     const futuresOpenPositionsSetMock = jest.fn();
+
     await keeper.runKeepers({
       BATCH_SIZE: 1,
       WAIT: 1,
@@ -185,6 +188,7 @@ describe("keeper", () => {
         futuresOpenPositions: { set: futuresOpenPositionsSetMock },
       } as any,
     });
+
     expect(futuresOpenPositionsSetMock).toBeCalledTimes(1);
     expect(futuresOpenPositionsSetMock).toHaveBeenCalledWith(
       { market: "sUSD" },
@@ -224,6 +228,61 @@ describe("keeper", () => {
       3,
       mockPosition["___ACCOUNT3__"].id,
       "___ACCOUNT3__"
+    );
+  });
+
+  test("liquidateOrder bails when it cant liquidate", async () => {
+    const arg = {
+      baseAsset: "sUSD",
+      futuresMarket: {
+        canLiquidate: jest.fn().mockResolvedValue(false),
+      },
+      exchangeRates: jest.fn(),
+      signerPool: { withSigner: jest.fn() },
+      provider: jest.fn(),
+    } as any;
+    const keeper = new Keeper(arg);
+    await keeper.liquidateOrder("1", "__ACCOUNT__");
+    expect(arg.futuresMarket.canLiquidate).toBeCalledTimes(1);
+    expect(arg.futuresMarket.canLiquidate).toHaveBeenCalledWith("__ACCOUNT__");
+    expect(arg.signerPool.withSigner).not.toHaveBeenCalled();
+  });
+
+  test("liquidateOrder works", async () => {
+    const waitMock = jest.fn();
+    const liquidatePositionMock = jest.fn().mockReturnValue({ wait: waitMock });
+    const arg = {
+      baseAsset: "sUSD",
+      futuresMarket: {
+        canLiquidate: jest.fn().mockResolvedValue(true),
+        connect: jest.fn().mockReturnValue({
+          liquidatePosition: liquidatePositionMock,
+        }),
+      },
+      exchangeRates: jest.fn(),
+      signerPool: { withSigner: (cb: any) => cb("__SIGNER__") },
+      provider: jest.fn(),
+    } as any;
+    const keeper = new Keeper(arg);
+    const deps = { metricFuturesLiquidations: { observe: jest.fn() } } as any;
+
+    await keeper.liquidateOrder("1", "__ACCOUNT__", deps);
+
+    expect(arg.futuresMarket.canLiquidate).toBeCalledTimes(1);
+    expect(arg.futuresMarket.canLiquidate).toHaveBeenCalledWith("__ACCOUNT__");
+    expect(arg.futuresMarket.connect).toBeCalledTimes(1);
+    expect(arg.futuresMarket.connect).toHaveBeenCalledWith("__SIGNER__");
+    expect(liquidatePositionMock).toBeCalledTimes(1);
+    expect(liquidatePositionMock).toHaveBeenCalledWith("__ACCOUNT__");
+    expect(waitMock).toBeCalledTimes(1);
+    expect(waitMock).toHaveBeenCalledWith(1);
+    expect(deps.metricFuturesLiquidations.observe).toBeCalledTimes(1);
+    expect(deps.metricFuturesLiquidations.observe).toHaveBeenCalledWith(
+      {
+        market: "sUSD",
+        success: "true",
+      },
+      1
     );
   });
 });
