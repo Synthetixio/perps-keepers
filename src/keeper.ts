@@ -96,48 +96,51 @@ class Keeper {
     this.signerPool = signerPool;
   }
 
-  static async create({
-    proxyFuturesMarket: proxyFuturesMarketAddress,
-    exchangeRates: exchangeRatesAddress,
-    signerPool,
-    provider,
-    network,
-  }: {
-    proxyFuturesMarket: string;
-    exchangeRates: string;
-    signerPool: SignerPool;
-    network: string;
-    provider:
-      | ethers.providers.JsonRpcProvider
-      | ethers.providers.WebSocketProvider;
-  }) {
+  static async create(
+    {
+      proxyFuturesMarket: proxyFuturesMarketAddress,
+      exchangeRates: exchangeRatesAddress,
+      signerPool,
+      provider,
+      network,
+    }: {
+      proxyFuturesMarket: string;
+      exchangeRates: string;
+      signerPool: SignerPool;
+      network: string;
+      provider:
+        | ethers.providers.JsonRpcProvider
+        | ethers.providers.WebSocketProvider;
+    },
+    deps = { snx, Contract }
+  ) {
     // Get ABIs.
-    const FuturesMarketABI = snx.getSource({
+    const FuturesMarketABI = deps.snx.getSource({
       network,
       contract: "FuturesMarket",
       useOvm: true,
     }).abi;
-    const ExchangeRatesABI = snx.getSource({
+    const ExchangeRatesABI = deps.snx.getSource({
       network,
       contract: "ExchangeRatesWithoutInvPricing",
       useOvm: true,
     }).abi;
 
     // Contracts.
-    const futuresMarket = new ethers.Contract(
+    const futuresMarket = new deps.Contract(
       proxyFuturesMarketAddress,
       FuturesMarketABI,
       provider
     );
 
-    const exchangeRates = new ethers.Contract(
+    const exchangeRates = new deps.Contract(
       exchangeRatesAddress,
       ExchangeRatesABI,
       provider
     );
 
     let baseAsset = await futuresMarket.baseAsset();
-    baseAsset = snx.fromBytes32(baseAsset);
+    baseAsset = deps.snx.fromBytes32(baseAsset);
 
     return new Keeper({
       futuresMarket,
