@@ -1,4 +1,3 @@
-import { BigNumber } from "@ethersproject/bignumber";
 import { DEFAULTS, run } from "./index";
 
 describe("run", () => {
@@ -18,7 +17,7 @@ describe("run", () => {
     ).rejects.toEqual(Error("No futures market for currencyKey: sDOGE"));
   });
   test("happy path", async () => {
-    const providerCreateMock = jest.fn().mockReturnValue("__PROVIDER__");
+    const getProviderMock = jest.fn().mockReturnValue("__PROVIDER__");
     const providerMonitorMock = jest.fn();
     const NonceManagerMock = jest.fn();
     const NonceManagerConnectMock = jest.fn().mockReturnValue("__SIGNER__");
@@ -31,10 +30,8 @@ describe("run", () => {
 
     const deps = {
       ETH_HDWALLET_MNEMONIC: "fake words",
-      Providers: {
-        create: providerCreateMock,
-        monitor: providerMonitorMock,
-      },
+      getProvider: getProviderMock,
+      monitorProvider: providerMonitorMock,
       NonceManager: NonceManagerMock.mockReturnValue({
         connect: NonceManagerConnectMock,
       }),
@@ -54,8 +51,8 @@ describe("run", () => {
 
     expect(metricsRunServerMock).toBeCalledTimes(1);
 
-    expect(providerCreateMock).toBeCalledTimes(1);
-    expect(providerCreateMock).toBeCalledWith(DEFAULTS.providerUrl);
+    expect(getProviderMock).toBeCalledTimes(1);
+    expect(getProviderMock).toBeCalledWith(DEFAULTS.providerUrl);
     expect(providerMonitorMock).toBeCalledTimes(1);
     expect(providerMonitorMock).toBeCalledWith("__PROVIDER__");
 

@@ -5,7 +5,7 @@ import snx from "synthetix";
 import Keeper from "../keeper";
 import SignerPool from "../signer-pool";
 import { runServer as runMetricServer } from "../metrics";
-import { Providers } from "../provider";
+import { getProvider, monitorProvider } from "../provider";
 import { CommanderStatic } from "commander";
 import createWallets from "./createWallets";
 import logAndStartTrackingBalances from "./logAndStartTrackingBalances";
@@ -34,7 +34,8 @@ export async function run(
   } = {},
   deps = {
     ETH_HDWALLET_MNEMONIC: process.env.ETH_HDWALLET_MNEMONIC,
-    Providers,
+    getProvider,
+    monitorProvider,
     NonceManager,
     SignerPool,
     Keeper,
@@ -65,8 +66,8 @@ export async function run(
     fromBlockRaw === "latest" ? fromBlockRaw : parseInt(fromBlockRaw);
 
   // Setup.
-  const provider = deps.Providers.create(providerUrl);
-  deps.Providers.monitor(provider);
+  const provider = deps.getProvider(providerUrl);
+  deps.monitorProvider(provider);
   console.log(gray(`Connected to Ethereum node at ${providerUrl}`));
 
   let unWrappedSigners = deps.createWallets({
