@@ -36,6 +36,7 @@ class SignerPool {
   async withSigner(cb: (signer: ethers.Signer) => Promise<void>) {
     const [i, signer] = (await this.acquire()) || [];
     if (!signer || i === undefined)
+      // Note, this will never happen since acquire will never resolve if no signer is available, (see line 23)
       return Promise.reject("No signer available");
     try {
       await cb(signer);
