@@ -164,6 +164,26 @@ describe("keeper", () => {
       },
     });
   });
+  test("processNewBlock", async () => {
+    const arg = {
+      baseAsset: "sUSD",
+      futuresMarket: { queryFilter: jest.fn().mockReturnValue(["__EVENT__"]) },
+      exchangeRates: { queryFilter: jest.fn().mockReturnValue([]) },
+      signerPool: jest.fn(),
+      provider: jest.fn(),
+    } as any;
+    const keeper = new Keeper(arg);
+    const updateIndexSpy = jest.spyOn(keeper, "updateIndex");
+    const runKeepersSpy = jest.spyOn(keeper, "runKeepers");
+    await keeper.processNewBlock("1");
+    expect(arg.futuresMarket.queryFilter).toBeCalledTimes(1);
+    expect(arg.futuresMarket.queryFilter).toBeCalledWith("*", "1", "1");
+    expect(arg.exchangeRates.queryFilter).toBeCalledTimes(1);
+    expect(arg.exchangeRates.queryFilter).toBeCalledWith("*", "1", "1");
+    expect(updateIndexSpy).toBeCalledTimes(1);
+    expect(updateIndexSpy).toBeCalledWith(["__EVENT__"]);
+    expect(runKeepersSpy).toBeCalledTimes(1);
+  });
   test("runKeepers", async () => {
     const arg = {
       baseAsset: "sUSD",
