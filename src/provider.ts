@@ -68,9 +68,18 @@ export const getProvider = (providerUrl: string, deps = { providers }) => {
   throw new Error("Unknown provider protocol scheme - " + url.protocol);
 };
 
+const WS_PROVIDER_TIMEOUT = 2 * 60 * 1000;
+const HTTP_PROVIDER_TIMEOUT = WS_PROVIDER_TIMEOUT;
+const HEARTBEAT_INTERVAL = 10000;
 export const monitorProvider = (
   provider: providers.JsonRpcProvider | providers.WebSocketProvider,
-  deps = { whileLoopCondition: true, HEARTBEAT_INTERVAL: 10000 }
+  deps = {
+    WS_PROVIDER_TIMEOUT,
+    HTTP_PROVIDER_TIMEOUT,
+    HEARTBEAT_INTERVAL,
+    ethNodeUptime,
+    ethNodeHeartbeatRTT,
+  }
 ) => {
   let heartbeatTimeout: NodeJS.Timeout | undefined;
   const stopwatch = new Stopwatch();
@@ -102,8 +111,9 @@ export const monitorProvider = (
           const ms = stopwatch.stop();
 
           logger.info(`pong rtt=${ms}ms`);
-          metrics.ethNodeUptime.set(1);
-          metrics.ethNodeHeartbeatRTT.observe(ms);
+
+          deps.ethNodeUptime.set(1);
+          deps.ethNodeHeartbeatRTT.observe(ms);
         } catch (e) {
           const errorMessage = getErrorMessage(e);
           logger.error("Error while pinging provider: " + errorMessage);
