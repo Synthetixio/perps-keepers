@@ -1,6 +1,6 @@
 import { providers } from "ethers";
 
-import * as metrics from "./metrics";
+import { ethNodeUptime, ethNodeHeartbeatRTT } from "./metrics";
 import { createLogger } from "./logging";
 
 const getErrorMessage = (e: unknown) => {
@@ -37,9 +37,6 @@ class Stopwatch {
     return ms;
   }
 }
-
-const WS_PROVIDER_TIMEOUT = 2 * 60 * 1000;
-const HTTP_PROVIDER_TIMEOUT = WS_PROVIDER_TIMEOUT;
 
 export const getProvider = (providerUrl: string, deps = { providers }) => {
   const url = new URL(providerUrl);
@@ -82,11 +79,12 @@ export const monitorProvider = (
   }
 ) => {
   let heartbeatTimeout: NodeJS.Timeout | undefined;
+  let heartbeatInterval: NodeJS.Timeout | undefined;
   const stopwatch = new Stopwatch();
-
+  let running = true;
   if ("_websocket" in provider) {
     async function monitorWsProvider(provider: providers.WebSocketProvider) {
-      while (true) {
+      while (running) {
         // Listen for timeout.
         heartbeatTimeout = setTimeout(() => {
           logger.error("The heartbeat to the RPC provider timed out.");
@@ -121,9 +119,9 @@ export const monitorProvider = (
         }
         clearTimeout(heartbeatTimeout);
 
-        await new Promise((res, rej) =>
-          setTimeout(res, deps.HEARTBEAT_INTERVAL)
-        );
+        await new Promise((res, rej) => {
+          heartbeatInterval = setTimeout(res, deps.HEARTBEAT_INTERVAL);
+        });
       }
     }
 
@@ -139,7 +137,7 @@ export const monitorProvider = (
     });
   } else {
     async function monitorJsonProvider() {
-      while (true) {
+      while (running) {
         // Listen for timeout.
         heartbeatTimeout = setTimeout(() => {
           logger.error("The heartbeat to the RPC provider timed out.");
@@ -157,8 +155,8 @@ export const monitorProvider = (
           const ms = stopwatch.stop();
           logger.info(`pong rtt=${ms}ms`);
 
-          metrics.ethNodeUptime.set(1);
-          metrics.ethNodeHeartbeatRTT.observe(ms);
+          deps.ethNodeUptime.set(1);
+          deps.ethNodeHeartbeatRTT.observe(ms);
         } catch (e) {
           const errorMessage = getErrorMessage(e);
           logger.error("Error while pinging provider: " + errorMessage);
@@ -174,4 +172,9 @@ export const monitorProvider = (
 
     monitorJsonProvider();
   }
+  return function stopMonitoring() {
+    heartbeatInterval && clearTimeout(heartbeatInterval);
+    heartbeatTimeout && clearTimeout(heartbeatTimeout);
+    running = false;
+  };
 };
