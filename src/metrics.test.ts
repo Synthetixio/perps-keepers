@@ -1,4 +1,5 @@
-import { runServer } from "./metrics";
+import { BigNumber } from "@ethersproject/bignumber";
+import { runServer, trackKeeperBalance } from "./metrics";
 
 describe("metrics", () => {
   test("runServer", async () => {
@@ -41,5 +42,48 @@ describe("metrics", () => {
 
     expect(listenMock).toBeCalledTimes(1);
     expect(listenMock).toHaveBeenCalledWith(8084, expect.any(Function));
+  });
+  test("trackKeeperBalance", async () => {
+    jest.useFakeTimers();
+    jest.spyOn(global, "setInterval");
+    const signerMock = {
+      getAddress: jest.fn().mockResolvedValue("__ADDRESS__"),
+      getBalance: jest.fn().mockResolvedValue(BigNumber.from(1)),
+    } as any;
+    const SynthsUSDMock = {
+      balanceOf: jest.fn().mockResolvedValue(BigNumber.from(1000)),
+    } as any;
+    const deps = {
+      keeperEthBalance: { set: jest.fn() },
+      keeperSusdBalance: { set: jest.fn() },
+      intervalTimeMs: 2500,
+    } as any;
+    trackKeeperBalance(signerMock, SynthsUSDMock, deps);
+
+    // Advance the fake timers to tricker the setInterval
+    jest.advanceTimersByTime(deps.intervalTimeMs);
+    expect(setInterval).toHaveBeenCalledTimes(1);
+    expect(setInterval).toHaveBeenLastCalledWith(
+      expect.any(Function),
+      deps.intervalTimeMs
+    );
+    // Use real timer and wait 50ms to let the promises in the setInterval callback resolve
+    jest.useRealTimers();
+    await new Promise(res => setTimeout(res, 50));
+
+    expect(signerMock.getAddress).toBeCalledTimes(1);
+    expect(signerMock.getBalance).toBeCalledTimes(1);
+    expect(SynthsUSDMock.balanceOf).toBeCalledTimes(1);
+    expect(SynthsUSDMock.balanceOf).toBeCalledWith("__ADDRESS__");
+    expect(deps.keeperEthBalance.set).toBeCalledTimes(1);
+    expect(deps.keeperEthBalance.set).toBeCalledWith(
+      { account: "__ADDRESS__" },
+      1e-18
+    );
+    expect(deps.keeperSusdBalance.set).toBeCalledTimes(1);
+    expect(deps.keeperSusdBalance.set).toBeCalledWith(
+      { account: "__ADDRESS__" },
+      1e-15
+    );
   });
 });

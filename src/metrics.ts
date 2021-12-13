@@ -82,6 +82,7 @@ export function trackKeeperBalance(
   deps = {
     keeperEthBalance,
     keeperSusdBalance,
+    intervalTimeMs: 2500,
   }
 ) {
   setInterval(async () => {
@@ -92,5 +93,5 @@ export function trackKeeperBalance(
     const bnToNumber = (bn: BigNumber) => parseFloat(formatEther(bn));
     deps.keeperEthBalance.set({ account }, bnToNumber(balance));
     deps.keeperSusdBalance.set({ account }, bnToNumber(sUSDBalance));
-  }, 2500);
+  }, deps.intervalTimeMs);
 }
