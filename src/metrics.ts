@@ -39,26 +39,26 @@ export const keeperErrors = new client.Summary({
   labelNames: ["market"],
 });
 
-export function runServer() {
-  const app = express();
+const metrics = [
+  keeperEthBalance,
+  keeperSusdBalance,
+  ethNodeUptime,
+  ethNodeHeartbeatRTT,
+  futuresOpenPositions,
+  futuresLiquidations,
+  keeperErrors,
+];
+export function runServer(deps = { express, promClient: client, metrics }) {
+  const app = deps.express();
 
   // Setup registry.
-  const Registry = client.Registry;
+  const Registry = deps.promClient.Registry;
   const register = new Registry();
-  const collectDefaultMetrics = client.collectDefaultMetrics;
 
   // Register metrics.
-  collectDefaultMetrics({ register });
-  const metrics = [
-    keeperEthBalance,
-    keeperSusdBalance,
-    ethNodeUptime,
-    ethNodeHeartbeatRTT,
-    futuresOpenPositions,
-    futuresLiquidations,
-    keeperErrors,
-  ];
-  metrics.map(metric => register.registerMetric(metric));
+  deps.promClient.collectDefaultMetrics({ register });
+
+  deps.metrics.map(metric => register.registerMetric(metric));
 
   // Register Prometheus endpoint.
   app.get("/metrics", async (req, res) => {
@@ -78,7 +78,11 @@ export function runServer() {
 
 export function trackKeeperBalance(
   signer: ethers.Signer,
-  SynthsUSD: ethers.Contract
+  SynthsUSD: ethers.Contract,
+  deps = {
+    keeperEthBalance,
+    keeperSusdBalance,
+  }
 ) {
   setInterval(async () => {
     const account = await signer.getAddress();
@@ -86,7 +90,7 @@ export function trackKeeperBalance(
     const sUSDBalance = await SynthsUSD.balanceOf(account);
 
     const bnToNumber = (bn: BigNumber) => parseFloat(formatEther(bn));
-    keeperEthBalance.set({ account }, bnToNumber(balance));
-    keeperSusdBalance.set({ account }, bnToNumber(sUSDBalance));
+    deps.keeperEthBalance.set({ account }, bnToNumber(balance));
+    deps.keeperSusdBalance.set({ account }, bnToNumber(sUSDBalance));
   }, 2500);
 }
