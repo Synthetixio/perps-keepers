@@ -75,7 +75,6 @@ export function runServer(deps = { express, promClient: client, metrics }) {
 }
 
 // Tracker functions.
-
 export function trackKeeperBalance(
   signer: ethers.Signer,
   SynthsUSD: ethers.Contract,
@@ -86,8 +85,10 @@ export function trackKeeperBalance(
   }
 ) {
   setInterval(async () => {
-    const account = await signer.getAddress();
-    const balance = await signer.getBalance();
+    const [account, balance] = await Promise.all([
+      signer.getAddress(),
+      signer.getBalance(),
+    ]);
     const sUSDBalance = await SynthsUSD.balanceOf(account);
 
     const bnToNumber = (bn: BigNumber) => parseFloat(formatEther(bn));
