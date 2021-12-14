@@ -38,7 +38,10 @@ class Stopwatch {
   }
 }
 
-export const getProvider = (providerUrl: string, deps = { providers }) => {
+export const getProvider = (
+  providerUrl: string,
+  deps = { providers }
+): providers.JsonRpcProvider | providers.WebSocketProvider => {
   const url = new URL(providerUrl);
 
   if (url.protocol.match(/^(ws|wss):/)) {
