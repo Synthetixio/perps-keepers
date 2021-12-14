@@ -101,7 +101,7 @@ export const monitorProvider = (
 
         // Heartbeat.
         try {
-          logger.info("ping");
+          logger.info(`ping (${provider.connection.url})`);
           const pong = new Promise((res, rej) => {
             provider._websocket.on("pong", res);
           });
@@ -150,13 +150,14 @@ export const monitorProvider = (
 
         // Heartbeat.
         try {
-          logger.info("ping");
+          logger.info(`ping (${provider.connection.url})`);
           stopwatch.start();
           await runNextTick(async () => {
             await provider.getBlock("latest");
           });
 
           const ms = stopwatch.stop();
+
           logger.info(`pong rtt=${ms}ms`);
 
           deps.ethNodeUptime.set(1);

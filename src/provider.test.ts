@@ -69,6 +69,7 @@ describe("provider", () => {
     test("ws works", async () => {
       jest.useFakeTimers();
       const providerMock = {
+        connection: { url: "test.com" },
         _websocket: {
           on: jest.fn().mockImplementation((event, cb) => {
             // Trigger open event directly
@@ -128,6 +129,7 @@ describe("provider", () => {
     test("ws terminates and exits if open socket doesn't respond within WS_PROVIDER_TIMEOUT", () => {
       jest.useFakeTimers();
       const providerMock = {
+        connection: { url: "test.com" },
         _websocket: {
           on: jest.fn().mockImplementation((event, cb) => {
             // Trigger open event directly
@@ -156,6 +158,7 @@ describe("provider", () => {
     });
     test("JSON RPC provider works", async () => {
       const providerMock = {
+        connection: { url: "test.com" },
         getBlock: jest.fn().mockResolvedValue("__BLOCK__"),
       } as any;
       const deps = {
@@ -183,6 +186,7 @@ describe("provider", () => {
 
     test("JSON RPC provider exits if open socket doesn't respond within WS_PROVIDER_TIMEOUT", () => {
       const providerMock = {
+        connection: { url: "test.com" },
         getBlock: jest.fn().mockImplementation(() => new Promise(() => {})), // simulate getBlock promise never resolves
       } as any;
       const deps = {
