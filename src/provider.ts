@@ -150,8 +150,9 @@ export const monitorProvider = (
           logger.info("ping");
           stopwatch.start();
           await runNextTick(async () => {
-            provider.getBlock("latest");
+            await provider.getBlock("latest");
           });
+
           const ms = stopwatch.stop();
           logger.info(`pong rtt=${ms}ms`);
 
@@ -164,9 +165,9 @@ export const monitorProvider = (
         }
         clearTimeout(heartbeatTimeout);
 
-        await new Promise((res, rej) =>
-          setTimeout(res, deps.HEARTBEAT_INTERVAL)
-        );
+        await new Promise((res, rej) => {
+          heartbeatInterval = setTimeout(res, deps.HEARTBEAT_INTERVAL);
+        });
       }
     }
 

@@ -1,8 +1,8 @@
 import { getProvider, monitorProvider } from "./provider";
 
 describe("provider", () => {
+  beforeEach(() => jest.clearAllMocks());
   describe("getProvider", () => {
-    beforeEach(() => jest.clearAllMocks());
     const deps = {
       providers: {
         JsonRpcProvider: jest.fn(),
@@ -152,6 +152,54 @@ describe("provider", () => {
       expect(processExitSpy).toBeCalledWith(1);
       expect(providerMock._websocket.terminate).toBeCalled();
       stopMonitoring();
+      jest.useRealTimers();
+    });
+    test("JSON RPC provider works", async () => {
+      const providerMock = {
+        getBlock: jest.fn().mockResolvedValue("__BLOCK__"),
+      } as any;
+      const deps = {
+        HTTP_PROVIDER_TIMEOUT: 2 * 60 * 1000,
+        HEARTBEAT_INTERVAL: 3000,
+        ethNodeUptime: { set: jest.fn() },
+        ethNodeHeartbeatRTT: { observe: jest.fn() },
+      } as any;
+      jest.useFakeTimers();
+      const stopMonitoring = monitorProvider(providerMock, deps);
+      jest.advanceTimersByTime(deps.HTTP_PROVIDER_TIMEOUT - 1); // important that it's less than HTTP_PROVIDER_TIMEOUT
+      jest.useRealTimers();
+      await new Promise(process.nextTick);
+      expect(providerMock.getBlock).toBeCalled();
+      expect(providerMock.getBlock).toHaveBeenCalledWith("latest");
+      // Assert that metrics gets called.
+      expect(deps.ethNodeUptime.set).toBeCalledTimes(1);
+      expect(deps.ethNodeUptime.set).toBeCalledWith(1);
+      expect(deps.ethNodeHeartbeatRTT.observe).toBeCalledTimes(1);
+      expect(deps.ethNodeHeartbeatRTT.observe).toBeCalledWith(
+        expect.any(Number)
+      );
+      stopMonitoring();
+    });
+
+    test("JSON RPC provider exits if open socket doesn't respond within WS_PROVIDER_TIMEOUT", () => {
+      const providerMock = {
+        getBlock: jest.fn().mockImplementation(() => new Promise(() => {})), // simulate getBlock promise never resolves
+      } as any;
+      const deps = {
+        HTTP_PROVIDER_TIMEOUT: 2 * 60 * 1000,
+        HEARTBEAT_INTERVAL: 3000,
+        ethNodeUptime: { set: jest.fn() },
+        ethNodeHeartbeatRTT: { observe: jest.fn() },
+      } as any;
+      jest.useFakeTimers();
+      const processExitSpy = jest.spyOn(process, "exit").mockImplementation();
+
+      const stopMonitoring = monitorProvider(providerMock, deps);
+      jest.advanceTimersByTime(deps.HTTP_PROVIDER_TIMEOUT); // Move forward in time to trigger the heartbeatTimeout
+
+      expect(processExitSpy).toBeCalledWith(1);
+      stopMonitoring();
+      jest.clearAllTimers();
       jest.useRealTimers();
     });
   });
