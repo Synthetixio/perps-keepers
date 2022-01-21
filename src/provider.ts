@@ -144,7 +144,7 @@ export class Providers {
             logger.info("ping");
             stopwatch.start();
             await runNextTick(async () => {
-              provider.getBlock("latest");
+              await provider.getBlock("latest");
             });
             const ms = stopwatch.stop();
             logger.info(`pong rtt=${ms}ms`);
