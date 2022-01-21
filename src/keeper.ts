@@ -28,7 +28,7 @@ class Keeper {
       id: string;
       event: string;
       account: string;
-      size: number;
+      size: BigNumber;
     };
   };
   activeKeeperTasks: { [id: string]: boolean | undefined };
@@ -96,48 +96,51 @@ class Keeper {
     this.signerPool = signerPool;
   }
 
-  static async create({
-    proxyFuturesMarket: proxyFuturesMarketAddress,
-    exchangeRates: exchangeRatesAddress,
-    signerPool,
-    provider,
-    network,
-  }: {
-    proxyFuturesMarket: string;
-    exchangeRates: string;
-    signerPool: SignerPool;
-    network: string;
-    provider:
-      | ethers.providers.JsonRpcProvider
-      | ethers.providers.WebSocketProvider;
-  }) {
+  static async create(
+    {
+      proxyFuturesMarket: proxyFuturesMarketAddress,
+      exchangeRates: exchangeRatesAddress,
+      signerPool,
+      provider,
+      network,
+    }: {
+      proxyFuturesMarket: string;
+      exchangeRates: string;
+      signerPool: SignerPool;
+      network: string;
+      provider:
+        | ethers.providers.JsonRpcProvider
+        | ethers.providers.WebSocketProvider;
+    },
+    deps = { snx, Contract }
+  ) {
     // Get ABIs.
-    const FuturesMarketABI = snx.getSource({
+    const FuturesMarketABI = deps.snx.getSource({
       network,
       contract: "FuturesMarket",
       useOvm: true,
     }).abi;
-    const ExchangeRatesABI = snx.getSource({
+    const ExchangeRatesABI = deps.snx.getSource({
       network,
       contract: "ExchangeRatesWithoutInvPricing",
       useOvm: true,
     }).abi;
 
     // Contracts.
-    const futuresMarket = new ethers.Contract(
+    const futuresMarket = new deps.Contract(
       proxyFuturesMarketAddress,
       FuturesMarketABI,
       provider
     );
 
-    const exchangeRates = new ethers.Contract(
+    const exchangeRates = new deps.Contract(
       exchangeRatesAddress,
       ExchangeRatesABI,
       provider
     );
 
     let baseAsset = await futuresMarket.baseAsset();
-    baseAsset = snx.fromBytes32(baseAsset);
+    baseAsset = deps.snx.fromBytes32(baseAsset);
 
     return new Keeper({
       futuresMarket,
@@ -147,7 +150,22 @@ class Keeper {
       provider,
     });
   }
+  async startProcessNewBlockConsumer() {
+    // The L2 node is constantly mining blocks, one block per transaction. When a new block is received, we queue it
+    // for processing in a FIFO queue. `processNewBlock` will scan its events, rebuild the index, and then run any
+    // keeper tasks that need running that aren't already active.
+    while (1) {
+      if (!this.blockQueue.length) {
+        await new Promise((resolve, reject) => setTimeout(resolve, 10));
+        continue;
+      }
 
+      const blockNumber = this.blockQueue.shift();
+      if (blockNumber) {
+        await this.processNewBlock(blockNumber);
+      }
+    }
+  }
   async run({ fromBlock }: { fromBlock: string | number }) {
     const events = await this.futuresMarket.queryFilter(
       "*" as any, // TODO typescript doesn't like this as a string
@@ -178,20 +196,7 @@ class Keeper {
       this.blockQueue.push(blockNumber);
     });
 
-    // The L2 node is constantly mining blocks, one block per transaction. When a new block is received, we queue it
-    // for processing in a FIFO queue. `processNewBlock` will scan its events, rebuild the index, and then run any
-    // keeper tasks that need running that aren't already active.
-    while (1) {
-      if (!this.blockQueue.length) {
-        await new Promise((resolve, reject) => setTimeout(resolve, 0.001));
-        continue;
-      }
-
-      const blockNumber = this.blockQueue.shift();
-      if (blockNumber) {
-        await this.processNewBlock(blockNumber);
-      }
-    }
+    this.startProcessNewBlockConsumer();
   }
 
   async processNewBlock(blockNumber: string) {
@@ -274,9 +279,12 @@ class Keeper {
     });
   }
 
-  async runKeepers() {
+  async runKeepers(deps = { BATCH_SIZE: 500, WAIT: 2000, metrics }) {
     const numPositions = Object.keys(this.positions).length;
-    metrics.futuresOpenPositions.set({ market: this.baseAsset }, numPositions);
+    deps.metrics.futuresOpenPositions.set(
+      { market: this.baseAsset },
+      numPositions
+    );
     this.logger.log("info", `${numPositions} positions to keep`, {
       component: "Keeper",
     });
@@ -286,14 +294,9 @@ class Keeper {
     // Sort positions by size and liquidationPrice.
 
     // Get current liquidation price for each position (including funding).
-
-    // const BATCH_SIZE = 20;
-    // const WAIT = 2000;
-    const BATCH_SIZE = 500;
-    const WAIT = 20;
     const positions = Object.values(this.positions);
 
-    for (const batch of chunk(positions, BATCH_SIZE)) {
+    for (const batch of chunk(positions, deps.BATCH_SIZE)) {
       await Promise.all(
         batch.map(async position => {
           const { id, account } = position;
@@ -302,7 +305,7 @@ class Keeper {
           );
         })
       );
-      await new Promise((res, rej) => setTimeout(res, WAIT));
+      await new Promise((res, rej) => setTimeout(res, deps.WAIT));
     }
 
     // Serial tx submission for now until Optimism can stop rate-limiting us.
@@ -340,7 +343,11 @@ class Keeper {
     delete this.activeKeeperTasks[id];
   }
 
-  async liquidateOrder(id: string, account: string) {
+  async liquidateOrder(
+    id: string,
+    account: string,
+    deps = { metricFuturesLiquidations: metrics.futuresLiquidations }
+  ) {
     const taskLabel = "liquidation";
     const canLiquidateOrder = await this.futuresMarket.canLiquidate(account);
     if (!canLiquidateOrder) {
@@ -369,7 +376,7 @@ class Keeper {
         receipt = await tx.wait(1);
       });
     } catch (err) {
-      metrics.futuresLiquidations.observe(
+      deps.metricFuturesLiquidations.observe(
         { market: this.baseAsset, success: "false" },
         0
       );
@@ -386,7 +393,7 @@ class Keeper {
       throw err;
     }
 
-    metrics.futuresLiquidations.observe(
+    deps.metricFuturesLiquidations.observe(
       { market: this.baseAsset, success: "true" },
       1
     );
