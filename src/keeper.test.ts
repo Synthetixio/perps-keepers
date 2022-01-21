@@ -29,8 +29,8 @@ describe("keeper", () => {
         if (arg.contract === "FuturesMarket") {
           return { abi: "__FuturesMarketContractAbi__" };
         }
-        if (arg.contract === "ExchangeRatesWithoutInvPricing") {
-          return { abi: "__ExchangeRatesWithoutInvPricingAbi__" };
+        if (arg.contract === "ExchangeRates") {
+          return { abi: "__ExchangeRatesAbi__" };
         }
       }),
     };
@@ -56,7 +56,7 @@ describe("keeper", () => {
     });
     expect(snx.getSource).toHaveBeenNthCalledWith(2, {
       network: args.network,
-      contract: "ExchangeRatesWithoutInvPricing",
+      contract: "ExchangeRates",
       useOvm: true,
     });
 
@@ -70,7 +70,7 @@ describe("keeper", () => {
     expect(deps.Contract).toHaveBeenNthCalledWith(
       2,
       "__EXCHANGE_RATES__",
-      "__ExchangeRatesWithoutInvPricingAbi__",
+      "__ExchangeRatesAbi__",
       "__PROVIDER__"
     );
     expect(baseAssetMock).toBeCalledTimes(1);

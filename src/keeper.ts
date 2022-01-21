@@ -120,9 +120,10 @@ class Keeper {
       contract: "FuturesMarket",
       useOvm: true,
     }).abi;
+
     const ExchangeRatesABI = deps.snx.getSource({
       network,
-      contract: "ExchangeRatesWithoutInvPricing",
+      contract: "ExchangeRates",
       useOvm: true,
     }).abi;
 
