@@ -156,7 +156,7 @@ class Keeper {
     // keeper tasks that need running that aren't already active.
     while (1) {
       if (!this.blockQueue.length) {
-        await new Promise((resolve, reject) => setTimeout(resolve, 0.001));
+        await new Promise((resolve, reject) => setTimeout(resolve, 10));
         continue;
       }
 
