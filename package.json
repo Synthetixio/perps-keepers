@@ -4,6 +4,9 @@
 	"main": "src/index.js",
 	"license": "MIT",
 	"scripts": {
+		"start": "npm run build && pm2 start build/index.js -- run",
+		"dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+		"build": "tsc",
 		"lint": "eslint \"src/**/*.js\" \"tools/**/*.js\" *.js",
 		"lint:fix": "eslint --fix \"src/**/*.js\" \"tools/**/*.js\" *.js"
 	},
@@ -28,10 +31,18 @@
 		"ethers": "^5.2.0",
 		"express": "^4.17.1",
 		"lodash": "^4.17.21",
+		"pm2": "5.1.2",
 		"prettier": "~1.19.1",
 		"pretty-error": "^3.0.4",
 		"prom-client": "^14.0.0",
 		"synthetix": "github:Synthetixio/synthetix#12f6419968b7870df7ecc556becfbf6109cb3ea9",
+		"typescript": "4.5.2",
 		"winston": "^3.3.3"
+	},
+	"devDependencies": {
+		"@types/express": "4.17.13",
+		"@types/lodash": "4.14.177",
+		"@types/node": "16.11.12",
+		"ts-node-dev": "1.1.8"
 	}
 }

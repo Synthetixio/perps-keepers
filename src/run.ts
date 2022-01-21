@@ -1,36 +1,60 @@
 require("dotenv").config();
-const ethers = require("ethers");
-const { gray, yellow } = require("chalk");
-const snx = require("synthetix");
-const Keeper = require("./keeper");
-const { NonceManager } = require("@ethersproject/experimental");
-const {
-  utils: { formatEther }
-} = ethers;
-const { getSource, getTarget, getFuturesMarkets } = snx;
-const SignerPool = require("./signer-pool");
-const metrics = require("./metrics");
-const { Providers } = require("./provider");
+import {
+  Contract,
+  ContractInterface,
+  getDefaultProvider,
+  providers,
+  Signer,
+  Wallet,
+} from "ethers";
+import { gray, yellow } from "chalk";
+import { NonceManager } from "@ethersproject/experimental";
+import snx from "synthetix";
+import Keeper from "./keeper";
+import SignerPool from "./signer-pool";
+import * as metrics from "./metrics";
+import { Providers } from "./provider";
+import { CommanderStatic } from "commander";
+import { formatEther, HDNode } from "ethers/lib/utils";
 
-const futuresMarkets = getFuturesMarkets({
+const { getSource, getTarget, getFuturesMarkets } = snx;
+const futuresMarkets: { asset: string }[] = getFuturesMarkets({
   // TODO: change this to mainnet when it's eventually deployed
   network: "kovan-ovm-futures",
-  useOvm: true
+  useOvm: true,
 });
 
-const DEFAULTS = {
+export const DEFAULTS = {
   fromBlock: "latest",
   providerUrl: "http://localhost:8545",
-  numAccounts: 10,
+  numAccounts: "10",
   markets: futuresMarkets.map(market => market.asset).join(","),
-  network: "kovan-ovm-futures"
+  network: "kovan-ovm-futures",
 };
 
 // This is lifted from the synthetix-js package, since the package doesn't
 // support local-ovm/kovan-ovm-futures artifacts, which impeded testing.
-const getSynthetixContracts = ({ network, signer, provider, useOvm }) => {
-  const sources = getSource({ network, useOvm });
-  const targets = getTarget({ network, useOvm });
+const getSynthetixContracts = ({
+  network,
+  signer,
+  provider,
+  useOvm,
+}: {
+  network: string;
+  signer?: Signer;
+  provider: providers.JsonRpcProvider | providers.WebSocketProvider;
+  useOvm: boolean;
+}) => {
+  const sources: { [key: string]: { abi: ContractInterface } } = getSource({
+    network,
+    useOvm,
+  });
+  const targets: {
+    [key: string]: { name: string; source: string; address: string };
+  } = getTarget({
+    network,
+    useOvm,
+  });
 
   return Object.values(targets)
     .map(target => {
@@ -46,22 +70,22 @@ const getSynthetixContracts = ({ network, signer, provider, useOvm }) => {
       }
       return target;
     })
-    .reduce((acc, { name, source, address }) => {
-      acc[name] = new ethers.Contract(
+    .reduce((acc: { [name: string]: Contract }, { name, source, address }) => {
+      acc[name] = new Contract(
         address,
         sources[source].abi,
-        signer || provider || ethers.getDefaultProvider(network)
+        signer || provider || getDefaultProvider(network)
       );
       return acc;
     }, {});
 };
 
-async function run({
-  fromBlock = DEFAULTS.fromBlock,
+export async function run({
+  fromBlockRaw = DEFAULTS.fromBlock,
   providerUrl = DEFAULTS.providerUrl,
   numAccounts = DEFAULTS.numAccounts,
   markets = DEFAULTS.markets,
-  network = DEFAULTS.network
+  network = DEFAULTS.network,
 } = {}) {
   const { ETH_HDWALLET_MNEMONIC } = process.env;
   if (!ETH_HDWALLET_MNEMONIC) {
@@ -72,7 +96,8 @@ async function run({
 
   metrics.runServer();
 
-  fromBlock = fromBlock === "latest" ? fromBlock : parseInt(fromBlock);
+  let fromBlock =
+    fromBlockRaw === "latest" ? fromBlockRaw : parseInt(fromBlockRaw);
 
   // Setup.
   //
@@ -80,14 +105,16 @@ async function run({
   Providers.monitor(provider);
   console.log(gray(`Connected to Ethereum node at ${providerUrl}`));
 
-  let signers = createWallets({
+  let unWrappedSigners = createWallets({
     provider,
     mnemonic: ETH_HDWALLET_MNEMONIC,
-    num: numAccounts
+    num: parseInt(numAccounts),
   });
-  console.log(gray`Using ${signers.length} account(s) to submit transactions:`);
-  signers = await Promise.all(
-    signers.map(async (signer, i) => {
+  console.log(
+    gray`Using ${unWrappedSigners.length} account(s) to submit transactions:`
+  );
+  const signers = await Promise.all(
+    unWrappedSigners.map(async (signer, i) => {
       let wrappedSigner = new NonceManager(signer);
 
       // Each signer gets its own RPC connection.
@@ -103,7 +130,7 @@ async function run({
   const { SynthsUSD } = getSynthetixContracts({
     network,
     provider: provider,
-    useOvm: true
+    useOvm: true,
   });
 
   const signerBalances = await Promise.all(
@@ -115,7 +142,7 @@ async function run({
 
       const balances = [
         ["ETH", balance],
-        ["sUSD", sUSDBalance]
+        ["sUSD", sUSDBalance],
       ];
 
       return balances;
@@ -140,27 +167,27 @@ async function run({
   metrics.trackKeeperBalance(signers[0], SynthsUSD);
 
   // Get addresses.
-  markets = markets.split(",");
+  const marketsArray = markets.trim().split(",");
   // Verify markets.
   const supportedAssets = futuresMarkets.map(({ asset }) => asset);
-  markets.forEach(asset => {
+  marketsArray.forEach(asset => {
     if (!supportedAssets.includes(asset)) {
       throw new Error(`No futures market for currencyKey: ${asset}`);
     }
   });
 
   // Load contracts.
-  const marketContracts = markets.map(market =>
+  const marketContracts = marketsArray.map(market =>
     snx.getTarget({
       contract: `ProxyFuturesMarket${market.slice(1)}`,
       network,
-      useOvm: true
+      useOvm: true,
     })
   );
   const exchangeRates = snx.getTarget({
     contract: "ExchangeRates",
     network,
-    useOvm: true
+    useOvm: true,
   });
 
   for (const marketContract of marketContracts) {
@@ -169,20 +196,28 @@ async function run({
       proxyFuturesMarket: marketContract.address,
       exchangeRates: exchangeRates.address,
       signerPool,
-      provider
+      provider,
     });
 
     keeper.run({ fromBlock });
   }
 }
 
-function createWallets({ provider, mnemonic, num }) {
-  const masterNode = ethers.utils.HDNode.fromMnemonic(mnemonic);
+function createWallets({
+  provider,
+  mnemonic,
+  num,
+}: {
+  provider: providers.JsonRpcProvider | providers.WebSocketProvider;
+  mnemonic: string;
+  num: number;
+}) {
+  const masterNode = HDNode.fromMnemonic(mnemonic);
   const wallets = [];
 
   for (let i = 0; i < num; i++) {
     wallets.push(
-      new ethers.Wallet(
+      new Wallet(
         masterNode.derivePath(`m/44'/60'/0'/0/${i}`).privateKey,
         provider
       )
@@ -192,37 +227,33 @@ function createWallets({ provider, mnemonic, num }) {
   return wallets;
 }
 
-module.exports = {
-  run,
-  DEFAULTS,
-  cmd: program =>
-    program
-      .command("run")
-      .description("Run the keeper")
-      .option(
-        "-b, --from-block <value>",
-        "Rebuild the keeper index from a starting block, before initiating keeper actions.",
-        DEFAULTS.fromBlock
-      )
-      .option(
-        "-p, --provider-url <value>",
-        "Ethereum RPC URL",
-        DEFAULTS.providerUrl
-      )
-      .option(
-        "--network <value>",
-        "Ethereum network to connect to.",
-        "kovan-ovm-futures"
-      )
-      .option(
-        "-n, --num-accounts <value>",
-        "Number of accounts from the HD wallet to use for parallel tx submission. Improves performance.",
-        DEFAULTS.numAccounts
-      )
-      .option(
-        "-m, --markets <value>",
-        "Runs keeper operations for the specified markets, delimited by a comma. Supported markets: sETH, sBTC, sLINK.",
-        DEFAULTS.markets
-      )
-      .action(run)
-};
+export const cmd = (program: CommanderStatic) =>
+  program
+    .command("run")
+    .description("Run the keeper")
+    .option(
+      "-b, --from-block <value>",
+      "Rebuild the keeper index from a starting block, before initiating keeper actions.",
+      DEFAULTS.fromBlock
+    )
+    .option(
+      "-p, --provider-url <value>",
+      "Ethereum RPC URL",
+      DEFAULTS.providerUrl
+    )
+    .option(
+      "--network <value>",
+      "Ethereum network to connect to.",
+      "kovan-ovm-futures"
+    )
+    .option(
+      "-n, --num-accounts <value>",
+      "Number of accounts from the HD wallet to use for parallel tx submission. Improves performance.",
+      String(DEFAULTS.numAccounts)
+    )
+    .option(
+      "-m, --markets <value>",
+      "Runs keeper operations for the specified markets, delimited by a comma. Supported markets: sETH, sBTC, sLINK.",
+      DEFAULTS.markets
+    )
+    .action(run);

@@ -1,46 +1,45 @@
-const client = require("prom-client");
-const express = require("express");
-const {
-  utils: { formatEther }
-} = require("ethers");
+import client from "prom-client";
+import express from "express";
+import { formatEther } from "@ethersproject/units";
+import { BigNumber, ethers } from "ethers";
 
 // Metrics.
 
 const keeperEthBalance = new client.Gauge({
   name: "keeper_eth_balance",
   help: "The ETH balance of the keeper",
-  labelNames: ["account"]
+  labelNames: ["account"],
 });
 const keeperSusdBalance = new client.Gauge({
   name: "keeper_sUSD_balance",
   help: "The sUSD balance of the keeper",
-  labelNames: ["account"]
+  labelNames: ["account"],
 });
-const ethNodeUptime = new client.Gauge({
+export const ethNodeUptime = new client.Gauge({
   name: "eth_uptime",
-  help: "Whether the Ethereum node is responding is running"
+  help: "Whether the Ethereum node is responding is running",
 });
-const ethNodeHeartbeatRTT = new client.Summary({
+export const ethNodeHeartbeatRTT = new client.Summary({
   name: "eth_heartbeat_rtt",
-  help: "Round trip time of the heartbeat to the ETH RPC node."
+  help: "Round trip time of the heartbeat to the ETH RPC node.",
 });
-const futuresOpenPositions = new client.Gauge({
+export const futuresOpenPositions = new client.Gauge({
   name: "futures_open_positions",
   help: "Positions being monitored for liquidation",
-  labelNames: ["market"]
+  labelNames: ["market"],
 });
-const futuresLiquidations = new client.Summary({
+export const futuresLiquidations = new client.Summary({
   name: "futures_liquidations",
   help: "Number of liquidations",
-  labelNames: ["market", "success"]
+  labelNames: ["market", "success"],
 });
-const keeperErrors = new client.Summary({
+export const keeperErrors = new client.Summary({
   name: "keeper_errors",
   help: "Number of errors in running keeper tasks",
-  labelNames: ["market"]
+  labelNames: ["market"],
 });
 
-function runServer() {
+export function runServer() {
   const app = express();
 
   // Setup registry.
@@ -57,7 +56,7 @@ function runServer() {
     ethNodeHeartbeatRTT,
     futuresOpenPositions,
     futuresLiquidations,
-    keeperErrors
+    keeperErrors,
   ];
   metrics.map(metric => register.registerMetric(metric));
 
@@ -77,25 +76,17 @@ function runServer() {
 
 // Tracker functions.
 
-function trackKeeperBalance(signer, SynthsUSD) {
+export function trackKeeperBalance(
+  signer: ethers.Signer,
+  SynthsUSD: ethers.Contract
+) {
   setInterval(async () => {
     const account = await signer.getAddress();
     const balance = await signer.getBalance();
     const sUSDBalance = await SynthsUSD.balanceOf(account);
 
-    const bnToNumber = bn => parseFloat(formatEther(bn));
+    const bnToNumber = (bn: BigNumber) => parseFloat(formatEther(bn));
     keeperEthBalance.set({ account }, bnToNumber(balance));
     keeperSusdBalance.set({ account }, bnToNumber(sUSDBalance));
   }, 2500);
 }
-
-module.exports = {
-  trackKeeperBalance,
-
-  runServer,
-
-  ethNodeUptime,
-  ethNodeHeartbeatRTT,
-  futuresOpenPositions,
-  futuresLiquidations
-};

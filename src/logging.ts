@@ -1,7 +1,6 @@
-const winston = require("winston");
-const { format, transports } = require("winston");
+import winston, { format, transports } from "winston";
 
-function createLogger({ componentName }) {
+export function createLogger({ componentName }: { componentName: string }) {
   const logger = winston.createLogger({
     level: "info",
     format: format.combine(
@@ -14,18 +13,14 @@ function createLogger({ componentName }) {
           info.level,
           info.label,
           info.component,
-          info.message
+          info.message,
         ]
           .filter(x => !!x)
           .join(" ");
       })
     ),
-    transports: [new transports.Console()]
+    transports: [new transports.Console()],
   });
 
   return logger;
 }
-
-module.exports = {
-  createLogger
-};
