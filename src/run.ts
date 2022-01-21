@@ -167,7 +167,7 @@ export async function run({
   metrics.trackKeeperBalance(signers[0], SynthsUSD);
 
   // Get addresses.
-  const marketsArray = markets.split(",");
+  const marketsArray = markets.trim().split(",");
   // Verify markets.
   const supportedAssets = futuresMarkets.map(({ asset }) => asset);
   marketsArray.forEach(asset => {
