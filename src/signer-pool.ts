@@ -9,7 +9,6 @@ class SignerPool {
   constructor(signers: ethers.Signer[]) {
     this.signers = signers;
     this.pool = Array.from(Array(this.signers.length).keys());
-    // this.acquireCallbacks = []; unused
     this.logger = createLogger({ componentName: "SignerPool" });
   }
 
@@ -17,13 +16,14 @@ class SignerPool {
     return new SignerPool(signers);
   }
 
-  async acquire(): Promise<[number, ethers.Signer] | undefined> {
+  async acquire(): Promise<[number, ethers.Signer]> {
     this.logger.info("awaiting signer");
-    while (!this.pool.length) {
-      await new Promise((resolve, reject) => setTimeout(resolve, 1));
+    let i = this.pool.pop();
+
+    while (i === undefined) {
+      await new Promise((resolve, reject) => setTimeout(resolve, 10));
+      i = this.pool.pop();
     }
-    const i = this.pool.pop();
-    if (i === undefined) return undefined;
     this.logger.info(`acquired signer i=${i}`);
     return [i, this.signers[i]];
   }
@@ -34,9 +34,8 @@ class SignerPool {
   }
 
   async withSigner(cb: (signer: ethers.Signer) => Promise<void>) {
-    const [i, signer] = (await this.acquire()) || [];
-    if (!signer || i === undefined)
-      return Promise.reject("No signer available");
+    const [i, signer] = await this.acquire();
+
     try {
       await cb(signer);
     } catch (ex) {
