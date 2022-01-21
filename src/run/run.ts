@@ -51,7 +51,7 @@ export async function run(
     );
   }
   // Get addresses.
-  const marketsArray = markets.split(",");
+  const marketsArray = markets.trim().split(",");
   // Verify markets.
   const supportedAssets = deps.futuresMarkets.map(({ asset }) => asset);
   marketsArray.forEach(asset => {
@@ -146,4 +146,4 @@ export const cmd = (program: CommanderStatic) =>
       "Runs keeper operations for the specified markets, delimited by a comma. Supported markets: sETH, sBTC, sLINK.",
       DEFAULTS.markets
     )
-    .action(x => run(x));
+    .action(run);
