@@ -39,6 +39,31 @@ Options:
 NETWORK=kovan-ovm-futures node src/ run -p ws://kovan.optimism.io:8546 --from-block 0 -n 1 --network kovan-ovm-futures
 ```
 
+## Futures interact CLI
+
+### Setup for local node:
+
+1. Start a local node:
+   `hardhat node --fork https://optimism-kovan.infura.io/v3/<infura key>`
+2. Fund one of the test wallets.
+
+   - Checkout: https://github.com/synthetixio/synthetix
+   - `git checkout futures-implementation`
+   - npm install
+   - `npx hardhat fund-local-accounts --provider-url http://127.0.0.1:8545/ --target-network kovan-ovm-futures --deployment-path ./publish/deployed/kovan-ovm-futures/ --use-ovm --private-key $KOVAN_OVM_FUTURES_DEPLOYER_PRIVATE_KEY --account 0x8626f6940e2eb28930efb4cef49b2d1f2c9c1199`
+     `0x8626f6940e2eb28930efb4cef49b2d1f2c9c1199` is one of the default accounts from hardhat node --fork
+
+### Usage
+
+`npm run futures-interact` commands and options documented in the CLI.
+Current commands/ features:
+
+- fundAndOpenPosition
+- fundMargin
+- openPosition
+- closePosition
+- checkPosition
+
 ### Restarting on disconnect.
 
 The keeper is a long-running process. The only time it will shutdown is if its websocket connection to the Ethereum node is disconnected.
