@@ -1,6 +1,6 @@
 "use strict";
 
-import program from "commander";
+import { program } from "commander";
 
 require("pretty-error").start();
 require("dotenv").config();

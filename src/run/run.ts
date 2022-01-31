@@ -6,7 +6,7 @@ import Keeper from "../keeper";
 import SignerPool from "../signer-pool";
 import { runServer as runMetricServer } from "../metrics";
 import { getProvider, monitorProvider } from "../provider";
-import { CommanderStatic } from "commander";
+import { Command } from "commander";
 import createWallets from "./createWallets";
 import logAndStartTrackingBalances from "./logAndStartTrackingBalances";
 
@@ -117,7 +117,7 @@ export async function run(
   }
 }
 
-export const cmd = (program: CommanderStatic) =>
+export const cmd = (program: Command) =>
   program
     .command("run")
     .description("Run the keeper")
