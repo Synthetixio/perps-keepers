@@ -1,0 +1,12 @@
+diff --git a/node_modules/super-split/package.json b/node_modules/super-split/package.json
+index 8e919bb..e43150b 100644
+--- a/node_modules/super-split/package.json
++++ b/node_modules/super-split/package.json
+@@ -1,6 +1,6 @@
+ {
+ 	"name": "super-split",
+-	"main": "super-split",
++	"main": "index.js",
+ 	"version": "1.1.0",
+ 	"description": "🔪  split string by delimiter array - delimiters retained",
+ 	"license": "MIT",

@@ -9,7 +9,8 @@
 		"build": "tsc",
 		"lint": "eslint \"src/**/*.js\" \"tools/**/*.js\" *.js",
 		"lint:fix": "eslint --fix \"src/**/*.js\" \"tools/**/*.js\" *.js",
-		"start-eth-node": "hardhat node --fork https://optimism-kovan.infura.io/v3/   "
+		"start-eth-node": "hardhat node --fork https://optimism-kovan.infura.io/v3/   ",
+		"postinstall": "patch-package"
 	},
 	"engines": {
 		"node": ">=10.0.0"
@@ -34,6 +35,7 @@
 		"ethers": "5.5.4",
 		"express": "^4.17.1",
 		"lodash": "^4.17.21",
+		"patch-package": "6.4.7",
 		"pm2": "5.1.2",
 		"prettier": "~1.19.1",
 		"pretty-error": "^3.0.4",
