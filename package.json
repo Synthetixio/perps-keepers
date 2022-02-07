@@ -9,7 +9,7 @@
 		"build": "tsc",
 		"lint": "eslint \"src/**/*.js\" \"tools/**/*.js\" *.js",
 		"lint:fix": "eslint --fix \"src/**/*.js\" \"tools/**/*.js\" *.js",
-		"futures-interact": "ts-node --files futures-interact-cli"
+		"start-eth-node": "hardhat node --fork https://optimism-kovan.infura.io/v3/   "
 	},
 	"engines": {
 		"node": ">=10.0.0"
@@ -31,7 +31,7 @@
 		"eslint-plugin-prettier": "^2.6.2",
 		"eslint-plugin-promise": "^4.3.1",
 		"eslint-plugin-standard": "^4.0.0",
-		"ethers": "^5.2.0",
+		"ethers": "5.5.4",
 		"express": "^4.17.1",
 		"lodash": "^4.17.21",
 		"pm2": "5.1.2",
@@ -43,6 +43,8 @@
 		"winston": "^3.3.3"
 	},
 	"devDependencies": {
+		"@nomiclabs/hardhat-ethers": "2.0.4",
+		"@nomiclabs/hardhat-truffle5": "2.0.3",
 		"@types/express": "4.17.13",
 		"@types/jest": "27.0.3",
 		"@types/lodash": "4.14.177",
