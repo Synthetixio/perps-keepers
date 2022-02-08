@@ -53,9 +53,15 @@ NETWORK=kovan-ovm-futures node src/ run -p ws://kovan.optimism.io:8546 --from-bl
    - `npx hardhat fund-local-accounts --provider-url http://127.0.0.1:8545/ --target-network kovan-ovm-futures --deployment-path ./publish/deployed/kovan-ovm-futures/ --use-ovm --private-key $KOVAN_OVM_FUTURES_DEPLOYER_PRIVATE_KEY --account 0x8626f6940e2eb28930efb4cef49b2d1f2c9c1199`
      `0x8626f6940e2eb28930efb4cef49b2d1f2c9c1199` is one of the default accounts from hardhat node --fork
 
+3. Optionally you can also start Prometheus is you want metric tracking. There are some instructions in prometheus/README.md, tldr:
+
+- `cd prometheus`
+- `cp .env.example .env`
+- `docker-compose --env-file ./.env up`
+
 ### Usage
 
-`npm run futures-interact` commands and options documented in the CLI.
+`npx ts-node --files futures-interact-cli` commands and options documented in the CLI.
 Current commands/ features:
 
 - fundAndOpenPosition
@@ -63,6 +69,9 @@ Current commands/ features:
 - openPosition
 - closePosition
 - checkPosition
+- setPrice
+  To get help for a certain command:
+  `npx ts-node --files futures-interact-cli setPrice -h`
 
 ### Restarting on disconnect.
 
