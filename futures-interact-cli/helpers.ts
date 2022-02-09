@@ -1,8 +1,7 @@
-import { BigNumber, ethers } from "ethers";
+import { BigNumber, ethers, constants } from "ethers";
 import { artifacts } from "hardhat";
 import { web3 } from "hardhat";
 const MockAggregator = artifacts.require("MockAggregatorV2V3");
-const ZERO_ADDRESS = "0x" + "0".repeat(40);
 
 const currentTime = async () => {
   const { timestamp } = await web3.eth.getBlock("latest");
@@ -38,7 +37,7 @@ export async function updateAggregatorRates(
   const timestamp = await currentTime();
   for (const { assetBytes32, rate } of rates) {
     const aggregatorAddress = await exchangeRates.aggregators(assetBytes32);
-    if (aggregatorAddress === ZERO_ADDRESS) {
+    if (aggregatorAddress === constants.AddressZero) {
       throw new Error(
         `Aggregator set to zero address, use "setupPriceAggregators" to set it up`
       );
