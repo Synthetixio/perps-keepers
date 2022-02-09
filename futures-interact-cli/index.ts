@@ -133,16 +133,25 @@ const checkPos = async (arg: CheckPosArg) => {
   const [remainingMargin] = await futuresMarketContract.remainingMargin(
     wallet.address
   );
-  const [openPos] = await futuresMarketContract.notionalValue(wallet.address);
-  const [price] = await futuresMarketContract.assetPrice();
+  const [openPosUSD] = await futuresMarketContract.notionalValue(
+    wallet.address
+  );
   const [liqPrice] = await futuresMarketContract.liquidationPrice(
     wallet.address,
     false
   );
-  console.log(`${arg.asset} price: $${wei(price).toString(1)}`);
-  console.log(`sUSD Balance $${wei(sUSDBalance).toString(1)}`);
-  console.log(`ETH Balance  E${wei(ethBalance).toString(1)}`);
-  console.log(`Open Position: $${wei(openPos).toString(1)}`);
+  const [
+    _id,
+    _lastFundingIndex,
+    _margin,
+    lastPrice,
+    positionSize,
+  ] = await futuresMarketContract.positions(wallet.address);
+  console.log(`${arg.asset} price: $${wei(lastPrice).toString(1)}`);
+  console.log(`sUSD Balance: $${wei(sUSDBalance).toString(1)}`);
+  console.log(`ETH Balance: ETH ${wei(ethBalance).toString(1)}`);
+  console.log(`Open Position: $${wei(openPosUSD).toString(1)}`);
+  console.log(`Open Position: ${arg.asset} ${wei(positionSize).toString(1)}`);
   console.log(`Liquidation Price: $${wei(liqPrice).toString(1)}`);
   console.log(`Remaining Margin: $${wei(remainingMargin).toString(1)}`);
 };
