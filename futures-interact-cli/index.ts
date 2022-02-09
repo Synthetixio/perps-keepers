@@ -258,7 +258,7 @@ const setupProgram = () => {
 
       await setPrice(options);
       /**
-       * Calling const aggregator = await MockAggregator.new({ from: owner.address }); sets up some subscription
+       * Calling const aggregator = await MockAggregator.new({ from: deployerWallet.address }); sets up some subscription
        * causing the script to not end.
        * I tried calling `aggregator.contract.clearSubscriptions();` but that throws an error :(
        * So exiting manually

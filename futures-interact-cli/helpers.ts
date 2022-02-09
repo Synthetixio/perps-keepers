@@ -24,8 +24,9 @@ export async function setupPriceAggregators(
         from: deployerWallet.address,
       });
     /**
-     * await MockAggregator.new({ from: owner.address }); is causing the process to never end
+     * await MockAggregator.new({ from: deployerWallet.address }); is causing the process to never end
      * I tried calling aggregator.contract.clearSubscriptions(); here to avoid it, but that methods throws :(
+     * This means that consumers calling this function needs to call `process.exit()` to exit the process
      */
   }
 }
