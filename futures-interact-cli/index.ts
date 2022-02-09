@@ -71,16 +71,15 @@ const fundMargin = async (arg: FundPosArg) => {
   await x.wait();
   console.log("Margin Account funded 💰");
 };
-const openPos = async (arg: OpenPosArg) => {
+const modifyPosition = async (arg: ModifyPosArg) => {
   const { wallet, futuresMarketContract } = ethersSetup(arg);
   const { positionAmount, asset } = arg;
 
   const [remainingMargin] = await futuresMarketContract.remainingMargin(
     wallet.address
   );
-  console.log(`Opening pos for asset ${asset} ${positionAmount}...`);
+  console.log(`Modifying pos for asset ${asset} ${positionAmount}...`);
 
-  console.log("remainingMargin:", wei(remainingMargin).toString(1));
   const positionSize = wei(positionAmount);
   const [
     margin,
@@ -110,7 +109,7 @@ const openPos = async (arg: OpenPosArg) => {
     .connect(wallet)
     .modifyPosition(positionSize.toBN(), { gasLimit });
   await tx.wait();
-  console.log("Position opened 📈");
+  console.log("Position modified 📈");
 };
 const closePosition = async (arg: ClosePosArg) => {
   const { wallet, futuresMarketContract } = ethersSetup(arg);
@@ -148,9 +147,9 @@ const checkPos = async (arg: CheckPosArg) => {
   console.log(`Remaining Margin: $${wei(remainingMargin).toString(1)}`);
 };
 
-const fundAndOpenPos = async (arg: FundAndOpenPosArg) => {
+const fundAndModifyPos = async (arg: FundAndModifyPosArg) => {
   await fundMargin(arg);
-  await openPos(arg);
+  await modifyPosition(arg);
 };
 
 const setPrice = async (arg: SetPriceArg) => {
@@ -179,7 +178,7 @@ type DefaultArgs = {
   privateKey: string;
   network: string;
 };
-type FundAndOpenPosArg = DefaultArgs & {
+type FundAndModifyPosArg = DefaultArgs & {
   fundAmountUsd: string;
   positionAmount: string;
 };
@@ -187,7 +186,7 @@ type CheckPosArg = DefaultArgs;
 type SetPriceArg = DefaultArgs & { assetPrice: string };
 type ClosePosArg = DefaultArgs;
 type FundPosArg = DefaultArgs & { fundAmountUsd: string };
-type OpenPosArg = DefaultArgs & { positionAmount: string };
+type ModifyPosArg = DefaultArgs & { positionAmount: string };
 
 const setupProgram = () => {
   const program = new Command().version("0.0.1");
@@ -198,11 +197,7 @@ const setupProgram = () => {
       "Ethereum RPC URL",
       "http://127.0.0.1:8545"
     )
-    .option(
-      "-a, --asset <value>",
-      "Asset to open position/ fund ie. sBTC",
-      "sBTC"
-    )
+    .option("-a, --asset <value>", "Asset to interact with ie. sBTC", "sBTC")
     .option("-P, --private-key <value>", "Private key to wallet")
     .option(
       "-n --network <value>",
@@ -210,13 +205,13 @@ const setupProgram = () => {
       "kovan-ovm-futures"
     );
   program
-    .command("fundAndOpenPosition")
+    .command("fundAndModifyPosition")
     .option("-f, --fund-amount-usd <value>", "Fund Amount", "100000")
     .option("-A --position-amount <value>", "Position Amount", "0.1")
     .action(async (_x, cmd) => {
-      const options: FundAndOpenPosArg = cmd.optsWithGlobals();
+      const options: FundAndModifyPosArg = cmd.optsWithGlobals();
       await checkPos(options);
-      await fundAndOpenPos(options);
+      await fundAndModifyPos(options);
       await checkPos(options);
     });
 
@@ -231,12 +226,12 @@ const setupProgram = () => {
     });
 
   program
-    .command("openPosition")
+    .command("modifyPosition")
     .option("-A --position-amount <value>", "Position Amount", "0.1")
     .action(async (_x, cmd) => {
-      const options: OpenPosArg = cmd.optsWithGlobals();
+      const options: ModifyPosArg = cmd.optsWithGlobals();
       await checkPos(options);
-      await openPos(options);
+      await modifyPosition(options);
       await checkPos(options);
     });
 
