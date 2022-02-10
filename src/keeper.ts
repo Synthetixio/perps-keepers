@@ -243,7 +243,8 @@ class Keeper {
           account,
           size,
         };
-      } else if (event === "PositionLiquidated" && args) {
+        return;
+      }
         const { account, liquidator } = args;
         this.logger.log(
           "info",
@@ -252,20 +253,12 @@ class Keeper {
         );
 
         delete this.positions[account];
-      } else if (event === "FundingRecomputed") {
-        // // Recompute liquidation price of all positions.
-        // await Object.values(this.positions).map(position => {
-        //   const includeFunding = true
-        //   const { price: liqPrice, invalid } = await this.futuresMarket.liquidationPrice(position.account, includeFunding)
-        //   if (invalid) return
-        //   this.positions[position.account].liqPrice = liqPrice
-        // })
-      } else if (!event || event.match(/OrderSubmitted/)) {
-      } else {
-        this.logger.log("info", `No handler for event ${event}`, {
-          component: "Indexer",
-        });
+        return;
       }
+
+      this.logger.info(`No handler for event ${event}`, {
+        component: "Indexer",
+      });
     });
   }
 
