@@ -6,7 +6,7 @@ import Keeper from "../keeper";
 import SignerPool from "../signer-pool";
 import { runServer as runMetricServer } from "../metrics";
 import { getProvider, monitorProvider } from "../provider";
-import { CommanderStatic } from "commander";
+import { Command } from "commander";
 import createWallets from "./createWallets";
 import logAndStartTrackingBalances from "./logAndStartTrackingBalances";
 
@@ -17,9 +17,9 @@ const futuresMarkets: { asset: string }[] = snx.getFuturesMarkets({
 });
 
 export const DEFAULTS = {
-  fromBlock: "latest",
+  fromBlock: "1",
   providerUrl: "http://localhost:8545",
-  numAccounts: "10",
+  numAccounts: "1",
   markets: futuresMarkets.map(market => market.asset).join(","),
   network: "kovan-ovm-futures",
 };
@@ -117,7 +117,7 @@ export async function run(
   }
 }
 
-export const cmd = (program: CommanderStatic) =>
+export const cmd = (program: Command) =>
   program
     .command("run")
     .description("Run the keeper")
@@ -146,4 +146,4 @@ export const cmd = (program: CommanderStatic) =>
       "Runs keeper operations for the specified markets, delimited by a comma. Supported markets: sETH, sBTC, sLINK.",
       DEFAULTS.markets
     )
-    .action(run);
+    .action(arg => run(arg));

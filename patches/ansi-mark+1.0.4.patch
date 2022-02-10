@@ -1,0 +1,12 @@
+diff --git a/node_modules/ansi-mark/package.json b/node_modules/ansi-mark/package.json
+index c6f6c30..a98d8dd 100644
+--- a/node_modules/ansi-mark/package.json
++++ b/node_modules/ansi-mark/package.json
+@@ -1,6 +1,6 @@
+ {
+ 	"name": "ansi-mark",
+-	"main": "ansi-mark",
++	"main": "index.js",
+ 	"version": "1.0.4",
+ 	"description": "🖊️  a highlight marker for your color ansi strings",
+ 	"license": "MIT",

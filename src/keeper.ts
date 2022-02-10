@@ -173,7 +173,7 @@ class Keeper {
       fromBlock,
       "latest"
     );
-    this.logger.log("info", `Rebuilding index from ${fromBlock} ... latest`, {
+    this.logger.log("info", `Rebuilding index from ${fromBlock} to latest`, {
       component: "Indexer",
     });
     this.logger.log("info", `${events.length} events to process`, {
