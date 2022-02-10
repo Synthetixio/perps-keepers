@@ -207,22 +207,11 @@ class Keeper {
       blockNumber,
       blockNumber
     );
-    const exchangeRateEvents = await this.exchangeRates.queryFilter(
-      "*" as any,
-      blockNumber,
-      blockNumber
-    );
+    
 
     this.logger.log("debug", `\nProcessing block: ${blockNumber}`, {
       component: "Indexer",
     });
-    exchangeRateEvents
-      .filter(
-        ({ event, args }) => event === "RatesUpdated" || event === "RateDeleted"
-      )
-      .forEach(({ event }) => {
-        this.logger.log("debug", `ExchangeRates ${event}`);
-      });
 
     this.logger.log("debug", `${events.length} events to process`, {
       component: "Indexer",
