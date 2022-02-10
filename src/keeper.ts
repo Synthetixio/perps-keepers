@@ -1,7 +1,7 @@
 import { Contract } from "@ethersproject/contracts";
 import { chunk } from "lodash";
 
-import ethers, { BigNumber } from "ethers";
+import ethers, { BigNumber, utils } from "ethers";
 import winston, { format, Logger, transports } from "winston";
 
 import snx from "synthetix";
@@ -17,6 +17,11 @@ function isObjectOrErrorWithCode(x: unknown): x is { code: string } {
   if (x === null) return false;
   return "code" in x;
 }
+
+const EventsOfInterest = {
+  PositionLiquidated: "PositionLiquidated",
+  PositionModified: "PositionModified",
+};
 
 class Keeper {
   baseAsset: string;
@@ -167,12 +172,20 @@ class Keeper {
       }
     }
   }
-  async run({ fromBlock }: { fromBlock: string | number }) {
-    const events = await this.futuresMarket.queryFilter(
-      "*" as any, // TODO typescript doesn't like this as a string
-      fromBlock,
-      "latest"
+  async getEvents(fromBlock: string | number, toBlock: string | number) {
+    const nestedEvents = await Promise.all(
+      Object.values(EventsOfInterest).map(eventName => {
+        return this.futuresMarket.queryFilter(
+          this.futuresMarket.filters[eventName](),
+          fromBlock,
+          toBlock
+        );
+      })
     );
+    return nestedEvents.flat(1);
+  }
+  async run({ fromBlock }: { fromBlock: string | number }) {
+    const events = await this.getEvents(fromBlock, "latest");
     this.logger.log("info", `Rebuilding index from ${fromBlock} to latest`, {
       component: "Indexer",
     });
@@ -202,12 +215,7 @@ class Keeper {
 
   async processNewBlock(blockNumber: string) {
     this.blockTip = blockNumber;
-    const events = await this.futuresMarket.queryFilter(
-      "*" as any,
-      blockNumber,
-      blockNumber
-    );
-    
+    const events = await this.getEvents(blockNumber, blockNumber);
 
     this.logger.log("debug", `\nProcessing block: ${blockNumber}`, {
       component: "Indexer",
@@ -222,7 +230,7 @@ class Keeper {
 
   async updateIndex(events: ethers.Event[]) {
     events.forEach(({ event, args }) => {
-      if (event === "PositionModified" && args) {
+      if (event === EventsOfInterest.PositionModified && args) {
         const { id, account, size } = args;
 
         this.logger.log(
@@ -245,6 +253,7 @@ class Keeper {
         };
         return;
       }
+      if (event === EventsOfInterest.PositionLiquidated && args) {
         const { account, liquidator } = args;
         this.logger.log(
           "info",
