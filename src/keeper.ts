@@ -1,9 +1,7 @@
 import { Contract } from "@ethersproject/contracts";
-import { chunk } from "lodash";
-
-import ethers, { BigNumber, utils } from "ethers";
+import { chunk, orderBy } from "lodash";
+import ethers, { BigNumber } from "ethers";
 import winston, { format, Logger, transports } from "winston";
-
 import snx from "synthetix";
 import * as metrics from "./metrics";
 import SignerPool from "./signer-pool";
@@ -11,6 +9,7 @@ import {
   TransactionReceipt,
   TransactionResponse,
 } from "@ethersproject/abstract-provider";
+import { wei } from "@synthetixio/wei";
 
 function isObjectOrErrorWithCode(x: unknown): x is { code: string } {
   if (typeof x !== "object") return false;
@@ -33,7 +32,8 @@ class Keeper {
       id: string;
       event: string;
       account: string;
-      size: BigNumber;
+      size: number;
+      marginRatio: number;
     };
   };
   activeKeeperTasks: { [id: string]: boolean | undefined };
@@ -231,7 +231,7 @@ class Keeper {
   async updateIndex(events: ethers.Event[]) {
     events.forEach(({ event, args }) => {
       if (event === EventsOfInterest.PositionModified && args) {
-        const { id, account, size } = args;
+        const { id, account, size, margin, lastPrice } = args;
 
         this.logger.log(
           "info",
@@ -249,7 +249,11 @@ class Keeper {
           id,
           event,
           account,
-          size,
+          size: wei(size).toNumber(),
+          marginRatio: wei(size)
+            .mul(lastPrice)
+            .div(margin)
+            .toNumber(),
         };
         return;
       }
@@ -281,13 +285,12 @@ class Keeper {
       component: "Keeper",
     });
 
-    // Open positions.
-
-    // Sort positions by size and liquidationPrice.
-
     // Get current liquidation price for each position (including funding).
-    const positions = Object.values(this.positions);
-
+    const positions = orderBy(
+      Object.values(this.positions),
+      ["marginRatio"],
+      "desc"
+    );
     for (const batch of chunk(positions, deps.BATCH_SIZE)) {
       await Promise.all(
         batch.map(async position => {
@@ -299,13 +302,6 @@ class Keeper {
       );
       await new Promise((res, rej) => setTimeout(res, deps.WAIT));
     }
-
-    // Serial tx submission for now until Optimism can stop rate-limiting us.
-    // for (const { id, account } of Object.values(this.positions)) {
-    //   await this.runKeeperTask(id, "liquidation", () =>
-    //     this.liquidateOrder(id, account)
-    //   );
-    // }
   }
 
   async runKeeperTask(id: string, taskLabel: string, cb: () => Promise<void>) {
