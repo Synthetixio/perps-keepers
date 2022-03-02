@@ -9,7 +9,6 @@
 		"build": "tsc",
 		"lint": "eslint \"src/**/*.js\" \"tools/**/*.js\" *.js",
 		"lint:fix": "eslint --fix \"src/**/*.js\" \"tools/**/*.js\" *.js",
-		"start-eth-node": "hardhat node --fork https://optimism-kovan.infura.io/v3/   ",
 		"postinstall": "patch-package"
 	},
 	"engines": {
