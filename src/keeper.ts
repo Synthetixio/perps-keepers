@@ -32,7 +32,7 @@ class Keeper {
       event: string;
       account: string;
       size: number;
-      marginRatio: number;
+      leverage: number;
     };
   };
   activeKeeperTasks: { [id: string]: boolean | undefined };
@@ -225,13 +225,24 @@ class Keeper {
           delete this.positions[account];
           return;
         }
+        //   PositionModified(
+        //     uint indexed id,
+        //     address indexed account,
+        //     uint margin,
+        //     int size,
+        //     int tradeSize,
+        //     uint lastPrice,
+        //     uint fundingIndex,
+        //     uint fee
+        // )
+        // This is what's avaiable, ideally we should calculate the liq price based on margin and size maybe?
 
         this.positions[account] = {
           id,
           event,
           account,
           size: wei(size).toNumber(),
-          marginRatio: wei(size)
+          leverage: wei(size)
             .mul(lastPrice)
             .div(margin)
             .toNumber(),
@@ -269,7 +280,7 @@ class Keeper {
     // Get current liquidation price for each position (including funding).
     const positions = orderBy(
       Object.values(this.positions),
-      ["marginRatio"],
+      ["leverage"],
       "desc"
     );
     for (const batch of chunk(positions, deps.BATCH_SIZE)) {

@@ -1,28 +1,28 @@
 import { BigNumber } from "@ethersproject/bignumber";
 import { wei } from "@synthetixio/wei";
 import Keeper from "./keeper";
-import * as metrics from "./metrics";
+
 const getMockPositions = () => ({
   ___ACCOUNT1__: {
     id: "1",
     event: "__OLD_EVENT__",
     account: "___ACCOUNT1__",
     size: 10,
-    marginRatio: 1,
+    leverage: 1,
   },
   ___ACCOUNT2__: {
     id: "1",
     event: "__OLD_EVENT__",
     account: "___ACCOUNT2__",
     size: 10,
-    marginRatio: 1,
+    leverage: 1,
   },
   ___ACCOUNT3__: {
     id: "1",
     event: "__OLD_EVENT__",
     account: "___ACCOUNT3__",
     size: 10,
-    marginRatio: 1,
+    leverage: 1,
   },
 });
 describe("keeper", () => {
@@ -142,7 +142,7 @@ describe("keeper", () => {
       event: "PositionModified",
       id: "1",
       size: 1,
-      marginRatio: 2,
+      leverage: 2,
     });
     /**
      * PositionModified to 0
@@ -173,7 +173,7 @@ describe("keeper", () => {
         event: "__OLD_EVENT__",
         account: "___ACCOUNT3__",
         size: 10,
-        marginRatio: 1,
+        leverage: 1,
       },
     });
   });
@@ -225,7 +225,16 @@ describe("keeper", () => {
       provider: jest.fn(),
     } as any;
     const keeper = new Keeper(arg);
-    const mockPosition = getMockPositions();
+    const mockPosition = {
+      ...getMockPositions(),
+      ___ACCOUNT4__: {
+        id: "4",
+        event: "__OLD_EVENT__",
+        account: "___ACCOUNT4__",
+        size: 10,
+        leverage: 2,
+      },
+    };
     keeper.positions = mockPosition;
     const runKeeperTaskSpy = jest.spyOn(keeper, "runKeeperTask");
     const liquidateOrderSpy = jest
@@ -244,40 +253,51 @@ describe("keeper", () => {
     expect(futuresOpenPositionsSetMock).toBeCalledTimes(1);
     expect(futuresOpenPositionsSetMock).toHaveBeenCalledWith(
       { market: "sUSD" },
-      3
+      4
     );
-    expect(runKeeperTaskSpy).toBeCalledTimes(3);
+    expect(runKeeperTaskSpy).toBeCalledTimes(4);
     expect(runKeeperTaskSpy).toHaveBeenNthCalledWith(
       1,
-      mockPosition["___ACCOUNT1__"].id,
+      mockPosition["___ACCOUNT4__"].id,
       "liquidation",
       expect.any(Function)
     );
     expect(runKeeperTaskSpy).toHaveBeenNthCalledWith(
       2,
-      mockPosition["___ACCOUNT2__"].id,
+      mockPosition["___ACCOUNT1__"].id,
       "liquidation",
       expect.any(Function)
     );
     expect(runKeeperTaskSpy).toHaveBeenNthCalledWith(
       3,
+      mockPosition["___ACCOUNT2__"].id,
+      "liquidation",
+      expect.any(Function)
+    );
+    expect(runKeeperTaskSpy).toHaveBeenNthCalledWith(
+      4,
       mockPosition["___ACCOUNT3__"].id,
       "liquidation",
       expect.any(Function)
     );
-    expect(liquidateOrderSpy).toBeCalledTimes(3);
+    expect(liquidateOrderSpy).toBeCalledTimes(4);
     expect(liquidateOrderSpy).toHaveBeenNthCalledWith(
       1,
+      mockPosition["___ACCOUNT4__"].id,
+      "___ACCOUNT4__"
+    );
+    expect(liquidateOrderSpy).toHaveBeenNthCalledWith(
+      2,
       mockPosition["___ACCOUNT1__"].id,
       "___ACCOUNT1__"
     );
     expect(liquidateOrderSpy).toHaveBeenNthCalledWith(
-      2,
+      3,
       mockPosition["___ACCOUNT2__"].id,
       "___ACCOUNT2__"
     );
     expect(liquidateOrderSpy).toHaveBeenNthCalledWith(
-      3,
+      4,
       mockPosition["___ACCOUNT3__"].id,
       "___ACCOUNT3__"
     );
