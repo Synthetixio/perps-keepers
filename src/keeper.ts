@@ -1,9 +1,7 @@
 import { Contract } from "@ethersproject/contracts";
-import { chunk } from "lodash";
-
+import { chunk, orderBy } from "lodash";
 import ethers, { BigNumber } from "ethers";
 import winston, { format, Logger, transports } from "winston";
-
 import snx from "synthetix";
 import * as metrics from "./metrics";
 import SignerPool from "./signer-pool";
@@ -11,6 +9,7 @@ import {
   TransactionReceipt,
   TransactionResponse,
 } from "@ethersproject/abstract-provider";
+import { wei } from "@synthetixio/wei";
 
 function isObjectOrErrorWithCode(x: unknown): x is { code: string } {
   if (typeof x !== "object") return false;
@@ -18,17 +17,22 @@ function isObjectOrErrorWithCode(x: unknown): x is { code: string } {
   return "code" in x;
 }
 
+const EventsOfInterest = {
+  PositionLiquidated: "PositionLiquidated",
+  PositionModified: "PositionModified",
+};
+
 class Keeper {
   baseAsset: string;
   futuresMarket: Contract;
-  exchangeRates: Contract;
   logger: Logger;
   positions: {
     [account: string]: {
       id: string;
       event: string;
       account: string;
-      size: BigNumber;
+      size: number;
+      leverage: number;
     };
   };
   activeKeeperTasks: { [id: string]: boolean | undefined };
@@ -41,13 +45,11 @@ class Keeper {
 
   constructor({
     futuresMarket,
-    exchangeRates,
     baseAsset,
     signerPool,
     provider,
   }: {
     futuresMarket: ethers.Contract;
-    exchangeRates: ethers.Contract;
     baseAsset: string;
     signerPool: SignerPool;
     provider:
@@ -58,7 +60,6 @@ class Keeper {
 
     // Contracts.
     this.futuresMarket = futuresMarket;
-    this.exchangeRates = exchangeRates;
 
     this.logger = winston.createLogger({
       level: "info",
@@ -98,14 +99,12 @@ class Keeper {
 
   static async create(
     {
-      proxyFuturesMarket: proxyFuturesMarketAddress,
-      exchangeRates: exchangeRatesAddress,
+      futuresMarketAddress,
       signerPool,
       provider,
       network,
     }: {
-      proxyFuturesMarket: string;
-      exchangeRates: string;
+      futuresMarketAddress: string;
       signerPool: SignerPool;
       network: string;
       provider:
@@ -121,22 +120,10 @@ class Keeper {
       useOvm: true,
     }).abi;
 
-    const ExchangeRatesABI = deps.snx.getSource({
-      network,
-      contract: "ExchangeRates",
-      useOvm: true,
-    }).abi;
-
     // Contracts.
     const futuresMarket = new deps.Contract(
-      proxyFuturesMarketAddress,
+      futuresMarketAddress,
       FuturesMarketABI,
-      provider
-    );
-
-    const exchangeRates = new deps.Contract(
-      exchangeRatesAddress,
-      ExchangeRatesABI,
       provider
     );
 
@@ -145,7 +132,6 @@ class Keeper {
 
     return new Keeper({
       futuresMarket,
-      exchangeRates,
       baseAsset,
       signerPool,
       provider,
@@ -167,12 +153,20 @@ class Keeper {
       }
     }
   }
-  async run({ fromBlock }: { fromBlock: string | number }) {
-    const events = await this.futuresMarket.queryFilter(
-      "*" as any, // TODO typescript doesn't like this as a string
-      fromBlock,
-      "latest"
+  async getEvents(fromBlock: string | number, toBlock: string | number) {
+    const nestedEvents = await Promise.all(
+      Object.values(EventsOfInterest).map(eventName => {
+        return this.futuresMarket.queryFilter(
+          this.futuresMarket.filters[eventName](),
+          fromBlock,
+          toBlock
+        );
+      })
     );
+    return nestedEvents.flat(1);
+  }
+  async run({ fromBlock }: { fromBlock: string | number }) {
+    const events = await this.getEvents(fromBlock, "latest");
     this.logger.log("info", `Rebuilding index from ${fromBlock} to latest`, {
       component: "Indexer",
     });
@@ -202,27 +196,11 @@ class Keeper {
 
   async processNewBlock(blockNumber: string) {
     this.blockTip = blockNumber;
-    const events = await this.futuresMarket.queryFilter(
-      "*" as any,
-      blockNumber,
-      blockNumber
-    );
-    const exchangeRateEvents = await this.exchangeRates.queryFilter(
-      "*" as any,
-      blockNumber,
-      blockNumber
-    );
+    const events = await this.getEvents(blockNumber, blockNumber);
 
     this.logger.log("debug", `\nProcessing block: ${blockNumber}`, {
       component: "Indexer",
     });
-    exchangeRateEvents
-      .filter(
-        ({ event, args }) => event === "RatesUpdated" || event === "RateDeleted"
-      )
-      .forEach(({ event }) => {
-        this.logger.log("debug", `ExchangeRates ${event}`);
-      });
 
     this.logger.log("debug", `${events.length} events to process`, {
       component: "Indexer",
@@ -233,8 +211,8 @@ class Keeper {
 
   async updateIndex(events: ethers.Event[]) {
     events.forEach(({ event, args }) => {
-      if (event === "PositionModified" && args) {
-        const { id, account, size } = args;
+      if (event === EventsOfInterest.PositionModified && args) {
+        const { id, account, size, margin, lastPrice } = args;
 
         this.logger.log(
           "info",
@@ -247,14 +225,31 @@ class Keeper {
           delete this.positions[account];
           return;
         }
+        //   PositionModified(
+        //     uint indexed id,
+        //     address indexed account,
+        //     uint margin,
+        //     int size,
+        //     int tradeSize,
+        //     uint lastPrice,
+        //     uint fundingIndex,
+        //     uint fee
+        // )
+        // This is what's avaiable, ideally we should calculate the liq price based on margin and size maybe?
 
         this.positions[account] = {
           id,
           event,
           account,
-          size,
+          size: wei(size).toNumber(),
+          leverage: wei(size)
+            .mul(lastPrice)
+            .div(margin)
+            .toNumber(),
         };
-      } else if (event === "PositionLiquidated" && args) {
+        return;
+      }
+      if (event === EventsOfInterest.PositionLiquidated && args) {
         const { account, liquidator } = args;
         this.logger.log(
           "info",
@@ -263,20 +258,12 @@ class Keeper {
         );
 
         delete this.positions[account];
-      } else if (event === "FundingRecomputed") {
-        // // Recompute liquidation price of all positions.
-        // await Object.values(this.positions).map(position => {
-        //   const includeFunding = true
-        //   const { price: liqPrice, invalid } = await this.futuresMarket.liquidationPrice(position.account, includeFunding)
-        //   if (invalid) return
-        //   this.positions[position.account].liqPrice = liqPrice
-        // })
-      } else if (!event || event.match(/OrderSubmitted/)) {
-      } else {
-        this.logger.log("info", `No handler for event ${event}`, {
-          component: "Indexer",
-        });
+        return;
       }
+
+      this.logger.info(`No handler for event ${event}`, {
+        component: "Indexer",
+      });
     });
   }
 
@@ -290,13 +277,12 @@ class Keeper {
       component: "Keeper",
     });
 
-    // Open positions.
-
-    // Sort positions by size and liquidationPrice.
-
     // Get current liquidation price for each position (including funding).
-    const positions = Object.values(this.positions);
-
+    const positions = orderBy(
+      Object.values(this.positions),
+      ["leverage"],
+      "desc"
+    );
     for (const batch of chunk(positions, deps.BATCH_SIZE)) {
       await Promise.all(
         batch.map(async position => {
@@ -308,13 +294,6 @@ class Keeper {
       );
       await new Promise((res, rej) => setTimeout(res, deps.WAIT));
     }
-
-    // Serial tx submission for now until Optimism can stop rate-limiting us.
-    // for (const { id, account } of Object.values(this.positions)) {
-    //   await this.runKeeperTask(id, "liquidation", () =>
-    //     this.liquidateOrder(id, account)
-    //   );
-    // }
   }
 
   async runKeeperTask(id: string, taskLabel: string, cb: () => Promise<void>) {

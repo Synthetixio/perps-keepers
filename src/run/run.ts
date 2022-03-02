@@ -94,21 +94,15 @@ export async function run(
   // Load contracts.
   const marketContracts = marketsArray.map(market =>
     snx.getTarget({
-      contract: `ProxyFuturesMarket${market.slice(1)}`,
+      contract: `FuturesMarket${market.slice(1)}`,
       network,
       useOvm: true,
     })
   );
-  const exchangeRates = snx.getTarget({
-    contract: "ExchangeRates",
-    network,
-    useOvm: true,
-  });
   for (const marketContract of marketContracts) {
     const keeper = await deps.Keeper.create({
       network,
-      proxyFuturesMarket: marketContract.address,
-      exchangeRates: exchangeRates.address,
+      futuresMarketAddress: marketContract.address,
       signerPool,
       provider,
     });

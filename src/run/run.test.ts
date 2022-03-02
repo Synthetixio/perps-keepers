@@ -82,13 +82,14 @@ describe("run", () => {
 
     expect(KeeperMockCreate).toBeCalledTimes(3);
     expect(KeeperMockCreate).toBeCalledWith({
-      exchangeRates: expect.any(String),
       network: "kovan-ovm-futures",
       provider: "__PROVIDER__",
-      proxyFuturesMarket: expect.any(String),
+      futuresMarketAddress: expect.any(String),
       signerPool: "__SIGNER_POOL__",
     });
     expect(KeeperMockRun).toBeCalledTimes(3);
-    expect(KeeperMockRun).toBeCalledWith({ fromBlock: DEFAULTS.fromBlock });
+    expect(KeeperMockRun).toBeCalledWith({
+      fromBlock: Number(DEFAULTS.fromBlock),
+    });
   });
 });

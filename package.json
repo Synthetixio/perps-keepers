@@ -9,7 +9,6 @@
 		"build": "tsc",
 		"lint": "eslint \"src/**/*.js\" \"tools/**/*.js\" *.js",
 		"lint:fix": "eslint --fix \"src/**/*.js\" \"tools/**/*.js\" *.js",
-		"start-eth-node": "hardhat node --fork https://optimism-kovan.infura.io/v3/   ",
 		"postinstall": "patch-package"
 	},
 	"engines": {
@@ -40,7 +39,7 @@
 		"prettier": "~1.19.1",
 		"pretty-error": "^3.0.4",
 		"prom-client": "^14.0.0",
-		"synthetix": "github:Synthetixio/synthetix#92effdb9f9bb6f29703acf465c114e9c94f2da68",
+		"synthetix": "github:Synthetixio/synthetix#8ab725f1256a6192444282446642fdb383c9e716",
 		"typescript": "4.5.2",
 		"winston": "^3.3.3"
 	},
