@@ -1,4 +1,5 @@
 import { BigNumber } from "@ethersproject/bignumber";
+import { wei } from "@synthetixio/wei";
 import Keeper from "./keeper";
 import * as metrics from "./metrics";
 const getMockPositions = () => ({
@@ -6,19 +7,22 @@ const getMockPositions = () => ({
     id: "1",
     event: "__OLD_EVENT__",
     account: "___ACCOUNT1__",
-    size: BigNumber.from(10),
+    size: 10,
+    marginRatio: 1,
   },
   ___ACCOUNT2__: {
     id: "1",
     event: "__OLD_EVENT__",
     account: "___ACCOUNT2__",
-    size: BigNumber.from(10),
+    size: 10,
+    marginRatio: 1,
   },
   ___ACCOUNT3__: {
     id: "1",
     event: "__OLD_EVENT__",
     account: "___ACCOUNT3__",
-    size: BigNumber.from(10),
+    size: 10,
+    marginRatio: 1,
   },
 });
 describe("keeper", () => {
@@ -29,9 +33,6 @@ describe("keeper", () => {
         if (arg.contract === "FuturesMarket") {
           return { abi: "__FuturesMarketContractAbi__" };
         }
-        if (arg.contract === "ExchangeRates") {
-          return { abi: "__ExchangeRatesAbi__" };
-        }
       }),
     };
     const baseAssetMock = jest.fn();
@@ -39,7 +40,6 @@ describe("keeper", () => {
 
     const args = {
       proxyFuturesMarket: "__FUTURES_MARKET__",
-      exchangeRates: "__EXCHANGE_RATES__",
       signerPool: "__SIGNER_POOL__",
       provider: "__PROVIDER__",
       network: "kovan",
@@ -48,31 +48,21 @@ describe("keeper", () => {
 
     const result = await Keeper.create(args, deps);
 
-    expect(snx.getSource).toBeCalledTimes(2);
+    expect(snx.getSource).toBeCalledTimes(1);
     expect(snx.getSource).toHaveBeenNthCalledWith(1, {
       network: args.network,
       contract: "FuturesMarket",
       useOvm: true,
     });
-    expect(snx.getSource).toHaveBeenNthCalledWith(2, {
-      network: args.network,
-      contract: "ExchangeRates",
-      useOvm: true,
-    });
 
-    expect(deps.Contract).toBeCalledTimes(2);
+    expect(deps.Contract).toBeCalledTimes(1);
     expect(deps.Contract).toHaveBeenNthCalledWith(
       1,
       "__FUTURES_MARKET__",
       "__FuturesMarketContractAbi__",
       "__PROVIDER__"
     );
-    expect(deps.Contract).toHaveBeenNthCalledWith(
-      2,
-      "__EXCHANGE_RATES__",
-      "__ExchangeRatesAbi__",
-      "__PROVIDER__"
-    );
+
     expect(baseAssetMock).toBeCalledTimes(1);
     expect(snx.fromBytes32).toBeCalledTimes(1);
     expect(result).toBeInstanceOf(Keeper);
@@ -93,7 +83,6 @@ describe("keeper", () => {
         },
         queryFilter: jest.fn().mockResolvedValue(["__EVENT__"]),
       },
-      exchangeRates: jest.fn(),
       signerPool: jest.fn(),
       provider: { on: jest.fn() },
     } as any;
@@ -128,7 +117,6 @@ describe("keeper", () => {
     const arg = {
       baseAsset: "sUSD",
       futuresMarket: jest.fn(),
-      exchangeRates: jest.fn(),
       signerPool: jest.fn(),
       provider: jest.fn(),
     } as any;
@@ -140,14 +128,21 @@ describe("keeper", () => {
     keeper.updateIndex([
       {
         event: "PositionModified",
-        args: { id: "1", account: "___ACCOUNT1__", size: BigNumber.from(20) },
+        args: {
+          id: "1",
+          account: "___ACCOUNT1__",
+          size: wei(1).toBN(),
+          lastPrice: wei(40000).toBN(),
+          margin: wei(20000).toBN(),
+        },
       } as any,
     ]);
     expect(keeper.positions["___ACCOUNT1__"]).toEqual({
       account: "___ACCOUNT1__",
       event: "PositionModified",
       id: "1",
-      size: BigNumber.from(20),
+      size: 1,
+      marginRatio: 2,
     });
     /**
      * PositionModified to 0
@@ -177,7 +172,8 @@ describe("keeper", () => {
         id: "1",
         event: "__OLD_EVENT__",
         account: "___ACCOUNT3__",
-        size: BigNumber.from(10),
+        size: 10,
+        marginRatio: 1,
       },
     });
   });
@@ -225,7 +221,6 @@ describe("keeper", () => {
     const arg = {
       baseAsset: "sUSD",
       futuresMarket: jest.fn(),
-      exchangeRates: jest.fn(),
       signerPool: jest.fn(),
       provider: jest.fn(),
     } as any;
@@ -294,7 +289,6 @@ describe("keeper", () => {
       futuresMarket: {
         canLiquidate: jest.fn().mockResolvedValue(false),
       },
-      exchangeRates: jest.fn(),
       signerPool: { withSigner: jest.fn() },
       provider: jest.fn(),
     } as any;
@@ -316,7 +310,6 @@ describe("keeper", () => {
           liquidatePosition: liquidatePositionMock,
         }),
       },
-      exchangeRates: jest.fn(),
       signerPool: { withSigner: (cb: any) => cb("__SIGNER__") },
       provider: jest.fn(),
     } as any;
