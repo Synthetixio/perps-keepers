@@ -99,16 +99,10 @@ export async function run(
       useOvm: true,
     })
   );
-  const exchangeRates = snx.getTarget({
-    contract: "ExchangeRates",
-    network,
-    useOvm: true,
-  });
   for (const marketContract of marketContracts) {
     const keeper = await deps.Keeper.create({
       network,
       proxyFuturesMarket: marketContract.address,
-      exchangeRates: exchangeRates.address,
       signerPool,
       provider,
     });

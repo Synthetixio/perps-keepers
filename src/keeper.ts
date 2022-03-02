@@ -25,7 +25,6 @@ const EventsOfInterest = {
 class Keeper {
   baseAsset: string;
   futuresMarket: Contract;
-  exchangeRates: Contract;
   logger: Logger;
   positions: {
     [account: string]: {
@@ -46,13 +45,11 @@ class Keeper {
 
   constructor({
     futuresMarket,
-    exchangeRates,
     baseAsset,
     signerPool,
     provider,
   }: {
     futuresMarket: ethers.Contract;
-    exchangeRates: ethers.Contract;
     baseAsset: string;
     signerPool: SignerPool;
     provider:
@@ -63,7 +60,6 @@ class Keeper {
 
     // Contracts.
     this.futuresMarket = futuresMarket;
-    this.exchangeRates = exchangeRates;
 
     this.logger = winston.createLogger({
       level: "info",
@@ -104,13 +100,11 @@ class Keeper {
   static async create(
     {
       proxyFuturesMarket: proxyFuturesMarketAddress,
-      exchangeRates: exchangeRatesAddress,
       signerPool,
       provider,
       network,
     }: {
       proxyFuturesMarket: string;
-      exchangeRates: string;
       signerPool: SignerPool;
       network: string;
       provider:
@@ -126,22 +120,10 @@ class Keeper {
       useOvm: true,
     }).abi;
 
-    const ExchangeRatesABI = deps.snx.getSource({
-      network,
-      contract: "ExchangeRates",
-      useOvm: true,
-    }).abi;
-
     // Contracts.
     const futuresMarket = new deps.Contract(
       proxyFuturesMarketAddress,
       FuturesMarketABI,
-      provider
-    );
-
-    const exchangeRates = new deps.Contract(
-      exchangeRatesAddress,
-      ExchangeRatesABI,
       provider
     );
 
@@ -150,7 +132,6 @@ class Keeper {
 
     return new Keeper({
       futuresMarket,
-      exchangeRates,
       baseAsset,
       signerPool,
       provider,
