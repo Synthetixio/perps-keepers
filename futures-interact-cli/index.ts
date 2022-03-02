@@ -137,8 +137,7 @@ const checkPos = async (arg: CheckPosArg) => {
     wallet.address
   );
   const [liqPrice] = await futuresMarketContract.liquidationPrice(
-    wallet.address,
-    false
+    wallet.address
   );
   const [
     _id,
