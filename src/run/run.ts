@@ -102,7 +102,7 @@ export async function run(
   for (const marketContract of marketContracts) {
     const keeper = await deps.Keeper.create({
       network,
-      proxyFuturesMarket: marketContract.address,
+      futuresMarketAddress: marketContract.address,
       signerPool,
       provider,
     });

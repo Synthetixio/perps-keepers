@@ -99,12 +99,12 @@ class Keeper {
 
   static async create(
     {
-      proxyFuturesMarket: proxyFuturesMarketAddress,
+      futuresMarketAddress,
       signerPool,
       provider,
       network,
     }: {
-      proxyFuturesMarket: string;
+      futuresMarketAddress: string;
       signerPool: SignerPool;
       network: string;
       provider:
@@ -122,7 +122,7 @@ class Keeper {
 
     // Contracts.
     const futuresMarket = new deps.Contract(
-      proxyFuturesMarketAddress,
+      futuresMarketAddress,
       FuturesMarketABI,
       provider
     );

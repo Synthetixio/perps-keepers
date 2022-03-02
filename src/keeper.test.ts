@@ -39,7 +39,7 @@ describe("keeper", () => {
     const Contract = jest.fn().mockReturnValue({ baseAsset: baseAssetMock });
 
     const args = {
-      proxyFuturesMarket: "__FUTURES_MARKET__",
+      futuresMarketAddress: "__FUTURES_MARKET__",
       signerPool: "__SIGNER_POOL__",
       provider: "__PROVIDER__",
       network: "kovan",
