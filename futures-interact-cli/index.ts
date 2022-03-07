@@ -67,10 +67,16 @@ const fundMargin = async (arg: FundPosArg) => {
   }
   console.log(`Transferring margin ($${fundAmountUsd})...`);
 
-  const x = await futuresMarketContract
+  const gasLimit = await futuresMarketContract
     .connect(wallet)
-    .transferMargin(wei(fundAmountUsd).toBN());
-  await x.wait();
+    .estimateGas.transferMargin(wei(fundAmountUsd).toBN(), {
+      from: wallet.address,
+    });
+
+  const tx = await futuresMarketContract
+    .connect(wallet)
+    .transferMargin(wei(fundAmountUsd).toBN(), { gasLimit });
+  await tx.wait();
   console.log("Margin Account funded 💰");
 };
 const modifyPosition = async (arg: ModifyPosArg) => {
