@@ -1,6 +1,6 @@
 import { Contract } from "@ethersproject/contracts";
 import { chunk, orderBy } from "lodash";
-import ethers, { BigNumber } from "ethers";
+import ethers, { BigNumber, utils } from "ethers";
 import winston, { format, Logger, transports } from "winston";
 import snx from "synthetix";
 import * as metrics from "./metrics";
@@ -127,8 +127,8 @@ class Keeper {
       provider
     );
 
-    let baseAsset = await futuresMarket.baseAsset();
-    baseAsset = deps.snx.fromBytes32(baseAsset);
+    const baseAssetBytes32 = await futuresMarket.baseAsset();
+    const baseAsset = utils.parseBytes32String(baseAssetBytes32);
 
     return new Keeper({
       futuresMarket,
@@ -156,6 +156,7 @@ class Keeper {
   async getEvents(fromBlock: string | number, toBlock: string | number) {
     const nestedEvents = await Promise.all(
       Object.values(EventsOfInterest).map(eventName => {
+        // For some reason query filters logs out stuff to the console
         return this.futuresMarket.queryFilter(
           this.futuresMarket.filters[eventName](),
           fromBlock,

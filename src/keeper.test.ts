@@ -25,17 +25,19 @@ const getMockPositions = () => ({
     leverage: 1,
   },
 });
+const sBTCBytes32 =
+  "0x7342544300000000000000000000000000000000000000000000000000000000";
+const baseAssetMock = jest.fn().mockReturnValue(sBTCBytes32);
 describe("keeper", () => {
   test("create works", async () => {
     const snx = {
-      fromBytes32: jest.fn(),
       getSource: jest.fn().mockImplementation(arg => {
         if (arg.contract === "FuturesMarket") {
           return { abi: "__FuturesMarketContractAbi__" };
         }
       }),
     };
-    const baseAssetMock = jest.fn();
+
     const Contract = jest.fn().mockReturnValue({ baseAsset: baseAssetMock });
 
     const args = {
@@ -64,7 +66,6 @@ describe("keeper", () => {
     );
 
     expect(baseAssetMock).toBeCalledTimes(1);
-    expect(snx.fromBytes32).toBeCalledTimes(1);
     expect(result).toBeInstanceOf(Keeper);
   });
   test("run", async () => {
@@ -75,7 +76,7 @@ describe("keeper", () => {
       .fn()
       .mockReturnValue("__PositionModified_EVENT_FILTER__");
     const arg = {
-      baseAsset: "sUSD",
+      baseAsset: "sBTC",
       futuresMarket: {
         filters: {
           PositionLiquidated: PositionLiquidatedMock,
@@ -115,7 +116,7 @@ describe("keeper", () => {
   });
   test("updateIndex", () => {
     const arg = {
-      baseAsset: "sUSD",
+      baseAsset: "sBTC",
       futuresMarket: jest.fn(),
       signerPool: jest.fn(),
       provider: jest.fn(),
