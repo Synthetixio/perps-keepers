@@ -54,8 +54,8 @@ const ethersSetup = ({
 };
 
 const fundMargin = async (arg: FundPosArg) => {
-  const { fundAmountUsd, network } = arg;
-  const { wallet, futuresMarketContract, SynthsUSD } = ethersSetup(arg);
+  const { fundAmountUsd } = arg;
+  const { wallet, futuresMarketContract } = ethersSetup(arg);
   const [remainingMargin] = await futuresMarketContract.remainingMargin(
     wallet.address
   );
@@ -66,6 +66,7 @@ const fundMargin = async (arg: FundPosArg) => {
     return;
   }
   console.log(`Transferring margin ($${fundAmountUsd})...`);
+
   const x = await futuresMarketContract
     .connect(wallet)
     .transferMargin(wei(fundAmountUsd).toBN());
@@ -76,9 +77,6 @@ const modifyPosition = async (arg: ModifyPosArg) => {
   const { wallet, futuresMarketContract } = ethersSetup(arg);
   const { positionAmount, asset } = arg;
 
-  const [remainingMargin] = await futuresMarketContract.remainingMargin(
-    wallet.address
-  );
   console.log(`Modifying pos for asset ${asset} ${positionAmount}...`);
 
   const positionSize = wei(positionAmount);
