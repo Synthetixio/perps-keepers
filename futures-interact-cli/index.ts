@@ -39,6 +39,7 @@ const ethersSetup = ({
     console.log(
       `${contractName} (${network}): ${futuresMarketContract.address}`
     );
+    console.log(`Wallet: ${wallet.address}`);
     hasLoggedEthersSetup = true;
   }
   return {
