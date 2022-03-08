@@ -23,6 +23,7 @@ Any variables specified in `.env` at the project root will be loaded using [dote
 **Required variables:**
 
 - **`ETH_HDWALLET_MNEMONIC`**: the HD wallet mnemonic used to unlock the bot's wallet. The bot does not support private keys.
+- **`PROVIDER_URL`**: Provider url, can be JSON RPC or Websocket
 
 **Optional variables used for testing on a local fork (see Futures interact CLI section):**
 
@@ -38,7 +39,6 @@ Run the keeper
 
 Options:
   -b, --from-block <value>    Rebuild the keeper index from a starting block, before initiating keeper actions. (default: "latest")
-  -p, --provider-url <value>  Ethereum RPC URL (default: "ws://localhost:8546")
   --network <value>           Ethereum network to connect to. (default: "kovan-ovm-futures")
   -n, --num-accounts <value>  Number of accounts from the HD wallet to use for parallel tx submission. Improves performance. (default: 10)
   -m, --markets <value>       Runs keeper operations for the specified markets, delimited by a comma. Supported markets: sETH, sBTC, sLINK. (default:

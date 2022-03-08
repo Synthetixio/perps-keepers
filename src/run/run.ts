@@ -27,7 +27,6 @@ export const DEFAULTS = {
 export async function run(
   {
     fromBlockRaw = DEFAULTS.fromBlock,
-    providerUrl = DEFAULTS.providerUrl,
     numAccounts = DEFAULTS.numAccounts,
     markets = DEFAULTS.markets,
     network = DEFAULTS.network,
@@ -50,6 +49,7 @@ export async function run(
       "ETH_HDWALLET_MNEMONIC environment variable is not configured."
     );
   }
+  const providerUrl = process.env.PROVIDER_URL || DEFAULTS.providerUrl;
   // Get addresses.
   const marketsArray = markets.trim().split(",");
   // Verify markets.
@@ -119,11 +119,6 @@ export const cmd = (program: Command) =>
       "-b, --from-block <value>",
       "Rebuild the keeper index from a starting block, before initiating keeper actions.",
       DEFAULTS.fromBlock
-    )
-    .option(
-      "-p, --provider-url <value>",
-      "Ethereum RPC URL",
-      DEFAULTS.providerUrl
     )
     .option(
       "--network <value>",
