@@ -92,7 +92,13 @@ Prometheus is a pull-based instrumentation system. We must run a separate Promet
 
 ## Deployment notes
 
-TODO
+A simple deployment script is provided: `deploy.sh`. It probably make sense for you to customize it for your own needs, but it serves as a starting point/ example.
+
+We expect that you have node v16, docker and docker-compose installed on the server. If you do,
+Make sure the `.env` and `prometheus/.env` is configured and run:
+`sh deploy ~/.ssh/my-ssh-key user@ip /server/path/`
+
+This will upload the code, install npm dependencies, compile typescript, start the keeper **with default arguments** and start the metric server.
 
 ## Future improvements
 
