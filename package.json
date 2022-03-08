@@ -46,10 +46,13 @@
 	"devDependencies": {
 		"@nomiclabs/hardhat-ethers": "2.0.4",
 		"@nomiclabs/hardhat-truffle5": "2.0.3",
+		"@types/chai": "4.3.0",
 		"@types/express": "4.17.13",
 		"@types/jest": "27.0.3",
 		"@types/lodash": "4.14.177",
+		"@types/mocha": "9.1.0",
 		"@types/node": "16.11.12",
+		"chai": "4.3.6",
 		"hardhat": "2.8.2",
 		"jest": "27.4.3",
 		"ts-jest": "27.1.1",
