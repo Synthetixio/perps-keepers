@@ -4,7 +4,7 @@
 	"main": "src/index.js",
 	"license": "MIT",
 	"scripts": {
-		"start": "npm run build && pm2 start build/index.js -- run",
+		"start": "pm2 start build/src/index.js -- run",
 		"dev": "ts-node-dev --respawn --transpile-only src/index.ts",
 		"build": "tsc",
 		"lint": "eslint \"src/**/*.js\" \"tools/**/*.js\" *.js",
