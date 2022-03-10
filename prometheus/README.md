@@ -3,7 +3,7 @@
 A dockerised Prometheus setup designed to scrape and upload keeper metrics (uptime, liquidated positions) to a remote Prometheus backend.
 
 1.  Prometheus is started on `localhost:9090`.
-2.  Keeper is started, and exposes a scrapable metrics endpoint at `http://localhost:8080`.
+2.  Keeper is started, and exposes a scrapable metrics endpoint at `http://localhost:8084`.
 3.  Prometheus scrapes the keeper metrics endpoint periodically (currently every 1s).
 4.  Using the remote write feature, Prometheus writes these metrics to a remote Prometheus backend - this is configured to be a Grafana cloud instance.
 
