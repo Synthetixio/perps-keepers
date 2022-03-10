@@ -70,7 +70,7 @@ export const getProvider = (
 
 const WS_PROVIDER_TIMEOUT = 2 * 60 * 1000;
 const HTTP_PROVIDER_TIMEOUT = WS_PROVIDER_TIMEOUT;
-const HEARTBEAT_INTERVAL = 10000;
+const HEARTBEAT_INTERVAL = 60000;
 export const monitorProvider = (
   provider: providers.JsonRpcProvider | providers.WebSocketProvider,
   deps = {
