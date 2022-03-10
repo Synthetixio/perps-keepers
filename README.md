@@ -24,6 +24,8 @@ Any variables specified in `.env` at the project root will be loaded using [dote
 
 - **`ETH_HDWALLET_MNEMONIC`**: the HD wallet mnemonic used to unlock the bot's wallet. The bot does not support private keys.
 - **`PROVIDER_URL`**: Provider url, can be JSON RPC or Websocket
+  **Optional variables**
+- **`NETWORK`**: The default network to be used if not specified from CLI.
 
 **Optional variables used for testing on a local fork (see Futures interact CLI section):**
 

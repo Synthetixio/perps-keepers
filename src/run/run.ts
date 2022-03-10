@@ -21,7 +21,7 @@ export const DEFAULTS = {
   providerUrl: "http://localhost:8545",
   numAccounts: "1",
   markets: futuresMarkets.map(market => market.asset).join(","),
-  network: "kovan-ovm-futures",
+  network: process.env.NETWORK || "kovan-ovm-futures",
 };
 
 export async function run(
@@ -120,11 +120,7 @@ export const cmd = (program: Command) =>
       "Rebuild the keeper index from a starting block, before initiating keeper actions.",
       DEFAULTS.fromBlock
     )
-    .option(
-      "--network <value>",
-      "Ethereum network to connect to.",
-      "kovan-ovm-futures"
-    )
+    .option("--network <value>", "Ethereum network to connect to.")
     .option(
       "-n, --num-accounts <value>",
       "Number of accounts from the HD wallet to use for parallel tx submission. Improves performance.",
