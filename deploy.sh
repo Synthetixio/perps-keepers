@@ -21,7 +21,6 @@ confirm() {
 
 confirm || exit 0
 
-echo "am I here"
 ssh -i "$PATH_TO_PRIVATE_KEY" "$USER_AT_IP" mkdir -p "$SERVER_PATH"
 echo "Uploading files"
 rsync --exclude 'node_modules' --exclude 'build' --exclude 'coverage' --exclude 'cache' -e "ssh -i $1" -Pav "$PWD" "$USER_AT_IP":"$SERVER_PATH"
