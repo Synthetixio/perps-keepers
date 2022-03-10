@@ -17,7 +17,7 @@ const futuresMarkets: { asset: string }[] = snx.getFuturesMarkets({
 });
 
 export const DEFAULTS = {
-  fromBlock: "1",
+  fromBlock: process.env.FROM_BLOCK || "1",
   providerUrl: "http://localhost:8545",
   numAccounts: "1",
   markets: futuresMarkets.map(market => market.asset).join(","),
