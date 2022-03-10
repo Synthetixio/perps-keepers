@@ -81,7 +81,7 @@ export function trackKeeperBalance(
   deps = {
     keeperEthBalance,
     keeperSusdBalance,
-    intervalTimeMs: 2500,
+    intervalTimeMs: 60000,
   }
 ) {
   setInterval(async () => {
