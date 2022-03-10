@@ -1,5 +1,4 @@
 require("dotenv").config();
-import { gray } from "chalk";
 import { NonceManager } from "@ethersproject/experimental";
 import snx from "synthetix";
 import Keeper from "../keeper";
@@ -9,6 +8,7 @@ import { getProvider, monitorProvider } from "../provider";
 import { Command } from "commander";
 import createWallets from "./createWallets";
 import logAndStartTrackingBalances from "./logAndStartTrackingBalances";
+import { createLogger } from "../logging";
 
 const futuresMarkets: { asset: string }[] = snx.getFuturesMarkets({
   // TODO: change this to mainnet when it's eventually deployed
@@ -24,6 +24,7 @@ export const DEFAULTS = {
   network: process.env.NETWORK || "kovan-ovm-futures",
 };
 
+const logger = createLogger({ componentName: "Run" });
 export async function run(
   {
     fromBlockRaw = DEFAULTS.fromBlock,
@@ -68,15 +69,16 @@ export async function run(
   // Setup.
   const provider = deps.getProvider(providerUrl);
   deps.monitorProvider(provider);
-  console.log(gray(`Connected to Ethereum node at ${providerUrl}`));
+
+  logger.info(`Connected to Ethereum node at ${providerUrl}`);
 
   let unWrappedSigners = deps.createWallets({
     provider,
     mnemonic: deps.ETH_HDWALLET_MNEMONIC,
     num: parseInt(numAccounts),
   });
-  console.log(
-    gray`Using ${unWrappedSigners.length} account(s) to submit transactions:`
+  logger.info(
+    `Using ${unWrappedSigners.length} account(s) to submit transactions:`
   );
   const signers = await Promise.all(
     unWrappedSigners.map(async (signer, i) => {
