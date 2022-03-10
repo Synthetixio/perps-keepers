@@ -1,9 +1,11 @@
 import { formatEther } from "@ethersproject/units";
-import { gray, yellow } from "chalk";
+import { yellow } from "chalk";
 import { providers, Signer } from "ethers";
+import { createLogger } from "../logging";
 import { trackKeeperBalance } from "../metrics";
 import { getSynthetixContracts } from "../utils";
 
+const logger = createLogger({ componentName: "logAndStartTrackingBalances" });
 async function logAndStartTrackingBalances(
   {
     network,
@@ -52,7 +54,7 @@ async function logAndStartTrackingBalances(
       })
       .join(", ");
 
-    console.log(gray(`Account #${i}: ${address} (${balanceText})`));
+    logger.info(`Account #${i}: ${address} (${balanceText})`);
     deps.trackKeeperBalance(signers[i], SynthsUSD);
   });
 }

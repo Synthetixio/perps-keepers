@@ -24,6 +24,9 @@ Any variables specified in `.env` at the project root will be loaded using [dote
 
 - **`ETH_HDWALLET_MNEMONIC`**: the HD wallet mnemonic used to unlock the bot's wallet. The bot does not support private keys.
 - **`PROVIDER_URL`**: Provider url, can be JSON RPC or Websocket
+  **Optional variables**
+- **`NETWORK`**: The default network to be used, if not specified from CLI.
+- **`FROM_BLOCK`**: The default block number to index from, if not specified from CLI.
 
 **Optional variables used for testing on a local fork (see Futures interact CLI section):**
 
@@ -92,7 +95,16 @@ Prometheus is a pull-based instrumentation system. We must run a separate Promet
 
 ## Deployment notes
 
-TODO
+A simple deployment script is provided: `deploy.sh`. It probably make sense for you to customize it for your own needs, but it serves as a starting point/ example.
+
+We expect that you have node v16, docker and docker-compose installed on the server. If you do,
+Make sure the `.env` and `prometheus/.env` is configured and run:
+`sh deploy.sh ~/.ssh/my-ssh-key user@ip /server/path/`
+
+This will upload the code, install npm dependencies, compile typescript, start the keeper **with default arguments** and start the metric server.
+
+You can stop the keeper by running:
+`sh stop-keeper-on-server`
 
 ## Future improvements
 
