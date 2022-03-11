@@ -1,3 +1,4 @@
+// import { NetworkId, synthetix } from "@synthetixio/contracts-interface";
 import {
   Contract,
   ContractInterface,
@@ -8,8 +9,6 @@ import {
 import snx from "synthetix";
 const { getSource, getTarget } = snx;
 
-// This is lifted from the synthetix-js package, since the package doesn't
-// support local-ovm/kovan-ovm-futures artifacts, which impeded testing.
 export const getSynthetixContracts = ({
   network,
   signer,
@@ -21,6 +20,10 @@ export const getSynthetixContracts = ({
   provider: providers.JsonRpcProvider | providers.WebSocketProvider;
   useOvm: boolean;
 }) => {
+  // Once @synthetixio/contracts-interface has the new contracts/deployment change implementation to this:
+  // const networkId = parseInt(network) as NetworkId;
+  // const snx = synthetix({ networkId, useOvm: true, provider, signer });
+  // return snx.contracts;
   const sources: { [key: string]: { abi: ContractInterface } } = getSource({
     network,
     useOvm,
