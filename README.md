@@ -104,7 +104,7 @@ Make sure the `.env` and `prometheus/.env` is configured and run:
 This will upload the code, install npm dependencies, compile typescript, start the keeper **with default arguments** and start the metric server.
 
 You can stop the keeper by running:
-`sh stop-keeper-on-server`
+`sh ./stop-keeper-on-server.sh ~/.ssh/my-ssh-key user@ip`
 
 ## Future improvements
 
