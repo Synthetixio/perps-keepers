@@ -12,7 +12,7 @@ import { createLogger } from "../logging";
 
 const futuresMarkets: { asset: string }[] = snx.getFuturesMarkets({
   // TODO: change this to mainnet when it's eventually deployed
-  network: "kovan-ovm-futures",
+  network: "kovan-ovm",
   useOvm: true,
 });
 
@@ -21,7 +21,7 @@ export const DEFAULTS = {
   providerUrl: "http://localhost:8545",
   numAccounts: "1",
   markets: futuresMarkets.map(market => market.asset).join(","),
-  network: process.env.NETWORK || "kovan-ovm-futures",
+  network: process.env.NETWORK || "kovan-ovm",
 };
 
 const logger = createLogger({ componentName: "Run" });

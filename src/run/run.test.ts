@@ -82,7 +82,7 @@ describe("run", () => {
 
     expect(KeeperMockCreate).toBeCalledTimes(3);
     expect(KeeperMockCreate).toBeCalledWith({
-      network: "kovan-ovm-futures",
+      network: "kovan-ovm",
       provider: "__PROVIDER__",
       futuresMarketAddress: expect.any(String),
       signerPool: "__SIGNER_POOL__",
