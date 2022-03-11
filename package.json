@@ -39,7 +39,7 @@
 		"prettier": "~1.19.1",
 		"pretty-error": "^3.0.4",
 		"prom-client": "^14.0.0",
-		"synthetix": "github:Synthetixio/synthetix#8ab725f1256a6192444282446642fdb383c9e716",
+		"synthetix": "github:Synthetixio/synthetix#f938cb54737225214254ae10d0220e5649a36598",
 		"typescript": "4.5.2",
 		"winston": "^3.3.3"
 	},
