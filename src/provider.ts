@@ -58,12 +58,6 @@ export const getProvider = (
       // pollingInterval: 50,  pollingInterval is not a valid option
       timeout: HTTP_PROVIDER_TIMEOUT,
     });
-    // provider = new ethers.providers.InfuraProvider({
-    //     url: "https://optimism-kovan.infura.io/v3/***REMOVED***",
-    //     network: "optimism-kovan",
-    //     pollingInterval: 50,
-    //     timeout: 1000 * 60 // 1 minute
-    // });
   }
   throw new Error("Unknown provider protocol scheme - " + url.protocol);
 };
