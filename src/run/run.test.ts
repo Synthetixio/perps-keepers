@@ -27,6 +27,11 @@ describe("run", () => {
     const KeeperMockCreate = jest.fn().mockReturnValue({ run: KeeperMockRun });
     const metricsRunServerMock = jest.fn();
     const logAndStartTrackingBalancesMock = jest.fn();
+    const getSynthetixContractsMock = jest.fn().mockReturnValue({
+      FuturesMarketBTC: "BTC_CONTRACT",
+      FuturesMarketETH: "ETH_CONTRACT",
+      FuturesMarketLINK: "LINK_CONTRACT",
+    });
 
     const deps = {
       ETH_HDWALLET_MNEMONIC: "fake words",
@@ -45,12 +50,13 @@ describe("run", () => {
         { asset: "sETH" },
         { asset: "sLINK" },
       ],
+      getSynthetixContracts: getSynthetixContractsMock,
     } as any;
 
     await run({ numAccounts: "1", markets: "sBTC,sETH,sLINK" }, deps);
 
     expect(metricsRunServerMock).toBeCalledTimes(1);
-
+    expect(getSynthetixContractsMock).toBeCalled();
     expect(getProviderMock).toBeCalledTimes(1);
     expect(getProviderMock).toBeCalledWith(DEFAULTS.providerUrl);
     expect(providerMonitorMock).toBeCalledTimes(1);
@@ -84,7 +90,7 @@ describe("run", () => {
     expect(KeeperMockCreate).toBeCalledWith({
       network: "kovan-ovm",
       provider: "__PROVIDER__",
-      futuresMarketAddress: expect.any(String),
+      futuresMarket: expect.any(String), // The mock just return a string, in real life this would be the contract
       signerPool: "__SIGNER_POOL__",
     });
     expect(KeeperMockRun).toBeCalledTimes(3);

@@ -9,6 +9,7 @@ import { Command } from "commander";
 import createWallets from "./createWallets";
 import logAndStartTrackingBalances from "./logAndStartTrackingBalances";
 import { createLogger } from "../logging";
+import { getSynthetixContracts } from "../utils";
 
 const futuresMarkets: { asset: string }[] = snx.getFuturesMarkets({
   // TODO: change this to mainnet when it's eventually deployed
@@ -43,6 +44,7 @@ export async function run(
     logAndStartTrackingBalances,
     runMetricServer,
     futuresMarkets,
+    getSynthetixContracts,
   }
 ) {
   if (!deps.ETH_HDWALLET_MNEMONIC) {
@@ -94,17 +96,19 @@ export async function run(
   await deps.logAndStartTrackingBalances({ network, provider, signers });
 
   // Load contracts.
-  const marketContracts = marketsArray.map(market =>
-    snx.getTarget({
-      contract: `FuturesMarket${market.slice(1)}`,
-      network,
-      useOvm: true,
-    })
+
+  const marketContracts = marketsArray.map(
+    market =>
+      deps.getSynthetixContracts({
+        network,
+        provider,
+        useOvm: true,
+      })[`FuturesMarket${market.slice(1)}`]
   );
   for (const marketContract of marketContracts) {
     const keeper = await deps.Keeper.create({
       network,
-      futuresMarketAddress: marketContract.address,
+      futuresMarket: marketContract,
       signerPool,
       provider,
     });

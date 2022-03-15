@@ -2,7 +2,6 @@ import { Contract } from "@ethersproject/contracts";
 import { chunk, orderBy } from "lodash";
 import ethers, { BigNumber, utils } from "ethers";
 import winston, { format, Logger, transports } from "winston";
-import snx from "synthetix";
 import * as metrics from "./metrics";
 import SignerPool from "./signer-pool";
 import {
@@ -97,36 +96,18 @@ class Keeper {
     this.signerPool = signerPool;
   }
 
-  static async create(
-    {
-      futuresMarketAddress,
-      signerPool,
-      provider,
-      network,
-    }: {
-      futuresMarketAddress: string;
-      signerPool: SignerPool;
-      network: string;
-      provider:
-        | ethers.providers.JsonRpcProvider
-        | ethers.providers.WebSocketProvider;
-    },
-    deps = { snx, Contract }
-  ) {
-    // Get ABIs.
-    const FuturesMarketABI = deps.snx.getSource({
-      network,
-      contract: "FuturesMarket",
-      useOvm: true,
-    }).abi;
-
-    // Contracts.
-    const futuresMarket = new deps.Contract(
-      futuresMarketAddress,
-      FuturesMarketABI,
-      provider
-    );
-
+  static async create({
+    futuresMarket,
+    signerPool,
+    provider,
+  }: {
+    futuresMarket: Contract;
+    signerPool: SignerPool;
+    network: string;
+    provider:
+      | ethers.providers.JsonRpcProvider
+      | ethers.providers.WebSocketProvider;
+  }) {
     const baseAssetBytes32 = await futuresMarket.baseAsset();
     const baseAsset = utils.parseBytes32String(baseAssetBytes32);
 
