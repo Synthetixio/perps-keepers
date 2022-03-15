@@ -3,8 +3,10 @@ version: '3'
 services:
   prometheus:
     build: .
-    ports:
-     - 9090:9090
+    # Eventhough exposing ports could be useful for discoverablilty
+    # Not exposing will make it easier to have two scrapers running
+    # ports:
+    #  - 9090:9090
     environment:
      - PROM_REMOTE_WRITE_HOST
      - PROM_REMOTE_WRITE_USERNAME
