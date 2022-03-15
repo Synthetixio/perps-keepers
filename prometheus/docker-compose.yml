@@ -10,5 +10,6 @@ services:
      - PROM_REMOTE_WRITE_USERNAME
      - PROM_REMOTE_WRITE_PASSWORD
      - PROM_ENDPOINT_TO_SCRAPE
+     - PROM_JOB_NAME
     extra_hosts:
     - "host.docker.internal:host-gateway"
