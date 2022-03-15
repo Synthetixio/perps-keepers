@@ -1,3 +1,18 @@
+#!/bin/sh
+set -ex
+
+
+if [ -z $1 ] ; then
+    echo "PATH_TO_PRIVATE_KEY required!" && exit 1;
+fi
+
+if [ -z $2 ] ; then
+    echo "USER:IP parameter required!" && exit 1;
+fi
+if [ -z $3 ] ; then
+    echo "SERVER_PATH parameter required!" && exit 1;
+fi
+
 PATH_TO_PRIVATE_KEY=$1
 USER_AT_IP=$2
 SERVER_PATH=$3
@@ -23,7 +38,7 @@ confirm || exit 0
 
 ssh -i "$PATH_TO_PRIVATE_KEY" "$USER_AT_IP" mkdir -p "$SERVER_PATH"
 echo "Uploading files"
-rsync --exclude 'node_modules' --exclude 'build' --exclude 'coverage' --exclude 'cache' -e "ssh -i $1" -Pav "$PWD" "$USER_AT_IP":"$SERVER_PATH"
+rsync --exclude 'node_modules' --exclude 'build' --exclude 'coverage' --exclude 'cache' -e "ssh -i $PATH_TO_PRIVATE_KEY" -Pav "$PWD" "$USER_AT_IP":"$SERVER_PATH"
 
 echo "Installing deps, transpiling typescript and starting keeper"
 ssh -i "$PATH_TO_PRIVATE_KEY" "$USER_AT_IP" "cd $LOCAL_FOLDER_NAME;npm i;npm run build;npm run start"
