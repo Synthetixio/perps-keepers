@@ -5,7 +5,7 @@
 	"license": "MIT",
 	"scripts": {
 		"start": "pm2 start build/src/index.js --name futures-keeper -- run",
-		"dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+		"dev": "ts-node-dev --respawn --transpile-only src/index.ts run",
 		"build": "tsc",
 		"lint": "eslint \"src/**/*.js\" \"tools/**/*.js\" *.js",
 		"lint:fix": "eslint --fix \"src/**/*.js\" \"tools/**/*.js\" *.js",
@@ -17,6 +17,7 @@
 	"dependencies": {
 		"@ethersproject/abstract-provider": "5.5.1",
 		"@ethersproject/experimental": "^5.3.0",
+		"@synthetixio/contracts-interface": "2.64.0-alpha",
 		"@synthetixio/wei": "2.57.1",
 		"chalk": "^4.1.1",
 		"commander": "9.0.0",
@@ -39,7 +40,7 @@
 		"prettier": "~1.19.1",
 		"pretty-error": "^3.0.4",
 		"prom-client": "^14.0.0",
-		"synthetix": "github:Synthetixio/synthetix#8ab725f1256a6192444282446642fdb383c9e716",
+		"synthetix": "v2.64.0-alpha",
 		"typescript": "4.5.2",
 		"winston": "^3.3.3"
 	},

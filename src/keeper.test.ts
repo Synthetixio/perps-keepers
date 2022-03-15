@@ -30,40 +30,14 @@ const sBTCBytes32 =
 const baseAssetMock = jest.fn().mockReturnValue(sBTCBytes32);
 describe("keeper", () => {
   test("create works", async () => {
-    const snx = {
-      getSource: jest.fn().mockImplementation(arg => {
-        if (arg.contract === "FuturesMarket") {
-          return { abi: "__FuturesMarketContractAbi__" };
-        }
-      }),
-    };
-
-    const Contract = jest.fn().mockReturnValue({ baseAsset: baseAssetMock });
-
     const args = {
-      futuresMarketAddress: "__FUTURES_MARKET__",
+      futuresMarket: { baseAsset: baseAssetMock },
       signerPool: "__SIGNER_POOL__",
       provider: "__PROVIDER__",
       network: "kovan",
     } as any;
-    const deps = { snx, Contract } as any;
 
-    const result = await Keeper.create(args, deps);
-
-    expect(snx.getSource).toBeCalledTimes(1);
-    expect(snx.getSource).toHaveBeenNthCalledWith(1, {
-      network: args.network,
-      contract: "FuturesMarket",
-      useOvm: true,
-    });
-
-    expect(deps.Contract).toBeCalledTimes(1);
-    expect(deps.Contract).toHaveBeenNthCalledWith(
-      1,
-      "__FUTURES_MARKET__",
-      "__FuturesMarketContractAbi__",
-      "__PROVIDER__"
-    );
+    const result = await Keeper.create(args);
 
     expect(baseAssetMock).toBeCalledTimes(1);
     expect(result).toBeInstanceOf(Keeper);
