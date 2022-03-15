@@ -11,17 +11,10 @@ import logAndStartTrackingBalances from "./logAndStartTrackingBalances";
 import { createLogger } from "../logging";
 import { getSynthetixContracts } from "../utils";
 
-const futuresMarkets: { asset: string }[] = snx.getFuturesMarkets({
-  // TODO: change this to mainnet when it's eventually deployed
-  network: "kovan-ovm",
-  useOvm: true,
-});
-
 export const DEFAULTS = {
   fromBlock: process.env.FROM_BLOCK || "1",
   providerUrl: "http://localhost:8545",
   numAccounts: "1",
-  markets: futuresMarkets.map(market => market.asset).join(","),
   network: process.env.NETWORK || "kovan-ovm",
 };
 
@@ -30,7 +23,7 @@ export async function run(
   {
     fromBlockRaw = DEFAULTS.fromBlock,
     numAccounts = DEFAULTS.numAccounts,
-    markets = DEFAULTS.markets,
+    markets = "",
     network = DEFAULTS.network,
   } = {},
   deps = {
@@ -43,7 +36,6 @@ export async function run(
     createWallets,
     logAndStartTrackingBalances,
     runMetricServer,
-    futuresMarkets,
     getSynthetixContracts,
   }
 ) {
@@ -52,13 +44,18 @@ export async function run(
       "ETH_HDWALLET_MNEMONIC environment variable is not configured."
     );
   }
+  const allFuturesMarkets = snx
+    .getFuturesMarkets({
+      network,
+      useOvm: true,
+    })
+    .map(({ asset }) => asset);
+
   const providerUrl = process.env.PROVIDER_URL || DEFAULTS.providerUrl;
-  // Get addresses.
-  const marketsArray = markets.trim().split(",");
+  const marketsArray = markets ? markets.trim().split(",") : allFuturesMarkets;
   // Verify markets.
-  const supportedAssets = deps.futuresMarkets.map(({ asset }) => asset);
   marketsArray.forEach(asset => {
-    if (!supportedAssets.includes(asset)) {
+    if (!allFuturesMarkets.includes(asset)) {
       throw new Error(`No futures market for currencyKey: ${asset}`);
     }
   });
@@ -134,7 +131,6 @@ export const cmd = (program: Command) =>
     )
     .option(
       "-m, --markets <value>",
-      "Runs keeper operations for the specified markets, delimited by a comma. Supported markets: sETH, sBTC, sLINK.",
-      DEFAULTS.markets
+      "Runs keeper operations for the specified markets, delimited by a comma. Default all live markets."
     )
     .action(arg => run(arg));
