@@ -8,35 +8,37 @@ import { BigNumber, ethers } from "ethers";
 const keeperEthBalance = new client.Gauge({
   name: "keeper_eth_balance",
   help: "The ETH balance of the keeper",
-  labelNames: ["account"],
+  labelNames: ["account", "network"],
 });
 const keeperSusdBalance = new client.Gauge({
   name: "keeper_sUSD_balance",
   help: "The sUSD balance of the keeper",
-  labelNames: ["account"],
+  labelNames: ["account", "network"],
 });
 export const ethNodeUptime = new client.Gauge({
   name: "eth_uptime",
   help: "Whether the Ethereum node is responding is running",
+  labelNames: ["network"],
 });
 export const ethNodeHeartbeatRTT = new client.Summary({
   name: "eth_heartbeat_rtt",
   help: "Round trip time of the heartbeat to the ETH RPC node.",
+  labelNames: ["network"],
 });
 export const futuresOpenPositions = new client.Gauge({
   name: "futures_open_positions",
   help: "Positions being monitored for liquidation",
-  labelNames: ["market"],
+  labelNames: ["market", "network"],
 });
 export const futuresLiquidations = new client.Summary({
   name: "futures_liquidations",
   help: "Number of liquidations",
-  labelNames: ["market", "success"],
+  labelNames: ["market", "success", "network"],
 });
 export const keeperErrors = new client.Summary({
   name: "keeper_errors",
   help: "Number of errors in running keeper tasks",
-  labelNames: ["market"],
+  labelNames: ["market", "network"],
 });
 
 const metrics = [
@@ -48,13 +50,17 @@ const metrics = [
   futuresLiquidations,
   keeperErrors,
 ];
-export function runServer(deps = { express, promClient: client, metrics }) {
+export function runServer(
+  network: string,
+  deps = { express, promClient: client, metrics }
+) {
   const app = deps.express();
 
   // Setup registry.
   const Registry = deps.promClient.Registry;
   const register = new Registry();
 
+  register.setDefaultLabels({ network });
   // Register metrics.
   deps.promClient.collectDefaultMetrics({ register });
 
@@ -77,6 +83,7 @@ export function runServer(deps = { express, promClient: client, metrics }) {
 // Tracker functions.
 export function trackKeeperBalance(
   signer: ethers.Signer,
+  network: string,
   SynthsUSD: ethers.Contract,
   deps = {
     keeperEthBalance,
@@ -92,7 +99,7 @@ export function trackKeeperBalance(
     const sUSDBalance = await SynthsUSD.balanceOf(account);
 
     const bnToNumber = (bn: BigNumber) => parseFloat(formatEther(bn));
-    deps.keeperEthBalance.set({ account }, bnToNumber(balance));
-    deps.keeperSusdBalance.set({ account }, bnToNumber(sUSDBalance));
+    deps.keeperEthBalance.set({ account, network }, bnToNumber(balance));
+    deps.keeperSusdBalance.set({ account, network }, bnToNumber(sUSDBalance));
   }, deps.intervalTimeMs);
 }

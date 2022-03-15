@@ -55,7 +55,7 @@ async function logAndStartTrackingBalances(
       .join(", ");
 
     logger.info(`Account #${i}: ${address} (${balanceText})`);
-    deps.trackKeeperBalance(signers[i], SynthsUSD);
+    deps.trackKeeperBalance(signers[i], network, SynthsUSD);
   });
 }
 export default logAndStartTrackingBalances;

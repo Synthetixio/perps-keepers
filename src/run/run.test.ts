@@ -60,7 +60,7 @@ describe("run", () => {
     expect(getProviderMock).toBeCalledTimes(1);
     expect(getProviderMock).toBeCalledWith(DEFAULTS.providerUrl);
     expect(providerMonitorMock).toBeCalledTimes(1);
-    expect(providerMonitorMock).toBeCalledWith("__PROVIDER__");
+    expect(providerMonitorMock).toBeCalledWith("__PROVIDER__", "kovan-ovm");
 
     expect(createWalletsMock).toBeCalledTimes(1);
     expect(createWalletsMock).toBeCalledWith({

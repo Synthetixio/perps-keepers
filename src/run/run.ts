@@ -60,14 +60,14 @@ export async function run(
     }
   });
 
-  deps.runMetricServer();
+  deps.runMetricServer(network);
 
   let fromBlock =
     fromBlockRaw === "latest" ? fromBlockRaw : parseInt(fromBlockRaw);
 
   // Setup.
   const provider = deps.getProvider(providerUrl);
-  deps.monitorProvider(provider);
+  deps.monitorProvider(provider, network);
 
   logger.info(`Connected to Ethereum node at ${providerUrl}`);
 

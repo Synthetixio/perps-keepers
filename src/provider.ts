@@ -67,6 +67,7 @@ const HTTP_PROVIDER_TIMEOUT = WS_PROVIDER_TIMEOUT;
 const HEARTBEAT_INTERVAL = 60000;
 export const monitorProvider = (
   provider: providers.JsonRpcProvider | providers.WebSocketProvider,
+  network: string,
   deps = {
     WS_PROVIDER_TIMEOUT,
     HTTP_PROVIDER_TIMEOUT,
@@ -107,8 +108,8 @@ export const monitorProvider = (
 
           logger.info(`pong rtt=${ms}ms`);
 
-          deps.ethNodeUptime.set(1);
-          deps.ethNodeHeartbeatRTT.observe(ms);
+          deps.ethNodeUptime.set({ network }, 1);
+          deps.ethNodeHeartbeatRTT.observe({ network }, ms);
         } catch (e) {
           const errorMessage = getErrorMessage(e);
           logger.error("Error while pinging provider: " + errorMessage);
@@ -154,8 +155,8 @@ export const monitorProvider = (
 
           logger.info(`pong rtt=${ms}ms`);
 
-          deps.ethNodeUptime.set(1);
-          deps.ethNodeHeartbeatRTT.observe(ms);
+          deps.ethNodeUptime.set({ network }, 1);
+          deps.ethNodeHeartbeatRTT.observe({ network }, ms);
         } catch (e) {
           const errorMessage = getErrorMessage(e);
           logger.error("Error while pinging provider: " + errorMessage);

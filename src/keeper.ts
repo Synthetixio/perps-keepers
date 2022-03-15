@@ -41,21 +41,25 @@ class Keeper {
   blockQueue: string[];
   blockTip: string | null;
   signerPool: SignerPool;
+  network: string;
 
   constructor({
     futuresMarket,
     baseAsset,
     signerPool,
+    network,
     provider,
   }: {
     futuresMarket: ethers.Contract;
     baseAsset: string;
     signerPool: SignerPool;
+    network: string;
     provider:
       | ethers.providers.WebSocketProvider
       | ethers.providers.JsonRpcProvider;
   }) {
     this.baseAsset = baseAsset;
+    this.network = network;
 
     // Contracts.
     this.futuresMarket = futuresMarket;
@@ -100,6 +104,7 @@ class Keeper {
     futuresMarket,
     signerPool,
     provider,
+    network,
   }: {
     futuresMarket: Contract;
     signerPool: SignerPool;
@@ -116,6 +121,7 @@ class Keeper {
       baseAsset,
       signerPool,
       provider,
+      network,
     });
   }
   async startProcessNewBlockConsumer() {
@@ -252,7 +258,7 @@ class Keeper {
   async runKeepers(deps = { BATCH_SIZE: 500, WAIT: 2000, metrics }) {
     const numPositions = Object.keys(this.positions).length;
     deps.metrics.futuresOpenPositions.set(
-      { market: this.baseAsset },
+      { market: this.baseAsset, network: this.network },
       numPositions
     );
     this.logger.log("info", `${numPositions} positions to keep`, {
@@ -296,7 +302,10 @@ class Keeper {
           component: `Keeper [${taskLabel}] id=${id}`,
         });
       }
-      metrics.keeperErrors.observe({ market: this.baseAsset }, 1);
+      metrics.keeperErrors.observe(
+        { market: this.baseAsset, network: this.network },
+        1
+      );
     }
     this.logger.log("info", `done`, {
       component: `Keeper [${taskLabel}] id=${id}`,
@@ -339,7 +348,7 @@ class Keeper {
       });
     } catch (err) {
       deps.metricFuturesLiquidations.observe(
-        { market: this.baseAsset, success: "false" },
+        { market: this.baseAsset, success: "false", network: this.network },
         0
       );
 
@@ -356,7 +365,7 @@ class Keeper {
     }
 
     deps.metricFuturesLiquidations.observe(
-      { market: this.baseAsset, success: "true" },
+      { market: this.baseAsset, success: "true", network: this.network },
       1
     );
 
