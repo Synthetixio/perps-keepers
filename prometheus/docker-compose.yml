@@ -4,7 +4,7 @@ services:
   prometheus:
     build: .
     ports:
-     - 9090:9090
+     - ${PROM_PORT}:9090
     environment:
      - PROM_ENDPOINT_TO_SCRAPE
      - PROM_JOB_NAME

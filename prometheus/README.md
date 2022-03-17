@@ -27,6 +27,10 @@ The setup can be run with Docker Compose and configured using environment variab
 
     - `PROM_HTTP_PASSWORD`
 
+      Exposed port
+
+    - `PROM_PORT`
+
 3.  Run the Docker container.
 
     ```sh
