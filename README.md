@@ -27,6 +27,7 @@ Any variables specified in `.env` at the project root will be loaded using [dote
   **Optional variables**
 - **`NETWORK`**: The default network to be used, if not specified from CLI.
 - **`FROM_BLOCK`**: The default block number to index from, if not specified from CLI.
+- **`METRIC_SERVER_PORT`**: The port to run the metric server, default 8084
 
 **Optional variables used for testing on a local fork (see Futures interact CLI section):**
 

@@ -7,13 +7,4 @@ scrape_configs:
     static_configs:
       - targets: ['{{ getenv "PROM_ENDPOINT_TO_SCRAPE" }}']
 
-remote_write:
-- url: {{ getenv "PROM_REMOTE_WRITE_HOST" }}
-  basic_auth:
-    username: {{ getenv "PROM_REMOTE_WRITE_USERNAME" }}
-    password: {{ getenv "PROM_REMOTE_WRITE_PASSWORD" }}
-  metadata_config:
-    send: true
-    send_interval: 10s
-    max_samples_per_send: 500
 

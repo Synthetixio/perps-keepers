@@ -71,11 +71,13 @@ export function runServer(
     res.setHeader("Content-Type", register.contentType);
     res.send(await register.metrics());
   });
-
+  const port = process.env.METRIC_SERVER_PORT
+    ? parseInt(process.env.METRIC_SERVER_PORT)
+    : 8084;
   // Run Express HTTP server.
-  app.listen(8084, () => {
+  app.listen(port, () => {
     console.log(
-      "Prometheus HTTP server is running on http://localhost:8084, metrics are exposed on http://localhost:8084/metrics"
+      `Prometheus HTTP server is running on http://localhost:${port}, metrics are exposed on http://localhost:${port}/metrics`
     );
   });
 }

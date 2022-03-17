@@ -5,4 +5,4 @@ set -ex
 /bin/confd -onetime -backend env
 
 # Run Prometheus.
-/bin/prometheus --config.file=/etc/prometheus/confd-prometheus.yml --log.level=debug
+/bin/prometheus --web.config.file=/etc/prometheus/confd-prometheus-web.yml --config.file=/etc/prometheus/confd-prometheus.yml --log.level=debug
