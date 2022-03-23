@@ -11,3 +11,13 @@ services:
      - PROM_HTTP_PASSWORD
     extra_hosts:
     - "host.docker.internal:host-gateway"
+  prometheus-kovan:
+    build: .
+    ports:
+     - ${PROM_STAGING_PORT}:9090
+    environment:
+     - PROM_ENDPOINT_TO_SCRAPE=${PROM_STAGING_ENDPOINT_TO_SCRAPE}
+     - PROM_JOB_NAME=${PROM_STAGING_JOB_NAME}
+     - PROM_HTTP_PASSWORD
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
