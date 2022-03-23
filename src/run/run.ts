@@ -1,4 +1,3 @@
-require("dotenv").config();
 import { NonceManager } from "@ethersproject/experimental";
 import snx from "synthetix";
 import Keeper from "../keeper";
