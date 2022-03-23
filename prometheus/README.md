@@ -17,11 +17,11 @@ The setup can be run with Docker Compose and configured using environment variab
 
     The endpoint to scrape from. We start the metric server on port 8084, but since we run this in a docker container we use `host.docker.internal:8084` instead of `localhost:8084`
 
-    - `PROM_ENDPOINT_TO_SCRAPE`
+    - `PROM_ENDPOINT_TO_SCRAPE` | `PROM_STAGING_ENDPOINT_TO_SCRAPE`
 
       Some of the metrics cant access label so to be able do differentiate kovan-ovm from mainnet-ovm we can provide a job name
 
-    - `PROM_JOB_NAME`
+    - `PROM_JOB_NAME` | `PROM_STAGING_JOB_NAME`
 
       The setup configures prometheus to have basic http auth. This is the password to use. Prometheus expect the password to be encrypted with bcrypt, you can to encrypt with: `htpasswd -nBC 10 "" | tr -d ':\n'`
 
@@ -29,7 +29,7 @@ The setup can be run with Docker Compose and configured using environment variab
 
       Exposed port
 
-    - `PROM_PORT`
+    - `PROM_PORT` | `PROM_STAGING_PORT`
 
 3.  Run the Docker container.
 
