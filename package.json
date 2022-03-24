@@ -5,7 +5,7 @@
 	"license": "MIT",
 	"scripts": {
 		"start": "pm2 start ecosystem.config.js",
-		"dev": "ts-node-dev --respawn --transpile-only src/index.ts run",
+		"dev": "name=futures-keeper-kovan ts-node-dev --respawn --transpile-only src/index.ts run",
 		"build": "tsc && cp .env build/ && cp .env.staging build/",
 		"lint": "eslint \"src/**/*.js\" \"tools/**/*.js\" *.js",
 		"lint:fix": "eslint --fix \"src/**/*.js\" \"tools/**/*.js\" *.js",
