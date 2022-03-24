@@ -347,7 +347,7 @@ class Keeper {
         receipt = await tx.wait(1);
       });
     } catch (err) {
-      deps.metricFuturesLiquidations.observe(
+      deps.metricFuturesLiquidations.inc(
         { market: this.baseAsset, success: "false", network: this.network },
         0
       );
@@ -364,7 +364,7 @@ class Keeper {
       throw err;
     }
 
-    deps.metricFuturesLiquidations.observe(
+    deps.metricFuturesLiquidations.inc(
       { market: this.baseAsset, success: "true", network: this.network },
       1
     );

@@ -30,7 +30,7 @@ export const futuresOpenPositions = new client.Gauge({
   help: "Positions being monitored for liquidation",
   labelNames: ["market", "network"],
 });
-export const futuresLiquidations = new client.Summary({
+export const futuresLiquidations = new client.Gauge({
   name: "futures_liquidations",
   help: "Number of liquidations",
   labelNames: ["market", "success", "network"],
@@ -59,7 +59,7 @@ export function runServer(
   // Setup registry.
   const Registry = deps.promClient.Registry;
   const register = new Registry();
-
+  console.log("____", register);
   register.setDefaultLabels({ network });
   // Register metrics.
   deps.promClient.collectDefaultMetrics({ register });
