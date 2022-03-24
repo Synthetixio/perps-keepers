@@ -9,10 +9,12 @@ describe("metrics", () => {
       .fn()
       .mockReturnValue({ listen: listenMock, get: getMock });
     const registerMetricMock = jest.fn();
+    const setDefaultLabels = jest.fn();
     const promClientMock = {
       Registry: jest.fn().mockReturnValue({
         name: "__REGISTRY_INSTANCE__",
         registerMetric: registerMetricMock,
+        setDefaultLabels: setDefaultLabels,
       }),
       collectDefaultMetrics: jest.fn(),
     };
@@ -28,12 +30,10 @@ describe("metrics", () => {
     expect(promClientMock.Registry.mock.instances.length).toBe(1);
     expect(promClientMock.collectDefaultMetrics).toBeCalledTimes(1);
     expect(promClientMock.collectDefaultMetrics).toHaveBeenCalledWith({
-      labels: {
-        network: "kovan-ovm",
-      },
       register: {
         name: "__REGISTRY_INSTANCE__",
         registerMetric: registerMetricMock,
+        setDefaultLabels: setDefaultLabels,
       },
     });
     expect(registerMetricMock).toBeCalledTimes(metricsMock.length);

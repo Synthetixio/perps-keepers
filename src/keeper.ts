@@ -302,10 +302,10 @@ class Keeper {
           component: `Keeper [${taskLabel}] id=${id}`,
         });
       }
-      metrics.keeperErrors.observe(
-        { market: this.baseAsset, network: this.network },
-        1
-      );
+      metrics.keeperErrors.inc({
+        market: this.baseAsset,
+        network: this.network,
+      });
     }
     this.logger.log("info", `done`, {
       component: `Keeper [${taskLabel}] id=${id}`,
@@ -346,11 +346,6 @@ class Keeper {
 
         receipt = await tx.wait(1);
       } catch (err) {
-        deps.metricFuturesLiquidations.observe(
-          { market: this.baseAsset, success: "false", network: this.network },
-          0
-        );
-
         if (isObjectOrErrorWithCode(err)) {
           // Special handeling for NONCE_EXPIRED
           if (err.code === "NONCE_EXPIRED") {
@@ -367,8 +362,8 @@ class Keeper {
       }
     });
 
-    deps.metricFuturesLiquidations.observe(
-      { market: this.baseAsset, success: "true", network: this.network },
+    deps.metricFuturesLiquidations.inc(
+      { market: this.baseAsset, network: this.network },
       1
     );
 

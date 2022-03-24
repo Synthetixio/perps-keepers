@@ -309,7 +309,7 @@ describe("keeper", () => {
       provider: jest.fn(),
     } as any;
     const keeper = new Keeper(arg);
-    const deps = { metricFuturesLiquidations: { observe: jest.fn() } } as any;
+    const deps = { metricFuturesLiquidations: { inc: jest.fn() } } as any;
 
     await keeper.liquidateOrder("1", "__ACCOUNT__", deps);
 
@@ -321,8 +321,8 @@ describe("keeper", () => {
     expect(liquidatePositionMock).toHaveBeenCalledWith("__ACCOUNT__");
     expect(waitMock).toBeCalledTimes(1);
     expect(waitMock).toHaveBeenCalledWith(1);
-    expect(deps.metricFuturesLiquidations.observe).toBeCalledTimes(1);
-    expect(deps.metricFuturesLiquidations.observe).toHaveBeenCalledWith(
+    expect(deps.metricFuturesLiquidations.inc).toBeCalledTimes(1);
+    expect(deps.metricFuturesLiquidations.inc).toHaveBeenCalledWith(
       {
         market: "sUSD",
         success: "true",
