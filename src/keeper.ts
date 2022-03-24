@@ -347,11 +347,6 @@ class Keeper {
         receipt = await tx.wait(1);
       });
     } catch (err) {
-      deps.metricFuturesLiquidations.inc(
-        { market: this.baseAsset, success: "false", network: this.network },
-        0
-      );
-
       if (isObjectOrErrorWithCode(err)) {
         // Ethers error.
         if (err.code === "NONCE_EXPIRED") {
@@ -365,7 +360,7 @@ class Keeper {
     }
 
     deps.metricFuturesLiquidations.inc(
-      { market: this.baseAsset, success: "true", network: this.network },
+      { market: this.baseAsset, network: this.network },
       1
     );
 
