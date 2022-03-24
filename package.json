@@ -5,7 +5,7 @@
 	"license": "MIT",
 	"scripts": {
 		"start": "pm2 start ecosystem.config.js",
-		"dev": "ts-node-dev --respawn --transpile-only src/index.ts run",
+		"dev": "name=futures-keeper-kovan ts-node-dev --respawn --transpile-only src/index.ts run",
 		"build": "tsc && cp .env build/ && cp .env.staging build/",
 		"lint": "eslint \"src/**/*.js\" \"tools/**/*.js\" *.js",
 		"lint:fix": "eslint --fix \"src/**/*.js\" \"tools/**/*.js\" *.js",
@@ -16,7 +16,7 @@
 	},
 	"dependencies": {
 		"@ethersproject/abstract-provider": "5.5.1",
-		"@ethersproject/experimental": "^5.3.0",
+		"@ethersproject/experimental": "5.6.0",
 		"@synthetixio/contracts-interface": "2.64.1",
 		"@synthetixio/wei": "2.57.1",
 		"chalk": "^4.1.1",

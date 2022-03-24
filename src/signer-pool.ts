@@ -1,22 +1,22 @@
-import { ethers } from "ethers";
 import { Logger } from "winston";
 import { createLogger } from "./logging";
+import { NonceManager } from "@ethersproject/experimental";
 
 class SignerPool {
-  signers: ethers.Signer[];
+  signers: NonceManager[];
   pool: number[];
   logger: Logger;
-  constructor(signers: ethers.Signer[]) {
+  constructor(signers: NonceManager[]) {
     this.signers = signers;
     this.pool = Array.from(Array(this.signers.length).keys());
     this.logger = createLogger({ componentName: "SignerPool" });
   }
 
-  static async create({ signers }: { signers: ethers.Signer[] }) {
+  static async create({ signers }: { signers: NonceManager[] }) {
     return new SignerPool(signers);
   }
 
-  async acquire(): Promise<[number, ethers.Signer]> {
+  async acquire(): Promise<[number, NonceManager]> {
     this.logger.info("awaiting signer");
     let i = this.pool.pop();
 
@@ -33,7 +33,7 @@ class SignerPool {
     this.pool.push(i);
   }
 
-  async withSigner(cb: (signer: ethers.Signer) => Promise<void>) {
+  async withSigner(cb: (signer: NonceManager) => Promise<void>) {
     const [i, signer] = await this.acquire();
 
     try {
