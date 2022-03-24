@@ -302,10 +302,10 @@ class Keeper {
           component: `Keeper [${taskLabel}] id=${id}`,
         });
       }
-      metrics.keeperErrors.observe(
-        { market: this.baseAsset, network: this.network },
-        1
-      );
+      metrics.keeperErrors.inc({
+        market: this.baseAsset,
+        network: this.network,
+      });
     }
     this.logger.log("info", `done`, {
       component: `Keeper [${taskLabel}] id=${id}`,
