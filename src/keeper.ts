@@ -333,8 +333,8 @@ class Keeper {
     });
     let receipt: TransactionReceipt | undefined;
 
-    try {
-      await this.signerPool.withSigner(async signer => {
+    await this.signerPool.withSigner(async signer => {
+      try {
         const tx: TransactionResponse = await this.futuresMarket
           .connect(signer)
           .liquidatePosition(account);
@@ -345,24 +345,27 @@ class Keeper {
         );
 
         receipt = await tx.wait(1);
-      });
-    } catch (err) {
-      deps.metricFuturesLiquidations.observe(
-        { market: this.baseAsset, success: "false", network: this.network },
-        0
-      );
+      } catch (err) {
+        deps.metricFuturesLiquidations.observe(
+          { market: this.baseAsset, success: "false", network: this.network },
+          0
+        );
 
-      if (isObjectOrErrorWithCode(err)) {
-        // Ethers error.
-        if (err.code === "NONCE_EXPIRED") {
-          // We can't recover from this one yet, restart.
-          this.logger.log("error", err.toString());
-          process.exit(-1);
+        if (isObjectOrErrorWithCode(err)) {
+          // Special handeling for NONCE_EXPIRED
+          if (err.code === "NONCE_EXPIRED") {
+            this.logger.error(err.toString());
+            const nonce = signer.getTransactionCount("latest");
+            this.logger.info(
+              `Updating nonce for Nonce manager to nonce ${nonce}`
+            );
+            signer.setTransactionCount(nonce);
+          }
         }
-      }
 
-      throw err;
-    }
+        throw err;
+      }
+    });
 
     deps.metricFuturesLiquidations.observe(
       { market: this.baseAsset, success: "true", network: this.network },
