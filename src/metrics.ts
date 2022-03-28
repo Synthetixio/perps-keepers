@@ -32,12 +32,17 @@ export const futuresOpenPositions = new client.Gauge({
 });
 export const futuresLiquidations = new client.Gauge({
   name: "futures_liquidations",
-  help: "Number of liquidations",
+  help: "Number of liquidations made by this keeper",
   labelNames: ["market", "network"],
 });
 export const keeperErrors = new client.Gauge({
   name: "keeper_errors",
   help: "Number of errors in running keeper tasks",
+  labelNames: ["market", "network"],
+});
+export const totalLiquidations = new client.Gauge({
+  name: "total_liquidations",
+  help: "Total number of liquidations",
   labelNames: ["market", "network"],
 });
 
