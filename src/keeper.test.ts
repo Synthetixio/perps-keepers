@@ -95,6 +95,9 @@ describe("keeper", () => {
       signerPool: jest.fn(),
       provider: jest.fn(),
     } as any;
+
+    const deps = { totalLiquidationsMetric: { inc: jest.fn() } } as any;
+
     const keeper = new Keeper(arg);
     keeper.positions = getMockPositions();
     /**
@@ -111,6 +114,7 @@ describe("keeper", () => {
           margin: wei(20000).toBN(),
         },
       } as any,
+      deps,
     ]);
     expect(keeper.positions["___ACCOUNT1__"]).toEqual({
       account: "___ACCOUNT1__",
@@ -122,24 +126,31 @@ describe("keeper", () => {
     /**
      * PositionModified to 0
      */
-    keeper.updateIndex([
-      {
-        event: "PositionModified",
-        args: { id: "1", account: "___ACCOUNT1__", size: BigNumber.from(0) },
-      },
-    ] as any);
+    keeper.updateIndex(
+      [
+        {
+          event: "PositionModified",
+          args: { id: "1", account: "___ACCOUNT1__", size: BigNumber.from(0) },
+        },
+      ] as any,
+      deps
+    );
     expect(keeper.positions["___ACCOUNT1__"]).toEqual(undefined);
 
     /**
      * PositionLiquidated
      */
-    keeper.updateIndex([
-      {
-        event: "PositionLiquidated",
-        args: { account: "___ACCOUNT2__" },
-      },
-    ] as any);
+    keeper.updateIndex(
+      [
+        {
+          event: "PositionLiquidated",
+          args: { account: "___ACCOUNT2__" },
+        },
+      ] as any,
+      deps
+    );
     expect(keeper.positions["___ACCOUNT2__"]).toEqual(undefined);
+    expect(deps.totalLiquidationsMetric.inc).toBeCalledTimes(1);
 
     // After these event we only expect ___ACCOUNT3__ to have a position
     expect(keeper.positions).toEqual({
@@ -323,10 +334,7 @@ describe("keeper", () => {
     expect(waitMock).toHaveBeenCalledWith(1);
     expect(deps.metricFuturesLiquidations.inc).toBeCalledTimes(1);
     expect(deps.metricFuturesLiquidations.inc).toHaveBeenCalledWith(
-      {
-        market: "sUSD",
-        success: "true",
-      },
+      { market: "sUSD" },
       1
     );
   });

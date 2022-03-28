@@ -197,7 +197,10 @@ class Keeper {
     await this.runKeepers();
   }
 
-  async updateIndex(events: ethers.Event[]) {
+  async updateIndex(
+    events: ethers.Event[],
+    deps = { totalLiquidationsMetric: metrics.totalLiquidations }
+  ) {
     events.forEach(({ event, args }) => {
       if (event === EventsOfInterest.PositionModified && args) {
         const { id, account, size, margin, lastPrice } = args;
@@ -245,6 +248,10 @@ class Keeper {
           { component: "Indexer" }
         );
 
+        deps.totalLiquidationsMetric.inc({
+          market: this.baseAsset,
+          network: this.network,
+        });
         delete this.positions[account];
         return;
       }
