@@ -54,6 +54,7 @@ const metrics = [
   futuresOpenPositions,
   futuresLiquidations,
   keeperErrors,
+  totalLiquidations,
 ];
 export function runServer(
   network: string,
