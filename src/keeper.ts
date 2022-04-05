@@ -237,6 +237,7 @@ class Keeper {
           account,
           size: wei(size).toNumber(),
           leverage: wei(size)
+            .abs()
             .mul(lastPrice)
             .div(margin)
             .toNumber(),
