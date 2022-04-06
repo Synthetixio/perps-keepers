@@ -183,18 +183,21 @@ class Keeper {
   }
 
   async processNewBlock(blockNumber: string) {
-    this.blockTip = blockNumber;
-    const events = await this.getEvents(blockNumber, blockNumber);
-
     this.logger.log("debug", `\nProcessing block: ${blockNumber}`, {
       component: "Indexer",
     });
+    this.blockTip = blockNumber;
 
+    // first try to liquidate any positions that can be liquidated now
+    await this.runKeepers();
+
+    // now process new events to update index, since it's impossible for a position that 
+    // was just updated to be liquidatable at the same block
+    const events = await this.getEvents(blockNumber, blockNumber);
     this.logger.log("debug", `${events.length} events to process`, {
       component: "Indexer",
     });
-    await this.updateIndex(events);
-    await this.runKeepers();
+    await this.updateIndex(events);    
   }
 
   async updateIndex(
@@ -234,6 +237,7 @@ class Keeper {
           account,
           size: wei(size).toNumber(),
           leverage: wei(size)
+            .abs()
             .mul(lastPrice)
             .div(margin)
             .toNumber(),

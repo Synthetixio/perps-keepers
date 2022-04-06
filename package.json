@@ -9,7 +9,8 @@
 		"build": "tsc && cp .env build/ && cp .env.staging build/",
 		"lint": "eslint \"src/**/*.js\" \"tools/**/*.js\" *.js",
 		"lint:fix": "eslint --fix \"src/**/*.js\" \"tools/**/*.js\" *.js",
-		"postinstall": "patch-package"
+		"postinstall": "patch-package",
+		"test":"jest"
 	},
 	"engines": {
 		"node": ">=10.0.0"
