@@ -301,6 +301,7 @@ describe("keeper", () => {
     expect(updateIndexSpy).toBeCalledTimes(1);
     expect(updateIndexSpy).toBeCalledWith(["__EVENT__", "__EVENT__"]);
     expect(runKeepersSpy).toBeCalledTimes(1);
+    expect(keeper.blockTipTimestamp).toEqual(100000);
   });
   test("runKeepers", async () => {
     const arg = {
