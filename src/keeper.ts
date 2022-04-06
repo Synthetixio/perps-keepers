@@ -273,18 +273,33 @@ class Keeper {
     await this.updateMarketMetrics(deps);
   }
 
-  async updateMarketMetrics(args = {
-    marketSizeMetric: metrics.marketSize,
-    marketSkewMetric: metrics.marketSkew,
-  }) {
+  async updateMarketMetrics(
+    args = {
+      marketSizeMetric: metrics.marketSize,
+      marketSkewMetric: metrics.marketSkew,
+    }
+  ) {
     const UNIT = utils.parseUnits("1");
     const assetPrice = (await this.futuresMarket.assetPrice()).price;
-    const marketSizeUSD = (await this.futuresMarket.marketSize())
-      .mul(assetPrice)
-      .div(UNIT);
-    const marketSkewUSD = (await this.futuresMarket.marketSkew())
-      .mul(assetPrice)
-      .div(UNIT);
+
+    const marketSizeWei = Object.values(this.positions).reduce(
+      (a, v) => a + Math.abs(v.size), 0
+    );
+    const marketSkewWei = Object.values(this.positions).reduce(
+      (a, v) => a + v.size, 0
+    );
+
+    const mulDecimal = (a: BigNumber, b: BigNumber) => a.mul(b).div(UNIT);
+    
+    const marketSizeUSD = mulDecimal(
+      utils.parseUnits(marketSizeWei.toString()),
+      assetPrice
+    );
+    const marketSkewUSD = mulDecimal(
+      utils.parseUnits(marketSkewWei.toString()),
+      assetPrice
+    );
+
     args.marketSizeMetric.set(
       { market: this.baseAsset, network: this.network },
       metrics.bnToNumber(marketSizeUSD)
