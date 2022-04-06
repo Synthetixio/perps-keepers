@@ -108,6 +108,7 @@ describe("keeper", () => {
       totalLiquidationsMetric: { inc: jest.fn() },
       marketSizeMetric: { set: jest.fn() },
       marketSkewMetric: { set: jest.fn() },
+      recentVolumeMetric: { set: jest.fn() },
     } as any;
 
     const keeper = new Keeper(arg);
@@ -137,22 +138,28 @@ describe("keeper", () => {
       size: 1,
       leverage: 2,
     });
+
     const expectedSize = wei(1)
       .toBN()
       .add(utils.parseEther("20")); // old positions minus ___ACCOUNT1__
     const expectedSizeUSD = parseFloat(
       utils.formatEther(price.mul(expectedSize).div(utils.parseEther("1")))
     );
+    // size
     expect(deps.marketSizeMetric.set).toBeCalledTimes(1);
     expect(deps.marketSizeMetric.set).toBeCalledWith(
       { market: arg.baseAsset },
       expectedSizeUSD
     );
+    // skew
     expect(deps.marketSkewMetric.set).toBeCalledTimes(1);
     expect(deps.marketSkewMetric.set).toBeCalledWith(
       { market: arg.baseAsset },
       expectedSizeUSD
     );
+    // volume is called
+    expect(deps.recentVolumeMetric.set).toBeCalledTimes(1);
+
     /**
      * PositionModified to 0
      */
@@ -193,6 +200,63 @@ describe("keeper", () => {
       },
     });
   });
+  test("pushTradeToVolumeQueue", async () => {
+    const price = wei(40000).toBN();
+    const size = wei(40000).toBN();
+    const arg = {
+      baseAsset: "sBTC",
+      futuresMarket: {},
+    } as any;
+    const keeper = new Keeper(arg);
+
+    // push some values
+    keeper.blockTipTimestamp = 1;
+    keeper.pushTradeToVolumeQueue(size, price);
+    keeper.pushTradeToVolumeQueue(size.mul(BigNumber.from("-1")), price);
+
+    const expectedVolume = price.mul(size.add(size));
+    const expectedVolumeUSD = parseFloat(
+      utils.formatEther(expectedVolume.div(utils.parseEther("1")))
+    );
+    expect(keeper.recentVolume).toEqual(expectedVolumeUSD);
+  });
+  test("updateVolumeMetrics", async () => {
+    const price = wei(40000).toBN();
+    const size = wei(40000).toBN();
+    const arg = {
+      baseAsset: "sBTC",
+      futuresMarket: {},
+    } as any;
+
+    const keeper = new Keeper(arg);
+
+    // push some old values
+    keeper.blockTipTimestamp = 1;
+    keeper.pushTradeToVolumeQueue(size, price);
+    keeper.pushTradeToVolumeQueue(size, price);
+
+    // push some newer values
+    keeper.blockTipTimestamp = 10000000;
+    keeper.pushTradeToVolumeQueue(size, price);
+    keeper.pushTradeToVolumeQueue(size, price);
+    keeper.pushTradeToVolumeQueue(size, price);
+
+    const deps = {
+      recentVolumeMetric: { set: jest.fn() },
+    } as any;
+
+    await keeper.updateVolumeMetrics(deps);
+
+    const expectedVolume = price.mul(size.add(size).add(size)); // only 3 trades
+    const expectedVolumeUSD = parseFloat(
+      utils.formatEther(expectedVolume.div(utils.parseEther("1")))
+    );
+    expect(keeper.recentVolume).toEqual(expectedVolumeUSD);
+    expect(deps.recentVolumeMetric.set).toBeCalledWith(
+      { market: arg.baseAsset },
+      expectedVolumeUSD
+    );
+  });
   test("processNewBlock", async () => {
     const PositionLiquidatedMock = jest
       .fn()
@@ -213,7 +277,9 @@ describe("keeper", () => {
           .mockResolvedValue({ price: BigNumber.from(100), invalid: false }),
       },
       signerPool: jest.fn(),
-      provider: jest.fn(),
+      provider: {
+        getBlock: jest.fn().mockResolvedValue({ timestamp: 100000 }),
+      },
     } as any;
     const keeper = new Keeper(arg);
     const updateIndexSpy = jest.spyOn(keeper, "updateIndex");

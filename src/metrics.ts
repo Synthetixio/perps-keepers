@@ -3,6 +3,9 @@ import express from "express";
 import { formatEther } from "@ethersproject/units";
 import { BigNumber, ethers } from "ethers";
 
+// constants
+export const VOLUME_RECENCY_CUTOFF = 86400; // 1 day
+
 // Metrics.
 
 const keeperEthBalance = new client.Gauge({
@@ -55,6 +58,11 @@ export const marketSkew = new client.Gauge({
   help: "Market skew in USD",
   labelNames: ["market", "network"],
 });
+export const recentVolume = new client.Gauge({
+  name: "recent_volume",
+  help: "Recent volume in USD",
+  labelNames: ["market", "network"],
+});
 
 const metrics = [
   keeperEthBalance,
@@ -67,6 +75,7 @@ const metrics = [
   totalLiquidations,
   marketSize,
   marketSkew,
+  recentVolume
 ];
 export function runServer(
   network: string,
