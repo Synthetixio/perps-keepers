@@ -191,18 +191,22 @@ class Keeper {
     // first try to liquidate any positions that can be liquidated now
     await this.runKeepers();
 
-    // now process new events to update index, since it's impossible for a position that 
+    // now process new events to update index, since it's impossible for a position that
     // was just updated to be liquidatable at the same block
     const events = await this.getEvents(blockNumber, blockNumber);
     this.logger.log("debug", `${events.length} events to process`, {
       component: "Indexer",
     });
-    await this.updateIndex(events);    
+    await this.updateIndex(events);
   }
 
   async updateIndex(
     events: ethers.Event[],
-    deps = { totalLiquidationsMetric: metrics.totalLiquidations }
+    deps = {
+      totalLiquidationsMetric: metrics.totalLiquidations,
+      marketSizeMetric: metrics.marketSize,
+      marketSkewMetric: metrics.marketSkew,
+    }
   ) {
     events.forEach(({ event, args }) => {
       if (event === EventsOfInterest.PositionModified && args) {
@@ -264,6 +268,31 @@ class Keeper {
         component: "Indexer",
       });
     });
+
+    // update market metrics
+    await this.updateMarketMetrics(deps);
+  }
+
+  async updateMarketMetrics(args = {
+    marketSizeMetric: metrics.marketSize,
+    marketSkewMetric: metrics.marketSkew,
+  }) {
+    const UNIT = utils.parseUnits("1");
+    const assetPrice = (await this.futuresMarket.assetPrice()).price;
+    const marketSizeUSD = (await this.futuresMarket.marketSize())
+      .mul(assetPrice)
+      .div(UNIT);
+    const marketSkewUSD = (await this.futuresMarket.marketSkew())
+      .mul(assetPrice)
+      .div(UNIT);
+    args.marketSizeMetric.set(
+      { market: this.baseAsset, network: this.network },
+      metrics.bnToNumber(marketSizeUSD)
+    );
+    args.marketSkewMetric.set(
+      { market: this.baseAsset, network: this.network },
+      metrics.bnToNumber(marketSkewUSD)
+    );
   }
 
   async runKeepers(deps = { BATCH_SIZE: 500, WAIT: 2000, metrics }) {

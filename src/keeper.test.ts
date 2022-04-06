@@ -57,6 +57,11 @@ describe("keeper", () => {
           PositionModified: PositionModifiedMock,
         },
         queryFilter: jest.fn().mockResolvedValue(["__EVENT__"]),
+        assetPrice: jest
+          .fn()
+          .mockResolvedValue({ price: BigNumber.from(100), invalid: false }),
+        marketSize: jest.fn().mockResolvedValue(BigNumber.from(10)),
+        marketSkew: jest.fn().mockResolvedValue(BigNumber.from(1)),
       },
       signerPool: jest.fn(),
       provider: { on: jest.fn() },
@@ -88,34 +93,46 @@ describe("keeper", () => {
     expect(arg.provider.on).toHaveBeenCalledWith("block", expect.any(Function));
     expect(startProcessNewBlockConsumerSpy).toBeCalledTimes(1);
   });
-  test("updateIndex", () => {
+  test("updateIndex", async () => {
     const arg = {
       baseAsset: "sBTC",
-      futuresMarket: jest.fn(),
+      futuresMarket: {
+        assetPrice: jest
+          .fn()
+          .mockResolvedValue({ price: BigNumber.from(100), invalid: false }),
+        marketSize: jest.fn().mockResolvedValue(BigNumber.from(10)),
+        marketSkew: jest.fn().mockResolvedValue(BigNumber.from(1)),
+      },
       signerPool: jest.fn(),
       provider: jest.fn(),
     } as any;
 
-    const deps = { totalLiquidationsMetric: { inc: jest.fn() } } as any;
+    const deps = {
+      totalLiquidationsMetric: { inc: jest.fn() },
+      marketSizeMetric: { set: jest.fn() },
+      marketSkewMetric: { set: jest.fn() },
+    } as any;
 
     const keeper = new Keeper(arg);
     keeper.positions = getMockPositions();
     /**
      * PositionModified
      */
-    keeper.updateIndex([
-      {
-        event: "PositionModified",
-        args: {
-          id: "1",
-          account: "___ACCOUNT1__",
-          size: wei(1).toBN(),
-          lastPrice: wei(40000).toBN(),
-          margin: wei(20000).toBN(),
+    await keeper.updateIndex(
+      [
+        {
+          event: "PositionModified",
+          args: {
+            id: "1",
+            account: "___ACCOUNT1__",
+            size: wei(1).toBN(),
+            lastPrice: wei(40000).toBN(),
+            margin: wei(20000).toBN(),
+          },
         },
-      } as any,
-      deps,
-    ]);
+      ] as any,
+      deps
+    );
     expect(keeper.positions["___ACCOUNT1__"]).toEqual({
       account: "___ACCOUNT1__",
       event: "PositionModified",
@@ -123,10 +140,12 @@ describe("keeper", () => {
       size: 1,
       leverage: 2,
     });
+    expect(deps.marketSizeMetric.set).toBeCalledTimes(1);
+    expect(deps.marketSkewMetric.set).toBeCalledTimes(1);
     /**
      * PositionModified to 0
      */
-    keeper.updateIndex(
+    await keeper.updateIndex(
       [
         {
           event: "PositionModified",
@@ -140,7 +159,7 @@ describe("keeper", () => {
     /**
      * PositionLiquidated
      */
-    keeper.updateIndex(
+     await keeper.updateIndex(
       [
         {
           event: "PositionLiquidated",
@@ -178,6 +197,11 @@ describe("keeper", () => {
           PositionLiquidated: PositionLiquidatedMock,
           PositionModified: PositionModifiedMock,
         },
+        assetPrice: jest
+          .fn()
+          .mockResolvedValue({ price: BigNumber.from(100), invalid: false }),
+        marketSize: jest.fn().mockResolvedValue(BigNumber.from(10)),
+        marketSkew: jest.fn().mockResolvedValue(BigNumber.from(1)),
       },
       signerPool: jest.fn(),
       provider: jest.fn(),
@@ -294,6 +318,9 @@ describe("keeper", () => {
       baseAsset: "sUSD",
       futuresMarket: {
         canLiquidate: jest.fn().mockResolvedValue(false),
+        assetPrice: jest.fn().mockResolvedValue({ price: 100, invalid: false }),
+        marketSize: jest.fn().mockResolvedValue(10),
+        marketSkew: jest.fn().mockResolvedValue(1),
       },
       signerPool: { withSigner: jest.fn() },
       provider: jest.fn(),
@@ -312,6 +339,9 @@ describe("keeper", () => {
       baseAsset: "sUSD",
       futuresMarket: {
         canLiquidate: jest.fn().mockResolvedValue(true),
+        assetPrice: jest.fn().mockResolvedValue({ price: 100, invalid: false }),
+        marketSize: jest.fn().mockResolvedValue(10),
+        marketSkew: jest.fn().mockResolvedValue(1),
         connect: jest.fn().mockReturnValue({
           liquidatePosition: liquidatePositionMock,
         }),

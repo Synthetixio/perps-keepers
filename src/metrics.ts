@@ -45,6 +45,16 @@ export const totalLiquidations = new client.Gauge({
   help: "Total number of liquidations",
   labelNames: ["market", "network"],
 });
+export const marketSize = new client.Gauge({
+  name: "market_size",
+  help: "Open interest in USD",
+  labelNames: ["market", "network"],
+});
+export const marketSkew = new client.Gauge({
+  name: "skew",
+  help: "Market skew in USD",
+  labelNames: ["market", "network"],
+});
 
 const metrics = [
   keeperEthBalance,
@@ -55,6 +65,8 @@ const metrics = [
   futuresLiquidations,
   keeperErrors,
   totalLiquidations,
+  marketSize,
+  marketSkew,
 ];
 export function runServer(
   network: string,
@@ -88,6 +100,10 @@ export function runServer(
   });
 }
 
+export function bnToNumber(bn: BigNumber) {
+  return parseFloat(formatEther(bn));
+}
+
 // Tracker functions.
 export function trackKeeperBalance(
   signer: ethers.Signer,
@@ -106,7 +122,6 @@ export function trackKeeperBalance(
     ]);
     const sUSDBalance = await SynthsUSD.balanceOf(account);
 
-    const bnToNumber = (bn: BigNumber) => parseFloat(formatEther(bn));
     deps.keeperEthBalance.set({ account, network }, bnToNumber(balance));
     deps.keeperSusdBalance.set({ account, network }, bnToNumber(sUSDBalance));
   }, deps.intervalTimeMs);
