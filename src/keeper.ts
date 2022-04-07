@@ -294,7 +294,7 @@ class Keeper {
     });
 
     // update volume metrics
-    await this.updateVolumeMetrics(deps);
+    this.updateVolumeMetrics(deps);
 
     // update open interest metrics
     await this.updateOIMetrics(deps);
@@ -315,7 +315,7 @@ class Keeper {
     this.recentVolume += tradeSizeUSD;
   }
 
-  async updateVolumeMetrics(
+  updateVolumeMetrics(
     args = {
       recentVolumeMetric: metrics.recentVolume,
     }

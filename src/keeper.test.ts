@@ -245,7 +245,7 @@ describe("keeper", () => {
       recentVolumeMetric: { set: jest.fn() },
     } as any;
 
-    await keeper.updateVolumeMetrics(deps);
+    keeper.updateVolumeMetrics(deps);
 
     const expectedVolume = price.mul(size.add(size).add(size)); // only 3 trades
     const expectedVolumeUSD = parseFloat(
