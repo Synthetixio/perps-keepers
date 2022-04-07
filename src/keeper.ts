@@ -9,6 +9,9 @@ import {
   TransactionResponse,
 } from "@ethersproject/abstract-provider";
 import { wei } from "@synthetixio/wei";
+import Denque from "denque"; // double sided queue for volume measurement
+
+const UNIT = utils.parseUnits("1");
 
 function isObjectOrErrorWithCode(x: unknown): x is { code: string } {
   if (typeof x !== "object") return false;
@@ -38,10 +41,13 @@ class Keeper {
   provider:
     | ethers.providers.WebSocketProvider
     | ethers.providers.JsonRpcProvider;
-  blockQueue: string[];
+  blockQueue: Denque<string>;
   blockTip: string | null;
+  blockTipTimestamp: number;
   signerPool: SignerPool;
   network: string;
+  volumeQueue: Denque<{ sizeUSD: number; timestamp: number }>;
+  recentVolume: number;
 
   constructor({
     futuresMarket,
@@ -93,11 +99,20 @@ class Keeper {
     this.activeKeeperTasks = {};
 
     // A FIFO queue of blocks to be processed.
-    this.blockQueue = [];
+    this.blockQueue = new Denque();
 
     this.blockTip = null;
+    this.blockTipTimestamp = 0;
     this.provider = provider;
     this.signerPool = signerPool;
+
+    // volume accounting for metrics
+    // this queue maintains 24h worth of recent volume updates so that rolling
+    // volume can be computed.
+    // Denque is used in order for this to be computed efficiently in
+    // linear time instead of quadratic (for a regular array)
+    this.volumeQueue = new Denque();
+    this.recentVolume = 0;
   }
 
   static async create({
@@ -191,18 +206,27 @@ class Keeper {
     // first try to liquidate any positions that can be liquidated now
     await this.runKeepers();
 
-    // now process new events to update index, since it's impossible for a position that 
+    this.blockTipTimestamp = (
+      await this.provider.getBlock(blockNumber)
+    ).timestamp;
+
+    // now process new events to update index, since it's impossible for a position that
     // was just updated to be liquidatable at the same block
     const events = await this.getEvents(blockNumber, blockNumber);
     this.logger.log("debug", `${events.length} events to process`, {
       component: "Indexer",
     });
-    await this.updateIndex(events);    
+    await this.updateIndex(events);
   }
 
   async updateIndex(
     events: ethers.Event[],
-    deps = { totalLiquidationsMetric: metrics.totalLiquidations }
+    deps = {
+      totalLiquidationsMetric: metrics.totalLiquidations,
+      marketSizeMetric: metrics.marketSize,
+      marketSkewMetric: metrics.marketSkew,
+      recentVolumeMetric: metrics.recentVolume,
+    }
   ) {
     events.forEach(({ event, args }) => {
       if (event === EventsOfInterest.PositionModified && args) {
@@ -242,6 +266,10 @@ class Keeper {
             .div(margin)
             .toNumber(),
         };
+
+        // keep track of volume
+        this.pushTradeToVolumeQueue(size, lastPrice);
+
         return;
       }
       if (event === EventsOfInterest.PositionLiquidated && args) {
@@ -264,6 +292,88 @@ class Keeper {
         component: "Indexer",
       });
     });
+
+    // update volume metrics
+    this.updateVolumeMetrics(deps);
+
+    // update open interest metrics
+    await this.updateOIMetrics(deps);
+  }
+
+  pushTradeToVolumeQueue(size: BigNumber, lastPrice: BigNumber) {
+    const tradeSizeUSD = wei(size)
+      .abs()
+      .mul(lastPrice)
+      .div(UNIT)
+      .toNumber();
+    // push into rolling queue
+    this.volumeQueue.push({
+      sizeUSD: tradeSizeUSD,
+      timestamp: this.blockTipTimestamp,
+    });
+    // add to total volume sum
+    this.recentVolume += tradeSizeUSD;
+  }
+
+  updateVolumeMetrics(
+    args = {
+      recentVolumeMetric: metrics.recentVolume,
+    }
+  ) {
+    const cutoffTimestamp =
+      this.blockTipTimestamp - metrics.VOLUME_RECENCY_CUTOFF; // old values
+    let peekFront = this.volumeQueue.peekFront();
+    // remove old entries from the queue
+    while (peekFront && peekFront.timestamp < cutoffTimestamp) {
+      // remove from queue
+      const removedEntry = this.volumeQueue.shift();
+      // update sum of volume
+      this.recentVolume -= removedEntry?.sizeUSD || 0; // ts
+      // update peekfront value for the loop condition
+      peekFront = this.volumeQueue.peekFront();
+    }
+    args.recentVolumeMetric.set(
+      { market: this.baseAsset, network: this.network },
+      this.recentVolume
+    );
+  }
+
+  async updateOIMetrics(
+    args = {
+      marketSizeMetric: metrics.marketSize,
+      marketSkewMetric: metrics.marketSkew,
+    }
+  ) {
+    const assetPrice = (await this.futuresMarket.assetPrice()).price;
+
+    const marketSizeWei = Object.values(this.positions).reduce(
+      (a, v) => a + Math.abs(v.size),
+      0
+    );
+    const marketSkewWei = Object.values(this.positions).reduce(
+      (a, v) => a + v.size,
+      0
+    );
+
+    const mulDecimal = (a: BigNumber, b: BigNumber) => a.mul(b).div(UNIT);
+
+    const marketSizeUSD = mulDecimal(
+      utils.parseUnits(marketSizeWei.toString()),
+      assetPrice
+    );
+    const marketSkewUSD = mulDecimal(
+      utils.parseUnits(marketSkewWei.toString()),
+      assetPrice
+    );
+
+    args.marketSizeMetric.set(
+      { market: this.baseAsset, network: this.network },
+      metrics.bnToNumber(marketSizeUSD)
+    );
+    args.marketSkewMetric.set(
+      { market: this.baseAsset, network: this.network },
+      metrics.bnToNumber(marketSkewUSD)
+    );
   }
 
   async runKeepers(deps = { BATCH_SIZE: 500, WAIT: 2000, metrics }) {

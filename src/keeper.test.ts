@@ -1,4 +1,4 @@
-import { BigNumber } from "@ethersproject/bignumber";
+import { BigNumber, utils } from "ethers";
 import { wei } from "@synthetixio/wei";
 import Keeper from "./keeper";
 
@@ -57,6 +57,9 @@ describe("keeper", () => {
           PositionModified: PositionModifiedMock,
         },
         queryFilter: jest.fn().mockResolvedValue(["__EVENT__"]),
+        assetPrice: jest
+          .fn()
+          .mockResolvedValue({ price: BigNumber.from(100), invalid: false }),
       },
       signerPool: jest.fn(),
       provider: { on: jest.fn() },
@@ -88,34 +91,46 @@ describe("keeper", () => {
     expect(arg.provider.on).toHaveBeenCalledWith("block", expect.any(Function));
     expect(startProcessNewBlockConsumerSpy).toBeCalledTimes(1);
   });
-  test("updateIndex", () => {
+  test("updateIndex", async () => {
+    const price = wei(40000).toBN();
     const arg = {
       baseAsset: "sBTC",
-      futuresMarket: jest.fn(),
+      futuresMarket: {
+        assetPrice: jest
+          .fn()
+          .mockResolvedValue({ price: price, invalid: false }),
+      },
       signerPool: jest.fn(),
       provider: jest.fn(),
     } as any;
 
-    const deps = { totalLiquidationsMetric: { inc: jest.fn() } } as any;
+    const deps = {
+      totalLiquidationsMetric: { inc: jest.fn() },
+      marketSizeMetric: { set: jest.fn() },
+      marketSkewMetric: { set: jest.fn() },
+      recentVolumeMetric: { set: jest.fn() },
+    } as any;
 
     const keeper = new Keeper(arg);
     keeper.positions = getMockPositions();
     /**
      * PositionModified
      */
-    keeper.updateIndex([
-      {
-        event: "PositionModified",
-        args: {
-          id: "1",
-          account: "___ACCOUNT1__",
-          size: wei(1).toBN(),
-          lastPrice: wei(40000).toBN(),
-          margin: wei(20000).toBN(),
+    await keeper.updateIndex(
+      [
+        {
+          event: "PositionModified",
+          args: {
+            id: "1",
+            account: "___ACCOUNT1__",
+            size: wei(1).toBN(),
+            lastPrice: price,
+            margin: wei(20000).toBN(),
+          },
         },
-      } as any,
-      deps,
-    ]);
+      ] as any,
+      deps
+    );
     expect(keeper.positions["___ACCOUNT1__"]).toEqual({
       account: "___ACCOUNT1__",
       event: "PositionModified",
@@ -123,10 +138,32 @@ describe("keeper", () => {
       size: 1,
       leverage: 2,
     });
+
+    const expectedSize = wei(1)
+      .toBN()
+      .add(utils.parseEther("20")); // old positions minus ___ACCOUNT1__
+    const expectedSizeUSD = parseFloat(
+      utils.formatEther(price.mul(expectedSize).div(utils.parseEther("1")))
+    );
+    // size
+    expect(deps.marketSizeMetric.set).toBeCalledTimes(1);
+    expect(deps.marketSizeMetric.set).toBeCalledWith(
+      { market: arg.baseAsset },
+      expectedSizeUSD
+    );
+    // skew
+    expect(deps.marketSkewMetric.set).toBeCalledTimes(1);
+    expect(deps.marketSkewMetric.set).toBeCalledWith(
+      { market: arg.baseAsset },
+      expectedSizeUSD
+    );
+    // volume is called
+    expect(deps.recentVolumeMetric.set).toBeCalledTimes(1);
+
     /**
      * PositionModified to 0
      */
-    keeper.updateIndex(
+    await keeper.updateIndex(
       [
         {
           event: "PositionModified",
@@ -140,7 +177,7 @@ describe("keeper", () => {
     /**
      * PositionLiquidated
      */
-    keeper.updateIndex(
+    await keeper.updateIndex(
       [
         {
           event: "PositionLiquidated",
@@ -163,6 +200,63 @@ describe("keeper", () => {
       },
     });
   });
+  test("pushTradeToVolumeQueue", async () => {
+    const price = wei(40000).toBN();
+    const size = wei(40000).toBN();
+    const arg = {
+      baseAsset: "sBTC",
+      futuresMarket: {},
+    } as any;
+    const keeper = new Keeper(arg);
+
+    // push some values
+    keeper.blockTipTimestamp = 1;
+    keeper.pushTradeToVolumeQueue(size, price);
+    keeper.pushTradeToVolumeQueue(size.mul(BigNumber.from("-1")), price);
+
+    const expectedVolume = price.mul(size.add(size));
+    const expectedVolumeUSD = parseFloat(
+      utils.formatEther(expectedVolume.div(utils.parseEther("1")))
+    );
+    expect(keeper.recentVolume).toEqual(expectedVolumeUSD);
+  });
+  test("updateVolumeMetrics", async () => {
+    const price = wei(40000).toBN();
+    const size = wei(40000).toBN();
+    const arg = {
+      baseAsset: "sBTC",
+      futuresMarket: {},
+    } as any;
+
+    const keeper = new Keeper(arg);
+
+    // push some old values
+    keeper.blockTipTimestamp = 1;
+    keeper.pushTradeToVolumeQueue(size, price);
+    keeper.pushTradeToVolumeQueue(size, price);
+
+    // push some newer values
+    keeper.blockTipTimestamp = 10000000;
+    keeper.pushTradeToVolumeQueue(size, price);
+    keeper.pushTradeToVolumeQueue(size, price);
+    keeper.pushTradeToVolumeQueue(size, price);
+
+    const deps = {
+      recentVolumeMetric: { set: jest.fn() },
+    } as any;
+
+    keeper.updateVolumeMetrics(deps);
+
+    const expectedVolume = price.mul(size.add(size).add(size)); // only 3 trades
+    const expectedVolumeUSD = parseFloat(
+      utils.formatEther(expectedVolume.div(utils.parseEther("1")))
+    );
+    expect(keeper.recentVolume).toEqual(expectedVolumeUSD);
+    expect(deps.recentVolumeMetric.set).toBeCalledWith(
+      { market: arg.baseAsset },
+      expectedVolumeUSD
+    );
+  });
   test("processNewBlock", async () => {
     const PositionLiquidatedMock = jest
       .fn()
@@ -178,9 +272,14 @@ describe("keeper", () => {
           PositionLiquidated: PositionLiquidatedMock,
           PositionModified: PositionModifiedMock,
         },
+        assetPrice: jest
+          .fn()
+          .mockResolvedValue({ price: BigNumber.from(100), invalid: false }),
       },
       signerPool: jest.fn(),
-      provider: jest.fn(),
+      provider: {
+        getBlock: jest.fn().mockResolvedValue({ timestamp: 100000 }),
+      },
     } as any;
     const keeper = new Keeper(arg);
     const updateIndexSpy = jest.spyOn(keeper, "updateIndex");
@@ -202,6 +301,7 @@ describe("keeper", () => {
     expect(updateIndexSpy).toBeCalledTimes(1);
     expect(updateIndexSpy).toBeCalledWith(["__EVENT__", "__EVENT__"]);
     expect(runKeepersSpy).toBeCalledTimes(1);
+    expect(keeper.blockTipTimestamp).toEqual(100000);
   });
   test("runKeepers", async () => {
     const arg = {
@@ -294,6 +394,7 @@ describe("keeper", () => {
       baseAsset: "sUSD",
       futuresMarket: {
         canLiquidate: jest.fn().mockResolvedValue(false),
+        assetPrice: jest.fn().mockResolvedValue({ price: 100, invalid: false }),
       },
       signerPool: { withSigner: jest.fn() },
       provider: jest.fn(),
@@ -312,6 +413,7 @@ describe("keeper", () => {
       baseAsset: "sUSD",
       futuresMarket: {
         canLiquidate: jest.fn().mockResolvedValue(true),
+        assetPrice: jest.fn().mockResolvedValue({ price: 100, invalid: false }),
         connect: jest.fn().mockReturnValue({
           liquidatePosition: liquidatePositionMock,
         }),
