@@ -41,7 +41,7 @@ class Keeper {
   provider:
     | ethers.providers.WebSocketProvider
     | ethers.providers.JsonRpcProvider;
-  blockQueue: string[];
+  blockQueue: Denque<string>;
   blockTip: string | null;
   blockTipTimestamp: number;
   signerPool: SignerPool;
@@ -99,7 +99,7 @@ class Keeper {
     this.activeKeeperTasks = {};
 
     // A FIFO queue of blocks to be processed.
-    this.blockQueue = [];
+    this.blockQueue = new Denque();
 
     this.blockTip = null;
     this.blockTipTimestamp = 0;
@@ -328,7 +328,7 @@ class Keeper {
       // remove from queue
       const removedEntry = this.volumeQueue.shift();
       // update sum of volume
-      this.recentVolume -= (removedEntry?.sizeUSD || 0); // ts
+      this.recentVolume -= removedEntry?.sizeUSD || 0; // ts
       // update peekfront value for the loop condition
       peekFront = this.volumeQueue.peekFront();
     }
