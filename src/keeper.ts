@@ -22,6 +22,7 @@ function isObjectOrErrorWithCode(x: unknown): x is { code: string } {
 const EventsOfInterest = {
   PositionLiquidated: "PositionLiquidated",
   PositionModified: "PositionModified",
+  FundingRecomputed: "FundingRecomputed",
 };
 
 class Keeper {
@@ -176,7 +177,7 @@ class Keeper {
     this.logger.log("info", `${events.length} events to process`, {
       component: "Indexer",
     });
-    this.updateIndex(events);
+    await this.updateIndex(events);
 
     this.logger.log("info", `Index build complete!`, { component: "Indexer" });
     this.logger.log("info", `Starting keeper loop`);
@@ -206,10 +207,6 @@ class Keeper {
     // first try to liquidate any positions that can be liquidated now
     await this.runKeepers();
 
-    this.blockTipTimestamp = (
-      await this.provider.getBlock(blockNumber)
-    ).timestamp;
-
     // now process new events to update index, since it's impossible for a position that
     // was just updated to be liquidatable at the same block
     const events = await this.getEvents(blockNumber, blockNumber);
@@ -229,6 +226,13 @@ class Keeper {
     }
   ) {
     events.forEach(({ event, args }) => {
+      if (event === EventsOfInterest.FundingRecomputed && args) {
+        // just a sneaky way to get timestamps without making awaiting getBlock() calls
+        // keeping track of time is needed for the volume metrics
+        this.blockTipTimestamp = wei(args.timestamp).toNumber();
+        return;
+      }
+
       if (event === EventsOfInterest.PositionModified && args) {
         const { id, account, size, margin, lastPrice } = args;
 

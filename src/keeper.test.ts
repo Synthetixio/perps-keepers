@@ -49,14 +49,19 @@ describe("keeper", () => {
     const PositionModifiedMock = jest
       .fn()
       .mockReturnValue("__PositionModified_EVENT_FILTER__");
+    const FundingRecomputedMock = jest
+      .fn()
+      .mockReturnValue("__FundingRecomputed_EVENT_FILTER__");
+    const event = "__EVENT__";
     const arg = {
       baseAsset: "sBTC",
       futuresMarket: {
         filters: {
           PositionLiquidated: PositionLiquidatedMock,
           PositionModified: PositionModifiedMock,
+          FundingRecomputed: FundingRecomputedMock,
         },
-        queryFilter: jest.fn().mockResolvedValue(["__EVENT__"]),
+        queryFilter: jest.fn().mockResolvedValue([event]),
         assetPrice: jest
           .fn()
           .mockResolvedValue({ price: BigNumber.from(100), invalid: false }),
@@ -71,7 +76,7 @@ describe("keeper", () => {
       .spyOn(keeper, "startProcessNewBlockConsumer")
       .mockImplementation(); // avoid starting while(1)
     await keeper.run({ fromBlock: 0 });
-    expect(arg.futuresMarket.queryFilter).toBeCalledTimes(2);
+    expect(arg.futuresMarket.queryFilter).toBeCalledTimes(3);
     expect(arg.futuresMarket.queryFilter).toHaveBeenNthCalledWith(
       1,
       "__PositionLiquidated_EVENT_FILTER__",
@@ -84,8 +89,14 @@ describe("keeper", () => {
       0,
       "latest"
     );
+    expect(arg.futuresMarket.queryFilter).toHaveBeenNthCalledWith(
+      3,
+      "__FundingRecomputed_EVENT_FILTER__",
+      0,
+      "latest"
+    );
     expect(updateIndexSpy).toBeCalledTimes(1);
-    expect(updateIndexSpy).toHaveBeenCalledWith(["__EVENT__", "__EVENT__"]);
+    expect(updateIndexSpy).toHaveBeenCalledWith([event, event, event]);
     expect(runKeepersSpy).toBeCalledTimes(1);
     expect(arg.provider.on).toBeCalledTimes(1);
     expect(arg.provider.on).toHaveBeenCalledWith("block", expect.any(Function));
@@ -264,28 +275,30 @@ describe("keeper", () => {
     const PositionModifiedMock = jest
       .fn()
       .mockReturnValue("__PositionModified_EVENT_FILTER__");
+    const FundingRecomputedMock = jest
+      .fn()
+      .mockReturnValue("__FundingRecomputed_EVENT_FILTER__");
+    const event = { event: "FundingRecomputed", args: { timestamp: wei(100000) } };
     const arg = {
       baseAsset: "sUSD",
       futuresMarket: {
-        queryFilter: jest.fn().mockReturnValue(["__EVENT__"]),
+        queryFilter: jest.fn().mockReturnValue([event]),
         filters: {
           PositionLiquidated: PositionLiquidatedMock,
           PositionModified: PositionModifiedMock,
+          FundingRecomputed: FundingRecomputedMock,
         },
         assetPrice: jest
           .fn()
           .mockResolvedValue({ price: BigNumber.from(100), invalid: false }),
       },
       signerPool: jest.fn(),
-      provider: {
-        getBlock: jest.fn().mockResolvedValue({ timestamp: 100000 }),
-      },
     } as any;
     const keeper = new Keeper(arg);
     const updateIndexSpy = jest.spyOn(keeper, "updateIndex");
     const runKeepersSpy = jest.spyOn(keeper, "runKeepers");
     await keeper.processNewBlock("1");
-    expect(arg.futuresMarket.queryFilter).toBeCalledTimes(2);
+    expect(arg.futuresMarket.queryFilter).toBeCalledTimes(3);
     expect(arg.futuresMarket.queryFilter).toHaveBeenNthCalledWith(
       1,
       "__PositionLiquidated_EVENT_FILTER__",
@@ -298,8 +311,14 @@ describe("keeper", () => {
       "1",
       "1"
     );
+    expect(arg.futuresMarket.queryFilter).toHaveBeenNthCalledWith(
+      3,
+      "__FundingRecomputed_EVENT_FILTER__",
+      "1",
+      "1"
+    );
     expect(updateIndexSpy).toBeCalledTimes(1);
-    expect(updateIndexSpy).toBeCalledWith(["__EVENT__", "__EVENT__"]);
+    expect(updateIndexSpy).toBeCalledWith([event, event, event]);
     expect(runKeepersSpy).toBeCalledTimes(1);
     expect(keeper.blockTipTimestamp).toEqual(100000);
   });
