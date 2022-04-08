@@ -47,7 +47,11 @@ class Keeper {
   blockTipTimestamp: number;
   signerPool: SignerPool;
   network: string;
-  volumeQueue: Denque<{ tradeSizeUSD: number; timestamp: number }>;
+  volumeQueue: Denque<{
+    tradeSizeUSD: number;
+    timestamp: number;
+    account: string;
+  }>;
   recentVolume: number;
 
   constructor({
@@ -199,14 +203,13 @@ class Keeper {
     });
     await this.updateIndex(events);
 
-    // TODO remove
     this.logger.log(
-      "info",
+      "debug",
       `VolumeQueue after sync: total ${
         this.recentVolume
-      }\n:${this.volumeQueue
+      } ${this.volumeQueue.size()} trades:${this.volumeQueue
         .toArray()
-        .map(o => `${o.tradeSizeUSD} ${o.timestamp}`)}`,
+        .map(o => `\n${o.tradeSizeUSD} ${o.timestamp} ${o.account}`)}`,
       { component: "Indexer" }
     );
 
@@ -285,7 +288,10 @@ class Keeper {
           { component: "Indexer" }
         );
 
-        if (margin.eq(BigNumber.from(0)) || size.eq(BigNumber.from(0))) {
+        // keep track of volume
+        this.pushTradeToVolumeQueue(tradeSize, lastPrice, account);
+
+        if (margin.eq(BigNumber.from(0))) {
           // Position has been closed.
           delete this.positions[account];
           return;
@@ -318,9 +324,6 @@ class Keeper {
             .toNumber(),
         };
 
-        // keep track of volume
-        this.pushTradeToVolumeQueue(tradeSize, lastPrice);
-
         return;
       }
       if (event === EventsOfInterest.PositionLiquidated && args) {
@@ -351,7 +354,11 @@ class Keeper {
     await this.updateOIMetrics(deps);
   }
 
-  pushTradeToVolumeQueue(tradeSize: BigNumber, lastPrice: BigNumber) {
+  pushTradeToVolumeQueue(
+    tradeSize: BigNumber,
+    lastPrice: BigNumber,
+    account: string
+  ) {
     const tradeSizeUSD = wei(tradeSize)
       .abs()
       .mul(lastPrice)
@@ -361,6 +368,7 @@ class Keeper {
     this.volumeQueue.push({
       tradeSizeUSD: tradeSizeUSD,
       timestamp: this.blockTipTimestamp,
+      account: account,
     });
     // add to total volume sum
     this.recentVolume += tradeSizeUSD;

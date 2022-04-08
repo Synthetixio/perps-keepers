@@ -179,7 +179,14 @@ describe("keeper", () => {
       [
         {
           event: "PositionModified",
-          args: { id: "1", account: "___ACCOUNT1__", size: BigNumber.from(0), tradeSize: BigNumber.from(0) },
+          args: {
+            id: "1",
+            account: "___ACCOUNT1__",
+            size: BigNumber.from(0),
+            margin: BigNumber.from(0),
+            tradeSize: BigNumber.from(0),
+            lastPrice: BigNumber.from(1),
+          },
         },
       ] as any,
       deps
@@ -223,8 +230,8 @@ describe("keeper", () => {
 
     // push some values
     keeper.blockTipTimestamp = 1;
-    keeper.pushTradeToVolumeQueue(size, price);
-    keeper.pushTradeToVolumeQueue(size.mul(BigNumber.from("-1")), price);
+    keeper.pushTradeToVolumeQueue(size, price, "");
+    keeper.pushTradeToVolumeQueue(size.mul(BigNumber.from("-1")), price, "");
 
     const expectedVolume = price.mul(size.add(size));
     const expectedVolumeUSD = parseFloat(
@@ -244,14 +251,14 @@ describe("keeper", () => {
 
     // push some old values
     keeper.blockTipTimestamp = 1;
-    keeper.pushTradeToVolumeQueue(size, price);
-    keeper.pushTradeToVolumeQueue(size, price);
+    keeper.pushTradeToVolumeQueue(size, price, "");
+    keeper.pushTradeToVolumeQueue(size, price, "");
 
     // push some newer values
     keeper.blockTipTimestamp = 10000000;
-    keeper.pushTradeToVolumeQueue(size, price);
-    keeper.pushTradeToVolumeQueue(size, price);
-    keeper.pushTradeToVolumeQueue(size, price);
+    keeper.pushTradeToVolumeQueue(size, price, "");
+    keeper.pushTradeToVolumeQueue(size, price, "");
+    keeper.pushTradeToVolumeQueue(size, price, "");
 
     const deps = {
       recentVolumeMetric: { set: jest.fn() },
@@ -279,7 +286,10 @@ describe("keeper", () => {
     const FundingRecomputedMock = jest
       .fn()
       .mockReturnValue("__FundingRecomputed_EVENT_FILTER__");
-    const event = { event: "FundingRecomputed", args: { timestamp: wei(100000) } };
+    const event = {
+      event: "FundingRecomputed",
+      args: { timestamp: wei(100000) },
+    };
     const arg = {
       baseAsset: "sUSD",
       futuresMarket: {
