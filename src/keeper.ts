@@ -237,6 +237,12 @@ class Keeper {
     // was just updated to be liquidatable at the same block
     const events = await this.getEvents(blockNumber, blockNumber);
     this.blockTip = blockNumber;
+    if (!events.length) {
+      // set block timestamp here in case there were no events to update the timestamp from
+      this.blockTipTimestamp = (
+        await this.provider.getBlock(blockNumber)
+      ).timestamp;
+    }
     this.logger.log(
       "info",
       `Processing new block: ${blockNumber}, ${events.length} events to process`,
@@ -259,7 +265,8 @@ class Keeper {
     events.forEach(({ event, args, blockNumber }) => {
       if (event === EventsOfInterest.FundingRecomputed && args) {
         // just a sneaky way to get timestamps without making awaiting getBlock() calls
-        // keeping track of time is needed for the volume metrics
+        // keeping track of time is needed for the volume metrics during the initial
+        // sync so that we don't have to await getting block timestamp for each new block
         this.blockTipTimestamp = args.timestamp.toNumber();
         this.logger.log(
           "debug",
