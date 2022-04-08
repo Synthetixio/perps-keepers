@@ -285,11 +285,12 @@ class Keeper {
           { component: "Indexer" }
         );
 
-        if (size.eq(BigNumber.from(0))) {
+        if (margin.eq(BigNumber.from(0)) || size.eq(BigNumber.from(0))) {
           // Position has been closed.
           delete this.positions[account];
           return;
         }
+
         //   PositionModified(
         //     uint indexed id,
         //     address indexed account,
@@ -306,7 +307,9 @@ class Keeper {
           id,
           event,
           account,
-          size: wei(size).toNumber(),
+          size: wei(size)
+            .div(UNIT)
+            .toNumber(),
           leverage: wei(size)
             .abs()
             .mul(lastPrice)
@@ -392,35 +395,26 @@ class Keeper {
       marketSkewMetric: metrics.marketSkew,
     }
   ) {
-    const assetPrice = (await this.futuresMarket.assetPrice()).price;
+    const assetPrice = parseFloat(
+      utils.formatUnits((await this.futuresMarket.assetPrice()).price)
+    );
 
-    const marketSizeWei = Object.values(this.positions).reduce(
+    const marketSize = Object.values(this.positions).reduce(
       (a, v) => a + Math.abs(v.size),
       0
     );
-    const marketSkewWei = Object.values(this.positions).reduce(
+    const marketSkew = Object.values(this.positions).reduce(
       (a, v) => a + v.size,
       0
     );
 
-    const mulDecimal = (a: BigNumber, b: BigNumber) => a.mul(b).div(UNIT);
-
-    const marketSizeUSD = mulDecimal(
-      utils.parseUnits(marketSizeWei.toString()),
-      assetPrice
-    );
-    const marketSkewUSD = mulDecimal(
-      utils.parseUnits(marketSkewWei.toString()),
-      assetPrice
-    );
-
     args.marketSizeMetric.set(
       { market: this.baseAsset, network: this.network },
-      metrics.bnToNumber(marketSizeUSD)
+      marketSize * assetPrice
     );
     args.marketSkewMetric.set(
       { market: this.baseAsset, network: this.network },
-      metrics.bnToNumber(marketSkewUSD)
+      marketSkew * assetPrice
     );
   }
 
