@@ -47,7 +47,7 @@ class Keeper {
   blockTipTimestamp: number;
   signerPool: SignerPool;
   network: string;
-  volumeQueue: Denque<{ sizeUSD: number; timestamp: number }>;
+  volumeQueue: Denque<{ tradeSizeUSD: number; timestamp: number }>;
   recentVolume: number;
 
   constructor({
@@ -206,7 +206,7 @@ class Keeper {
         this.recentVolume
       }\n:${this.volumeQueue
         .toArray()
-        .map(o => `${o.sizeUSD} ${o.timestamp}`)}`,
+        .map(o => `${o.tradeSizeUSD} ${o.timestamp}`)}`,
       { component: "Indexer" }
     );
 
@@ -270,7 +270,7 @@ class Keeper {
       }
 
       if (event === EventsOfInterest.PositionModified && args) {
-        const { id, account, size, margin, lastPrice } = args;
+        const { id, account, size, margin, lastPrice, tradeSize } = args;
 
         this.logger.log(
           "debug",
@@ -309,7 +309,7 @@ class Keeper {
         };
 
         // keep track of volume
-        this.pushTradeToVolumeQueue(size, lastPrice);
+        this.pushTradeToVolumeQueue(tradeSize, lastPrice);
 
         return;
       }
@@ -341,15 +341,15 @@ class Keeper {
     await this.updateOIMetrics(deps);
   }
 
-  pushTradeToVolumeQueue(size: BigNumber, lastPrice: BigNumber) {
-    const tradeSizeUSD = wei(size)
+  pushTradeToVolumeQueue(tradeSize: BigNumber, lastPrice: BigNumber) {
+    const tradeSizeUSD = wei(tradeSize)
       .abs()
       .mul(lastPrice)
       .div(UNIT)
       .toNumber();
     // push into rolling queue
     this.volumeQueue.push({
-      sizeUSD: tradeSizeUSD,
+      tradeSizeUSD: tradeSizeUSD,
       timestamp: this.blockTipTimestamp,
     });
     // add to total volume sum
@@ -369,7 +369,7 @@ class Keeper {
       // remove from queue
       const removedEntry = this.volumeQueue.shift();
       // update sum of volume
-      this.recentVolume -= removedEntry?.sizeUSD || 0; // ts
+      this.recentVolume -= removedEntry?.tradeSizeUSD || 0; // ts
       // update peekfront value for the loop condition
       peekFront = this.volumeQueue.peekFront();
     }

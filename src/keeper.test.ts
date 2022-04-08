@@ -135,6 +135,7 @@ describe("keeper", () => {
             id: "1",
             account: "___ACCOUNT1__",
             size: wei(1).toBN(),
+            tradeSize: wei(1).toBN(),
             lastPrice: price,
             margin: wei(20000).toBN(),
           },
@@ -178,7 +179,7 @@ describe("keeper", () => {
       [
         {
           event: "PositionModified",
-          args: { id: "1", account: "___ACCOUNT1__", size: BigNumber.from(0) },
+          args: { id: "1", account: "___ACCOUNT1__", size: BigNumber.from(0), tradeSize: BigNumber.from(0) },
         },
       ] as any,
       deps
