@@ -157,8 +157,9 @@ class Keeper {
     }
   }
   async getEvents(fromBlock: string | number, toBlock: string | number) {
+    const eventNames = Object.values(EventsOfInterest);
     const nestedEvents = await Promise.all(
-      Object.values(EventsOfInterest).map(eventName => {
+      eventNames.map(eventName => {
         // For some reason query filters logs out stuff to the console
         return this.futuresMarket.queryFilter(
           this.futuresMarket.filters[eventName](),
@@ -167,7 +168,26 @@ class Keeper {
         );
       })
     );
-    return nestedEvents.flat(1);
+    // warn about requesting too many events
+    nestedEvents.map((singleFilterEvents, index) => {
+      if (singleFilterEvents.length > 1000) {
+        // at some point we'll issues getting enough events
+        this.logger.log(
+          "warn",
+          `Got ${singleFilterEvents.length} ${eventNames[index]} events, will run into RPC limits at 10000`,
+          { component: "Indexer" }
+        );
+      }
+    });
+    const events = nestedEvents.flat(1);
+    // sort by block, tx index, and log index, so that events are processed in order
+    events.sort(
+      (a, b) =>
+        a.blockNumber - b.blockNumber ||
+        a.transactionIndex - b.transactionIndex ||
+        a.logIndex - b.logIndex
+    );
+    return events;
   }
   async run({ fromBlock }: { fromBlock: string | number }) {
     const events = await this.getEvents(fromBlock, "latest");
@@ -178,6 +198,17 @@ class Keeper {
       component: "Indexer",
     });
     await this.updateIndex(events);
+
+    // TODO remove
+    this.logger.log(
+      "info",
+      `VolumeQueue after sync: total ${
+        this.recentVolume
+      }\n:${this.volumeQueue
+        .toArray()
+        .map(o => `${o.sizeUSD} ${o.timestamp}`)}`,
+      { component: "Indexer" }
+    );
 
     this.logger.log("info", `Index build complete!`, { component: "Indexer" });
     this.logger.log("info", `Starting keeper loop`);
@@ -199,20 +230,20 @@ class Keeper {
   }
 
   async processNewBlock(blockNumber: string) {
-    this.logger.log("debug", `\nProcessing block: ${blockNumber}`, {
-      component: "Indexer",
-    });
-    this.blockTip = blockNumber;
-
     // first try to liquidate any positions that can be liquidated now
     await this.runKeepers();
 
     // now process new events to update index, since it's impossible for a position that
     // was just updated to be liquidatable at the same block
     const events = await this.getEvents(blockNumber, blockNumber);
-    this.logger.log("debug", `${events.length} events to process`, {
-      component: "Indexer",
-    });
+    this.blockTip = blockNumber;
+    this.logger.log(
+      "info",
+      `Processing new block: ${blockNumber}, ${events.length} events to process`,
+      {
+        component: "Indexer",
+      }
+    );
     await this.updateIndex(events);
   }
 
@@ -225,11 +256,16 @@ class Keeper {
       recentVolumeMetric: metrics.recentVolume,
     }
   ) {
-    events.forEach(({ event, args }) => {
+    events.forEach(({ event, args, blockNumber }) => {
       if (event === EventsOfInterest.FundingRecomputed && args) {
         // just a sneaky way to get timestamps without making awaiting getBlock() calls
         // keeping track of time is needed for the volume metrics
-        this.blockTipTimestamp = wei(args.timestamp).toNumber();
+        this.blockTipTimestamp = args.timestamp.toNumber();
+        this.logger.log(
+          "debug",
+          `FundingRecomputed timestamp ${this.blockTipTimestamp}, blocknumber ${blockNumber}`,
+          { component: "Indexer" }
+        );
         return;
       }
 
@@ -237,8 +273,8 @@ class Keeper {
         const { id, account, size, margin, lastPrice } = args;
 
         this.logger.log(
-          "info",
-          `PositionModified id=${id} account=${account}`,
+          "debug",
+          `PositionModified id=${id} account=${account}, blocknumber ${blockNumber}`,
           { component: "Indexer" }
         );
 
@@ -268,6 +304,7 @@ class Keeper {
             .abs()
             .mul(lastPrice)
             .div(margin)
+            .div(UNIT)
             .toNumber(),
         };
 
@@ -279,8 +316,8 @@ class Keeper {
       if (event === EventsOfInterest.PositionLiquidated && args) {
         const { account, liquidator } = args;
         this.logger.log(
-          "info",
-          `PositionLiquidated account=${account} liquidator=${liquidator}`,
+          "debug",
+          `PositionLiquidated account=${account} liquidator=${liquidator}, blocknumber ${blockNumber}`,
           { component: "Indexer" }
         );
 
@@ -292,7 +329,7 @@ class Keeper {
         return;
       }
 
-      this.logger.info(`No handler for event ${event}`, {
+      this.logger.debug(`No handler for event ${event}`, {
         component: "Indexer",
       });
     });
@@ -397,6 +434,13 @@ class Keeper {
       "desc"
     );
     for (const batch of chunk(positions, deps.BATCH_SIZE)) {
+      this.logger.log(
+        "info",
+        `Running keeper batch with ${batch.length} positions to keep`,
+        {
+          component: "Keeper",
+        }
+      );
       await Promise.all(
         batch.map(async position => {
           const { id, account } = position;
@@ -416,7 +460,7 @@ class Keeper {
     }
     this.activeKeeperTasks[id] = true;
 
-    this.logger.log("info", `running`, {
+    this.logger.log("debug", `running`, {
       component: `Keeper [${taskLabel}] id=${id}`,
     });
     try {
@@ -432,7 +476,7 @@ class Keeper {
         network: this.network,
       });
     }
-    this.logger.log("info", `done`, {
+    this.logger.log("debug", `done`, {
       component: `Keeper [${taskLabel}] id=${id}`,
     });
 
@@ -447,7 +491,7 @@ class Keeper {
     const taskLabel = "liquidation";
     const canLiquidateOrder = await this.futuresMarket.canLiquidate(account);
     if (!canLiquidateOrder) {
-      this.logger.log("info", `Cannot liquidate order`, {
+      this.logger.log("debug", `Cannot liquidate order`, {
         component: `Keeper [${taskLabel}] id=${id}`,
       });
       return;
