@@ -12,6 +12,7 @@ import { wei } from "@synthetixio/wei";
 import Denque from "denque"; // double sided queue for volume measurement
 
 const UNIT = utils.parseUnits("1");
+const LIQ_PRICE_UNSET = -1;
 
 function isObjectOrErrorWithCode(x: unknown): x is { code: string } {
   if (typeof x !== "object") return false;
@@ -25,18 +26,21 @@ const EventsOfInterest = {
   FundingRecomputed: "FundingRecomputed",
 };
 
+interface Position {
+  id: string;
+  event: string;
+  account: string;
+  size: number;
+  leverage: number;
+  liqPrice: number;
+}
+
 class Keeper {
   baseAsset: string;
   futuresMarket: Contract;
   logger: Logger;
   positions: {
-    [account: string]: {
-      id: string;
-      event: string;
-      account: string;
-      size: number;
-      leverage: number;
-    };
+    [account: string]: Position;
   };
   activeKeeperTasks: { [id: string]: boolean | undefined };
   provider:
@@ -53,6 +57,7 @@ class Keeper {
     account: string;
   }>;
   recentVolume: number;
+  assetPrice: number;
 
   constructor({
     futuresMarket,
@@ -118,6 +123,9 @@ class Keeper {
     // linear time instead of quadratic (for a regular array)
     this.volumeQueue = new Denque();
     this.recentVolume = 0;
+
+    // required for sorting position by proximity of liquidation price to current price
+    this.assetPrice = 0;
   }
 
   static async create({
@@ -322,6 +330,7 @@ class Keeper {
             .div(margin)
             .div(UNIT)
             .toNumber(),
+          liqPrice: LIQ_PRICE_UNSET, // will be updated by keeper routine
         };
 
         return;
@@ -350,8 +359,13 @@ class Keeper {
     // update volume metrics
     this.updateVolumeMetrics(deps);
 
+    // required for metrics and liquidations order
+    // it's updated after running keepers because even if it's one-block old, it shouldn't
+    // affect liquidation order too much, but awaiting this might introduce latency
+    await this.updateAssetPrice();
+
     // update open interest metrics
-    await this.updateOIMetrics(deps);
+    this.updateOIMetrics(deps);
   }
 
   pushTradeToVolumeQueue(
@@ -395,18 +409,26 @@ class Keeper {
       { market: this.baseAsset, network: this.network },
       this.recentVolume
     );
+    this.logger.debug(`Recent volume: ${this.recentVolume}`, {
+      component: "Indexer",
+    });
   }
 
-  async updateOIMetrics(
+  async updateAssetPrice() {
+    this.assetPrice = parseFloat(
+      utils.formatUnits((await this.futuresMarket.assetPrice()).price)
+    );
+    this.logger.info(`Latest price: ${this.assetPrice}`, {
+      component: "Indexer",
+    });
+  }
+
+  updateOIMetrics(
     args = {
       marketSizeMetric: metrics.marketSize,
       marketSkewMetric: metrics.marketSkew,
     }
   ) {
-    const assetPrice = parseFloat(
-      utils.formatUnits((await this.futuresMarket.assetPrice()).price)
-    );
-
     const marketSize = Object.values(this.positions).reduce(
       (a, v) => a + Math.abs(v.size),
       0
@@ -418,31 +440,66 @@ class Keeper {
 
     args.marketSizeMetric.set(
       { market: this.baseAsset, network: this.network },
-      marketSize * assetPrice
+      marketSize * this.assetPrice
     );
     args.marketSkewMetric.set(
       { market: this.baseAsset, network: this.network },
-      marketSkew * assetPrice
+      marketSkew * this.assetPrice
     );
   }
 
-  async runKeepers(deps = { BATCH_SIZE: 500, WAIT: 2000, metrics }) {
-    const numPositions = Object.keys(this.positions).length;
+  // global ordering of position for liquidations by their likelihood of being liquidatable
+  orderAllPositions(posArr: Position[]) {
+    // sort known prices by liq price with leverage as tie breaker
+    posArr.sort((p1: Position, p2: Position) => {      
+      return (
+        // sort by ascending proximity of liquidation price to current price
+        Math.abs(p1.liqPrice - this.assetPrice) - Math.abs(p2.liqPrice - this.assetPrice) ||
+        // if liq price is the same, sort by descending leverage (which should be different)
+        p2.leverage - p1.leverage // desc)
+      );
+    });
+
+    const knownLiqPrice = posArr.filter(p => p.liqPrice !== LIQ_PRICE_UNSET);
+    const unknownLiqPrice = posArr.filter(p => p.liqPrice === LIQ_PRICE_UNSET);
+
+    const liqPriceClose = knownLiqPrice.filter(p => 
+      (Math.abs(p.liqPrice - this.assetPrice) / this.assetPrice) <= 0.1 // within 10% of actual price
+    );
+    const liqPriceFar = knownLiqPrice.filter(p => 
+      (Math.abs(p.liqPrice - this.assetPrice) / this.assetPrice) > 0.1 // within 10% of actual price
+    );    
+
+    // first known close prices, then unknown prices yet, then known far prices
+    return [...liqPriceClose, ...unknownLiqPrice, ...liqPriceFar];
+  }
+
+  // local ordering of positions by size to fire liquidations for largest orders first
+  orderPositionsBatch(posArr: Position[]) {
+    posArr.sort(
+      (p1, p2) =>
+        // descending size
+        p2.size - p1.size
+    );
+    return posArr;
+  }
+
+  async runKeepers(deps = { BATCH_SIZE: 10, WAIT: 0, metrics }) {
+    // make into an array and filter position 0 size positions
+    let openPositions = Object.values(this.positions).filter(p => p.size > 0);
+
+    // order the position
+    openPositions = this.orderAllPositions(openPositions);
+
     deps.metrics.futuresOpenPositions.set(
       { market: this.baseAsset, network: this.network },
-      numPositions
+      openPositions.length
     );
-    this.logger.log("info", `${numPositions} positions to keep`, {
+    this.logger.log("info", `${openPositions.length} positions to keep`, {
       component: "Keeper",
     });
 
-    // Get current liquidation price for each position (including funding).
-    const positions = orderBy(
-      Object.values(this.positions),
-      ["leverage"],
-      "desc"
-    );
-    for (const batch of chunk(positions, deps.BATCH_SIZE)) {
+    for (let batch of chunk(openPositions, deps.BATCH_SIZE)) {
       this.logger.log(
         "info",
         `Running keeper batch with ${batch.length} positions to keep`,
@@ -450,6 +507,9 @@ class Keeper {
           component: "Keeper",
         }
       );
+      // sort the batch itself by local priority
+      batch = this.orderPositionsBatch(batch);
+
       await Promise.all(
         batch.map(async position => {
           const { id, account } = position;
@@ -498,11 +558,22 @@ class Keeper {
     deps = { metricFuturesLiquidations: metrics.futuresLiquidations }
   ) {
     const taskLabel = "liquidation";
+    // check if it's liquidatable
     const canLiquidateOrder = await this.futuresMarket.canLiquidate(account);
     if (!canLiquidateOrder) {
-      this.logger.log("debug", `Cannot liquidate order`, {
-        component: `Keeper [${taskLabel}] id=${id}`,
-      });
+      // if it's not liquidatable update it's liquidation price
+      this.positions[account].liqPrice = parseFloat(
+        utils.formatUnits(
+          (await this.futuresMarket.liquidationPrice(account)).price
+        )
+      );
+      this.logger.log(
+        "debug",
+        `Cannot liquidate order, updated liqPrice ${this.positions[account].liqPrice}`,
+        {
+          component: `Keeper [${taskLabel}] id=${id}`,
+        }
+      );
       return;
     }
 
