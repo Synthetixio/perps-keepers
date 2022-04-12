@@ -10,6 +10,7 @@ const getMockPositions = () => ({
     size: 10,
     leverage: 1,
     liqPrice: -1,
+    liqPriceUpdatedTimestamp: 0,
   },
   ___ACCOUNT2__: {
     id: "1",
@@ -18,6 +19,7 @@ const getMockPositions = () => ({
     size: 10,
     leverage: 1,
     liqPrice: -1,
+    liqPriceUpdatedTimestamp: 0,
   },
   ___ACCOUNT3__: {
     id: "1",
@@ -26,6 +28,7 @@ const getMockPositions = () => ({
     size: 10,
     leverage: 1,
     liqPrice: -1,
+    liqPriceUpdatedTimestamp: 0,
   },
 });
 const sBTCBytes32 =
@@ -153,6 +156,7 @@ describe("keeper", () => {
       size: 1,
       leverage: 2,
       liqPrice: -1,
+      liqPriceUpdatedTimestamp: 0,
     });
 
     const expectedSize = wei(1)
@@ -221,6 +225,7 @@ describe("keeper", () => {
         size: 10,
         leverage: 1,
         liqPrice: -1,
+        liqPriceUpdatedTimestamp: 0,
       },
     });
   });
@@ -355,6 +360,7 @@ describe("keeper", () => {
         size: 10,
         leverage: 2,
         liqPrice: -1,
+        liqPriceUpdatedTimestamp: 0,
       },
     };
     keeper.positions = mockPosition;
@@ -495,15 +501,23 @@ describe("keeper", () => {
     const keeper = new Keeper(arg);
     keeper.assetPrice = 10;
     // global order
-    const props = { id: "1", event: "?" };
+    const props = { id: "1", event: "?", liqPriceUpdatedTimestamp: 0 };
     let posArrIn = [
       { account: "d", liqPrice: -1, leverage: 0, size: 1, ...props },
       { account: "b", liqPrice: -1, leverage: 10, size: 1, ...props },
       { account: "a", liqPrice: 9.5, leverage: 1.2, size: 1, ...props },
       { account: "c", liqPrice: -1, leverage: 5, size: 1, ...props },
       { account: "f", liqPrice: 5, leverage: 1.2, size: 1, ...props },
+      {
+        account: "g",
+        liqPrice: 5,
+        leverage: 1.2,
+        size: 1,
+        ...props,
+        liqPriceUpdatedTimestamp: 1,
+      }, // should be dropped if only 1 far price is to be checked
     ];
-    const out1 = keeper.orderAllPositions(posArrIn);
+    const out1 = keeper.liquidationQueue(posArrIn, 0.1, 1);
     expect(out1.map(p => p.account)).toEqual(["a", "b", "c", "d", "f"]);
     // batch order
     let out2 = keeper.orderPositionsBatch([

@@ -33,6 +33,7 @@ interface Position {
   size: number;
   leverage: number;
   liqPrice: number;
+  liqPriceUpdatedTimestamp: number;
 }
 
 class Keeper {
@@ -331,6 +332,7 @@ class Keeper {
             .div(UNIT)
             .toNumber(),
           liqPrice: LIQ_PRICE_UNSET, // will be updated by keeper routine
+          liqPriceUpdatedTimestamp: 0,
         };
 
         return;
@@ -449,7 +451,11 @@ class Keeper {
   }
 
   // global ordering of position for liquidations by their likelihood of being liquidatable
-  orderAllPositions(posArr: Position[]) {
+  liquidationQueue(
+    posArr: Position[],
+    priceProximityThreshold = 0.05,
+    maxFarPricesToUpdate = 10 // max number of older liquidation prices to update
+  ) {
     // sort known prices by liq price with leverage as tie breaker
     posArr.sort((p1: Position, p2: Position) => {
       return (
@@ -461,18 +467,46 @@ class Keeper {
       );
     });
 
+    // group
     const knownLiqPrice = posArr.filter(p => p.liqPrice !== LIQ_PRICE_UNSET);
     const unknownLiqPrice = posArr.filter(p => p.liqPrice === LIQ_PRICE_UNSET);
 
     const liqPriceClose = knownLiqPrice.filter(
-      p => Math.abs(p.liqPrice - this.assetPrice) / this.assetPrice <= 0.1 // within 10% of actual price
+      p =>
+        Math.abs(p.liqPrice - this.assetPrice) / this.assetPrice <=
+        priceProximityThreshold
     );
     const liqPriceFar = knownLiqPrice.filter(
-      p => Math.abs(p.liqPrice - this.assetPrice) / this.assetPrice > 0.1 // within 10% of actual price
+      p =>
+        Math.abs(p.liqPrice - this.assetPrice) / this.assetPrice >
+        priceProximityThreshold
     );
 
-    // first known close prices, then unknown prices yet, then known far prices
-    return [...liqPriceClose, ...unknownLiqPrice, ...liqPriceFar];
+    // sort close prices by liquidation price and leverage
+    liqPriceClose.sort(
+      (p1, p2) =>
+        // sort by ascending proximity of liquidation price to current price
+        Math.abs(p1.liqPrice - this.assetPrice) -
+          Math.abs(p2.liqPrice - this.assetPrice) ||
+        // if liq price is the same, sort by descending leverage (which should be different)
+        p2.leverage - p1.leverage // desc)
+    );
+
+    // sort unknown liq prices by leverage
+    unknownLiqPrice.sort((p1, p2) => p2.leverage - p1.leverage); //desc
+
+    // sort far liquidation prices by how out of date they are
+    // this should constantly update old positions' liq price
+    liqPriceFar.sort(
+      (p1, p2) => p1.liqPriceUpdatedTimestamp - p2.liqPriceUpdatedTimestamp
+    ); //asc
+
+    // first known close prices, then unknown prices yet
+    return [
+      ...liqPriceClose, // all close prices within threshold
+      ...unknownLiqPrice, // all unknown liq prices (to get them updated)
+      ...liqPriceFar.slice(0, maxFarPricesToUpdate), // some max number of of outdated prices to reduce spamming the node and prevent self DOS when there are many positions
+    ];
   }
 
   // local ordering of positions by size to fire liquidations for largest orders first
@@ -487,10 +521,7 @@ class Keeper {
 
   async runKeepers(deps = { BATCH_SIZE: 10, WAIT: 0, metrics }) {
     // make into an array and filter position 0 size positions
-    let openPositions = Object.values(this.positions).filter(p => p.size > 0);
-
-    // order the position
-    openPositions = this.orderAllPositions(openPositions);
+    const openPositions = Object.values(this.positions).filter(p => p.size > 0);
 
     deps.metrics.futuresOpenPositions.set(
       { market: this.baseAsset, network: this.network },
@@ -500,7 +531,10 @@ class Keeper {
       component: "Keeper",
     });
 
-    for (let batch of chunk(openPositions, deps.BATCH_SIZE)) {
+    // order the position
+    const positionsToKeep = this.liquidationQueue(openPositions);
+
+    for (let batch of chunk(positionsToKeep, deps.BATCH_SIZE)) {
       this.logger.log(
         "info",
         `Running keeper batch with ${batch.length} positions to keep`,
@@ -569,6 +603,7 @@ class Keeper {
           (await this.futuresMarket.liquidationPrice(account)).price
         )
       );
+      this.positions[account].liqPriceUpdatedTimestamp = Date.now();
       this.logger.log(
         "debug",
         `Cannot liquidate order, updated liqPrice ${this.positions[account].liqPrice}`,
