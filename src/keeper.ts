@@ -536,14 +536,15 @@ class Keeper {
     try {
       await cb();
     } catch (err) {
-      if (err && typeof err === "object" && err.toString) {
-        this.logger.log("error", `error \n${err.toString()}`, {
-          component: `Keeper [${taskLabel}] id=${id}`,
-        });
-      }
+      let errorMessage = String(err);
+      this.logger.log("error", `error \n${errorMessage}`, {
+        component: `Keeper [${taskLabel}] id=${id}`,
+      });
+
       metrics.keeperErrors.inc({
         market: this.baseAsset,
         network: this.network,
+        errorMessage: errorMessage,
       });
     }
     this.logger.log("debug", `done`, {
