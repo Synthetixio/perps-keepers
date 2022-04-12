@@ -517,13 +517,11 @@ describe("keeper", () => {
         liqPriceUpdatedTimestamp: 1,
       }, // should be dropped if only 1 far price is to be checked
     ];
-    const out1 = keeper.liquidationQueue(posArrIn, 0.1, 1);
-    expect(out1.map(p => p.account)).toEqual(["a", "b", "c", "d", "f"]);
-    // batch order
-    let out2 = keeper.orderPositionsBatch([
-      { account: "a", liqPrice: -1, leverage: 0, size: 10, ...props },
-      { account: "b", liqPrice: 9, leverage: 10, size: 1, ...props },
+    const out1 = keeper.liquidationGroups(posArrIn, 0.1, 1);
+    expect(out1.map(group => group.map(p => p.account))).toEqual([
+      ["a"],
+      ["b", "c", "d"],
+      ["f"],
     ]);
-    expect(out2.map(p => p.account)).toEqual(["a", "b"]);
   });
 });
