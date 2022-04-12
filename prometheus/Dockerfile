@@ -1,7 +1,7 @@
 # Based off work from @zakkg3
 # https://github.com/zakkg3/Prometheus-confd
 
-FROM prom/prometheus
+FROM prom/prometheus:v2.34.0
 
 USER root
 RUN wget -O /bin/confd https://github.com/kelseyhightower/confd/releases/download/v0.16.0/confd-0.16.0-linux-amd64 && \
