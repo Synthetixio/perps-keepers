@@ -9,6 +9,8 @@ const getMockPositions = () => ({
     account: "___ACCOUNT1__",
     size: 10,
     leverage: 1,
+    liqPrice: -1,
+    liqPriceUpdatedTimestamp: 0,
   },
   ___ACCOUNT2__: {
     id: "1",
@@ -16,6 +18,8 @@ const getMockPositions = () => ({
     account: "___ACCOUNT2__",
     size: 10,
     leverage: 1,
+    liqPrice: -1,
+    liqPriceUpdatedTimestamp: 0,
   },
   ___ACCOUNT3__: {
     id: "1",
@@ -23,6 +27,8 @@ const getMockPositions = () => ({
     account: "___ACCOUNT3__",
     size: 10,
     leverage: 1,
+    liqPrice: -1,
+    liqPriceUpdatedTimestamp: 0,
   },
 });
 const sBTCBytes32 =
@@ -149,6 +155,8 @@ describe("keeper", () => {
       id: "1",
       size: 1,
       leverage: 2,
+      liqPrice: -1,
+      liqPriceUpdatedTimestamp: 0,
     });
 
     const expectedSize = wei(1)
@@ -216,6 +224,8 @@ describe("keeper", () => {
         account: "___ACCOUNT3__",
         size: 10,
         leverage: 1,
+        liqPrice: -1,
+        liqPriceUpdatedTimestamp: 0,
       },
     });
   });
@@ -349,9 +359,12 @@ describe("keeper", () => {
         account: "___ACCOUNT4__",
         size: 10,
         leverage: 2,
+        liqPrice: -1,
+        liqPriceUpdatedTimestamp: 0,
       },
     };
     keeper.positions = mockPosition;
+    keeper.assetPrice = 1;
     const runKeeperTaskSpy = jest.spyOn(keeper, "runKeeperTask");
     const liquidateOrderSpy = jest
       .spyOn(keeper, "liquidateOrder")
@@ -424,15 +437,22 @@ describe("keeper", () => {
       baseAsset: "sUSD",
       futuresMarket: {
         canLiquidate: jest.fn().mockResolvedValue(false),
+        liquidationPrice: jest
+          .fn()
+          .mockResolvedValue({ price: utils.parseEther("1") }),
         assetPrice: jest.fn().mockResolvedValue({ price: 100, invalid: false }),
       },
       signerPool: { withSigner: jest.fn() },
       provider: jest.fn(),
     } as any;
     const keeper = new Keeper(arg);
-    await keeper.liquidateOrder("1", "__ACCOUNT__");
+    keeper.positions = getMockPositions();
+    const account = "___ACCOUNT1__";
+    await keeper.liquidateOrder("1", account);
     expect(arg.futuresMarket.canLiquidate).toBeCalledTimes(1);
-    expect(arg.futuresMarket.canLiquidate).toHaveBeenCalledWith("__ACCOUNT__");
+    expect(arg.futuresMarket.canLiquidate).toHaveBeenCalledWith(account);
+    expect(arg.futuresMarket.liquidationPrice).toHaveBeenCalledWith(account);
+    expect(keeper.positions[account].liqPrice).toEqual(1);
     expect(arg.signerPool.withSigner).not.toHaveBeenCalled();
   });
 
@@ -469,5 +489,39 @@ describe("keeper", () => {
       { market: "sUSD" },
       1
     );
+  });
+
+  test("liquidation position order", async () => {
+    const arg = {
+      baseAsset: "sUSD",
+      futuresMarket: {},
+      signerPool: {},
+      provider: {},
+    } as any;
+    const keeper = new Keeper(arg);
+    keeper.assetPrice = 10;
+    // global order
+    const props = { id: "1", event: "?", liqPriceUpdatedTimestamp: 0 };
+    let posArrIn = [
+      { account: "d", liqPrice: -1, leverage: 0, size: 1, ...props },
+      { account: "b", liqPrice: -1, leverage: 10, size: 1, ...props },
+      { account: "a", liqPrice: 9.5, leverage: 1.2, size: 1, ...props },
+      { account: "c", liqPrice: -1, leverage: 5, size: 1, ...props },
+      { account: "f", liqPrice: 5, leverage: 1.2, size: 1, ...props },
+      {
+        account: "g",
+        liqPrice: 5,
+        leverage: 1.2,
+        size: 1,
+        ...props,
+        liqPriceUpdatedTimestamp: 1,
+      }, // should be dropped if only 1 far price is to be checked
+    ];
+    const out1 = keeper.liquidationGroups(posArrIn, 0.1, 1);
+    expect(out1.map(group => group.map(p => p.account))).toEqual([
+      ["a"],
+      ["b", "c", "d"],
+      ["f"],
+    ]);
   });
 });

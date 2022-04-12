@@ -41,7 +41,7 @@ export const futuresLiquidations = new client.Gauge({
 export const keeperErrors = new client.Gauge({
   name: "keeper_errors",
   help: "Number of errors in running keeper tasks",
-  labelNames: ["market", "network"],
+  labelNames: ["market", "network", "errorMessage"],
 });
 export const totalLiquidations = new client.Gauge({
   name: "total_liquidations",
@@ -75,7 +75,7 @@ const metrics = [
   totalLiquidations,
   marketSize,
   marketSkew,
-  recentVolume
+  recentVolume,
 ];
 export function runServer(
   network: string,
