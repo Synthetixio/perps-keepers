@@ -451,10 +451,11 @@ class Keeper {
   // global ordering of position for liquidations by their likelihood of being liquidatable
   orderAllPositions(posArr: Position[]) {
     // sort known prices by liq price with leverage as tie breaker
-    posArr.sort((p1: Position, p2: Position) => {      
+    posArr.sort((p1: Position, p2: Position) => {
       return (
         // sort by ascending proximity of liquidation price to current price
-        Math.abs(p1.liqPrice - this.assetPrice) - Math.abs(p2.liqPrice - this.assetPrice) ||
+        Math.abs(p1.liqPrice - this.assetPrice) -
+          Math.abs(p2.liqPrice - this.assetPrice) ||
         // if liq price is the same, sort by descending leverage (which should be different)
         p2.leverage - p1.leverage // desc)
       );
@@ -463,12 +464,12 @@ class Keeper {
     const knownLiqPrice = posArr.filter(p => p.liqPrice !== LIQ_PRICE_UNSET);
     const unknownLiqPrice = posArr.filter(p => p.liqPrice === LIQ_PRICE_UNSET);
 
-    const liqPriceClose = knownLiqPrice.filter(p => 
-      (Math.abs(p.liqPrice - this.assetPrice) / this.assetPrice) <= 0.1 // within 10% of actual price
+    const liqPriceClose = knownLiqPrice.filter(
+      p => Math.abs(p.liqPrice - this.assetPrice) / this.assetPrice <= 0.1 // within 10% of actual price
     );
-    const liqPriceFar = knownLiqPrice.filter(p => 
-      (Math.abs(p.liqPrice - this.assetPrice) / this.assetPrice) > 0.1 // within 10% of actual price
-    );    
+    const liqPriceFar = knownLiqPrice.filter(
+      p => Math.abs(p.liqPrice - this.assetPrice) / this.assetPrice > 0.1 // within 10% of actual price
+    );
 
     // first known close prices, then unknown prices yet, then known far prices
     return [...liqPriceClose, ...unknownLiqPrice, ...liqPriceFar];
