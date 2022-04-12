@@ -4,7 +4,7 @@ import { formatEther } from "@ethersproject/units";
 import { BigNumber, ethers } from "ethers";
 
 // constants
-export const VOLUME_RECENCY_CUTOFF = 86400; // 1 day
+export const VOLUME_RECENCY_CUTOFF = 6 * 3600; // 1 day
 
 // Metrics.
 
