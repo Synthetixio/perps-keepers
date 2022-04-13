@@ -14,7 +14,7 @@ describe("run", () => {
         futuresMarkets: [{ asset: "sBTC" }],
         ETH_HDWALLET_MNEMONIC: "some words",
       } as any)
-    ).rejects.toEqual(Error("No futures market for currencyKey: sDOGE"));
+    ).rejects.toEqual(Error("No futures market for marketKey: sDOGE"));
   });
   test("happy path", async () => {
     const getProviderMock = jest.fn().mockReturnValue("__PROVIDER__");
