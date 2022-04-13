@@ -454,7 +454,7 @@ class Keeper {
   liquidationGroups(
     posArr: Position[],
     priceProximityThreshold = 0.05,
-    maxFarPricesToUpdate = 10 // max number of older liquidation prices to update
+    maxFarPricesToUpdate = 5 // max number of older liquidation prices to update
   ) {
     // group
     const knownLiqPrice = posArr.filter(p => p.liqPrice !== LIQ_PRICE_UNSET);
@@ -498,7 +498,7 @@ class Keeper {
     ];
   }
 
-  async runKeepers(deps = { BATCH_SIZE: 10, WAIT: 0, metrics }) {
+  async runKeepers(deps = { BATCH_SIZE: 5, WAIT: 0, metrics }) {
     // make into an array and filter position 0 size positions
     const openPositions = Object.values(this.positions).filter(p => p.size > 0);
 

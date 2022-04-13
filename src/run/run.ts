@@ -48,14 +48,14 @@ export async function run(
       network,
       useOvm: true,
     })
-    .map(({ asset }) => asset);
+    .map(({ marketKey }) => marketKey);
 
   const providerUrl = process.env.PROVIDER_URL || DEFAULTS.providerUrl;
   const marketsArray = markets ? markets.trim().split(",") : allFuturesMarkets;
   // Verify markets.
-  marketsArray.forEach(asset => {
-    if (!allFuturesMarkets.includes(asset)) {
-      throw new Error(`No futures market for currencyKey: ${asset}`);
+  marketsArray.forEach(marketKey => {
+    if (!allFuturesMarkets.includes(marketKey)) {
+      throw new Error(`No futures market for marketKey: ${marketKey}`);
     }
   });
 
@@ -93,14 +93,14 @@ export async function run(
 
   // Load contracts.
 
-  const marketContracts = marketsArray.map(
-    market =>
-      deps.getSynthetixContracts({
-        network,
-        provider,
-        useOvm: true,
-      })[`FuturesMarket${market.slice(1)}`]
-  );
+  const contracts = deps.getSynthetixContracts({
+    network,
+    provider,
+    useOvm: true,
+  });
+
+  const marketContracts = marketsArray.map(market => contracts[`FuturesMarket${market.slice(1)}`]);
+  
   for (const marketContract of marketContracts) {
     const keeper = await deps.Keeper.create({
       network,
