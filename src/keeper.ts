@@ -454,7 +454,7 @@ class Keeper {
   liquidationGroups(
     posArr: Position[],
     priceProximityThreshold = 0.05,
-    maxFarPricesToUpdate = 5 // max number of older liquidation prices to update
+    maxFarPricesToUpdate = 1 // max number of older liquidation prices to update
   ) {
     // group
     const knownLiqPrice = posArr.filter(p => p.liqPrice !== LIQ_PRICE_UNSET);
