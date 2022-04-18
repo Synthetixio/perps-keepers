@@ -500,7 +500,7 @@ class Keeper {
 
   async runKeepers(deps = { BATCH_SIZE: 5, WAIT: 0, metrics }) {
     // make into an array and filter position 0 size positions
-    const openPositions = Object.values(this.positions).filter(p => p.size > 0);
+    const openPositions = Object.values(this.positions).filter(p => Math.abs(p.size) > 0);
 
     deps.metrics.futuresOpenPositions.set(
       { market: this.baseAsset, network: this.network },
