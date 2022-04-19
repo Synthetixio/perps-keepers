@@ -37,8 +37,16 @@ ssh "$USER_AT_IP" mkdir -p "$FULL_SERVER_PATH"
 echo "Uploading files"
 rsync --exclude 'node_modules' --exclude 'build' --exclude 'coverage' --exclude 'cache' -e "ssh" -Pav "$PWD/" "$USER_AT_IP":"$FULL_SERVER_PATH"
 
-echo "Installing deps, transpiling typescript and starting keeper"
-ssh "$USER_AT_IP" "cd $FOLDER_NAME;npm i;npm run build;npm run start"
+echo "Installing deps, transpiling typescript"
+ssh "$USER_AT_IP" "cd $FOLDER_NAME;npm i;npm run build"
+
+if [ "$ENVIRONMENT" = "production" ]; then
+    echo "Starting mainnet keeper"
+    ssh "$USER_AT_IP" "cd $FOLDER_NAME;npm run start-mainnet"
+else
+    echo "Starting kovan keeper"
+    ssh "$USER_AT_IP" "cd $FOLDER_NAME;npm run start-kovan"
+fi
 
 if [ "$ENVIRONMENT" = "production" ]; then
     echo "Starting prometheus scraper"
