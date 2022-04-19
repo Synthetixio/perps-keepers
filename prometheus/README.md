@@ -37,6 +37,11 @@ The setup can be run with Docker Compose and configured using environment variab
     docker-compose --env-file ./.env up
     ```
 
+## Deployment notes
+
+When code is merged to `master` the github action `deploy-keeper.yml` will run `docker-compose --env-file ./.env up -d`.
+This will start an instance for both kovan-ovm and mainnet-ovm. Currently there's no separate staging deployment
+
 ## Props.
 
 Inspiration taken from https://github.com/zakkg3/Prometheus-confd
