@@ -6,6 +6,36 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+
+      - name: Install SSH key
+        uses: synthetixio/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_KEY }}
+          known_hosts: ${{ secrets.KNOWN_HOSTS }}
+      
+      - name: Checkout
+        uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846 # pin@v2
+
       - name: Targeting branch
         run: echo "$GITHUB_REF_NAME"
-        if: "$GITHUB_REF_NAME==develop"
+     
+      - name: Create .env file
+        run: |
+          touch .env
+          echo ETH_HDWALLET_MNEMONIC=${{ secrets.ETH_HDWALLET_MNEMONIC }} >> .env
+          echo PROVIDER_URL=https://optimism-mainnet.infura.io/v3/${{ secrets.INFURA_PROJECT_ID }} >> .env
+          echo METRIC_SERVER_PORT=8085
+          echo NETWORK=mainnet-ovm
+        if: github.ref == 'refs/heads/master'
+
+      - name: Create .env.staging file
+        run: |
+          touch .env.staging
+          echo ETH_HDWALLET_MNEMONIC=${{ secrets.ETH_HDWALLET_MNEMONIC }} >> .env
+          echo PROVIDER_URL=https://optimism-kovan.infura.io/v3/${{ secrets.INFURA_PROJECT_ID }} >> .env
+          echo METRIC_SERVER_PORT=8084
+          echo NETWORK=kovan-ovm
+        if: github.ref == 'refs/heads/develop'
+
+      - name: Deploy
+        run: sh ./deploy.sh "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}" "${{secrets.SERVER_PATH}}" "$GITHUB_REF_NAME"
