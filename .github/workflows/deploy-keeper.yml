@@ -24,8 +24,9 @@ jobs:
           touch .env
           echo ETH_HDWALLET_MNEMONIC=${{ secrets.ETH_HDWALLET_MNEMONIC }} >> .env
           echo PROVIDER_URL=https://optimism-mainnet.infura.io/v3/${{ secrets.INFURA_PROJECT_ID }} >> .env
-          echo METRIC_SERVER_PORT=8085
-          echo NETWORK=mainnet-ovm
+          echo METRIC_SERVER_PORT=8085 >> .env
+          echo NETWORK=mainnet-ovm >> .env
+        if: github.ref == 'refs/heads/master'
         if: github.ref == 'refs/heads/master'
 
       - name: Create .env.staging file
@@ -33,8 +34,8 @@ jobs:
           touch .env.staging
           echo ETH_HDWALLET_MNEMONIC=${{ secrets.ETH_HDWALLET_MNEMONIC }} >> .env
           echo PROVIDER_URL=https://optimism-kovan.infura.io/v3/${{ secrets.INFURA_PROJECT_ID }} >> .env
-          echo METRIC_SERVER_PORT=8084
-          echo NETWORK=kovan-ovm
+          echo METRIC_SERVER_PORT=8084 >> .env
+          echo NETWORK=kovan-ovm >> .env
         if: github.ref == 'refs/heads/develop'
 
       - name: Deploy
