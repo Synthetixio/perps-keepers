@@ -43,6 +43,11 @@ export const keeperErrors = new client.Gauge({
   help: "Number of errors in running keeper tasks",
   labelNames: ["market", "network", "errorMessage"],
 });
+export const keeperChecks = new client.Gauge({
+  name: "keeper_checks",
+  help: "Number of liquidation checks the keeper did",
+  labelNames: ["market", "network"],
+});
 export const totalLiquidations = new client.Gauge({
   name: "total_liquidations",
   help: "Total number of liquidations",
@@ -72,6 +77,7 @@ const metrics = [
   futuresOpenPositions,
   futuresLiquidations,
   keeperErrors,
+  keeperChecks,
   totalLiquidations,
   marketSize,
   marketSkew,

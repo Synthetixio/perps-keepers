@@ -500,7 +500,9 @@ class Keeper {
 
   async runKeepers(deps = { BATCH_SIZE: 5, WAIT: 0, metrics }) {
     // make into an array and filter position 0 size positions
-    const openPositions = Object.values(this.positions).filter(p => Math.abs(p.size) > 0);
+    const openPositions = Object.values(this.positions).filter(
+      p => Math.abs(p.size) > 0
+    );
 
     deps.metrics.futuresOpenPositions.set(
       { market: this.baseAsset, network: this.network },
@@ -581,11 +583,19 @@ class Keeper {
   async liquidateOrder(
     id: string,
     account: string,
-    deps = { metricFuturesLiquidations: metrics.futuresLiquidations }
+    deps = {
+      metricFuturesLiquidations: metrics.futuresLiquidations,
+      metricKeeperChecks: metrics.keeperChecks,
+    }
   ) {
     const taskLabel = "liquidation";
     // check if it's liquidatable
     const canLiquidateOrder = await this.futuresMarket.canLiquidate(account);
+    // increment number of checks performed
+    deps.metricKeeperChecks.inc({
+      market: this.baseAsset,
+      network: this.network,
+    });
     if (!canLiquidateOrder) {
       // if it's not liquidatable update it's liquidation price
       this.positions[account].liqPrice = parseFloat(
@@ -638,10 +648,10 @@ class Keeper {
       }
     });
 
-    deps.metricFuturesLiquidations.inc(
-      { market: this.baseAsset, network: this.network },
-      1
-    );
+    deps.metricFuturesLiquidations.inc({
+      market: this.baseAsset,
+      network: this.network,
+    });
 
     this.logger.log(
       "info",
