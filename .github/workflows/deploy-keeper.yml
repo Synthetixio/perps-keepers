@@ -1,0 +1,11 @@
+name: "Deploy"
+on:
+  push:
+    branches: [master, develop]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Targeting branch
+        run: echo "$GITHUB_REF_NAME"
+        if: "$GITHUB_REF_NAME==develop"
