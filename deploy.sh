@@ -52,7 +52,9 @@ if [ "$ENVIRONMENT" = "production" ]; then
     echo "Starting prometheus scraper"
     ssh "$USER_AT_IP" "cd $FOLDER_NAME/prometheus; docker-compose --env-file ./.env up -d"
 else
-    echo "ENVIRONMENT is $ENVIRONMENT, skipping prometheus"
+    echo "ENVIRONMENT is $ENVIRONMENT, skipping prometheus and removing prometheus code"
+    ssh "$USER_AT_IP" "cd $FOLDER_NAME; rm -r prometheus"
+    
 fi
 
 

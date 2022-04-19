@@ -27,6 +27,19 @@ jobs:
           echo METRIC_SERVER_PORT=8085 >> .env
           echo NETWORK=mainnet-ovm >> .env
         if: github.ref == 'refs/heads/master'
+      
+      - name: Create prometheus .env file
+        run: |
+          cd prometheus
+          touch .env
+          echo PROM_ENDPOINT_TO_SCRAPE=host.docker.internal:8085 >> .env
+          echo PROM_JOB_NAME=keeper-mainnet-ovm >> .env
+          echo PROM_PORT=9091 >> .env
+          echo PROM_HTTP_PASSWORD=${{ secrets.PROM_HTTP_PASSWORD }} >> .env
+          echo PROM_STAGING_PORT=9090 >> .env
+          echo PROM_STAGING_JOB_NAME=keeper-kovan-ovm >> .env
+          echo PROM_STAGING_ENDPOINT_TO_SCRAPE=host.docker.internal:8084 >> .env
+
         if: github.ref == 'refs/heads/master'
 
       - name: Create .env.staging file
