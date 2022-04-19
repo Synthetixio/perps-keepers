@@ -4,7 +4,9 @@ on:
     branches: [master, develop]
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  
+    # Ensure it only runs on master and develop, the branches array above is using pattern matching
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop'
     steps:
 
       - name: Install SSH key
