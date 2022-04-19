@@ -5,6 +5,8 @@
 	"license": "MIT",
 	"scripts": {
 		"start": "pm2 start ecosystem.config.js",
+		"start-mainnet": "pm2 start ecosystem.config.js --only futures-keeper-mainnet",
+		"start-kovan": "pm2 start ecosystem.config.js --only futures-keeper-kovan",
 		"dev": "name=futures-keeper-kovan ts-node-dev --respawn --transpile-only src/index.ts run",
 		"dev-mainnet": "name=futures-keeper-mainnet ts-node-dev --respawn --transpile-only src/index.ts run",
 		"build": "tsc && cp .env build/ && cp .env.staging build/",

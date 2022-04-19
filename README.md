@@ -92,19 +92,13 @@ Prometheus is a pull-based instrumentation system. We must run a separate Promet
 
 ## Deployment notes
 
-A simple deployment script is provided: `deploy.sh`. It probably make sense for you to customize it for your own needs, but it serves as a starting point/ example.
+We use github actions for continuos deployments. See /.github/workflows/deploy-keeper.yml
 
-We expect that you have node v16, docker and docker-compose installed on the server. If you do,
-Make sure the `.env` and `prometheus/.env` is configured and run:
-`sh deploy.sh ~/.ssh/my-ssh-key user@ip /server/path/`
+- Merge/Push to branch `develop` will trigger a staging release and start the keeper on `ovm-kovan`
+- Merge/Push to branch `master` will trigger a production release and start the keeper on `ovm-mainnet`
 
-This will upload the code, install npm dependencies, compile typescript, start the keeper **with default arguments** and start the metric server.
-
-You can stop the keeper by running:
-`sh ./stop-keeper-on-server.sh ~/.ssh/my-ssh-key user@ip`
+To set this up as a fork we need to create github secrets for all required environment variables
 
 ## Future improvements
 
 - Currently we only have unit tests. Manual integrations tests can be run with the Futures interact CLI, but ideally we should add some proper integration tests.
-
-- The current flow is very inefficient (checks all positions every block), which means that it's possible that liquidations won't keep up due to node chatter bottleneck. The implementation should maintain a view of position liquidation prices (by following events / subgraph) and only check liquidation status for the positions most at risk (liquidation price closest to current price).
