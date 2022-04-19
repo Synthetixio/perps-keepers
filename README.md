@@ -102,5 +102,3 @@ To set this up as a fork we need to create github secrets for all required envir
 ## Future improvements
 
 - Currently we only have unit tests. Manual integrations tests can be run with the Futures interact CLI, but ideally we should add some proper integration tests.
-
-- The current flow is very inefficient (checks all positions every block), which means that it's possible that liquidations won't keep up due to node chatter bottleneck. The implementation should maintain a view of position liquidation prices (by following events / subgraph) and only check liquidation status for the positions most at risk (liquidation price closest to current price).
