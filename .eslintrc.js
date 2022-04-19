@@ -2,12 +2,12 @@ module.exports = {
   extends: [
     "standard",
     "plugin:prettier/recommended",
-    "plugin:node/recommended"
+    "plugin:node/recommended",
   ],
   globals: {},
   env: {
     mocha: true,
-    node: true
+    node: true,
   },
   plugins: ["havven", "no-only-tests", "promise"],
   rules: {
@@ -30,6 +30,6 @@ module.exports = {
     "promise/avoid-new": "warn",
     "promise/no-new-statics": "error",
     "promise/no-return-in-finally": "warn",
-    "promise/valid-params": "warn"
-  }
+    "promise/valid-params": "warn",
+  },
 };
