@@ -10,10 +10,11 @@
 		"dev": "name=futures-keeper-kovan ts-node-dev --respawn --transpile-only src/index.ts run",
 		"dev-mainnet": "name=futures-keeper-mainnet ts-node-dev --respawn --transpile-only src/index.ts run",
 		"build": "tsc && cp .env build/ && cp .env.staging build/",
-		"lint": "eslint \"src/**/*.js\" \"tools/**/*.js\" *.js",
-		"lint:fix": "eslint --fix \"src/**/*.js\" \"tools/**/*.js\" *.js",
+		"lint": "eslint .",
+		"lint:fix": "eslint --fix .",
 		"postinstall": "patch-package",
-		"test": "jest"
+		"test": "jest",
+		"check-types": "tsc --noEmit"
 	},
 	"engines": {
 		"node": ">=10.0.0"
