@@ -30,7 +30,7 @@ export function createLogger({ componentName }: { componentName: string }) {
   ) {
     const logGroupName =
       process.env.name === "futures-keeper-kovan"
-        ? "futures-liquidations-keeper-kovan"
+        ? "futures-liquidations-keeper-staging"
         : "futures-liquidations-keeper-production";
     logger.add(
       winston.add(
