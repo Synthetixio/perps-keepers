@@ -30,12 +30,13 @@ export function createLogger({ componentName }: { componentName: string }) {
   ) {
     const logGroupName =
       process.env.name === "futures-keeper-kovan"
-        ? "futures-liquidations-keeper-kovan"
+        ? "futures-liquidations-keeper-staging"
         : "futures-liquidations-keeper-production";
     logger.add(
       winston.add(
         new WinstonCloudWatch({
           logGroupName,
+          logStreamName: logGroupName,
           awsRegion: process.env.AWS_REGION,
           awsAccessKeyId: process.env.AWS_ACCESS_KEY,
           awsSecretKey: process.env.AWS_SECRET_KEY,
