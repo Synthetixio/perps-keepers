@@ -438,7 +438,8 @@ class Keeper {
   liquidationGroups(
     posArr: Position[],
     priceProximityThreshold = 0.05,
-    maxFarPricesToUpdate = 1 // max number of older liquidation prices to update
+    maxFarPricesToUpdate = 1, // max number of older liquidation prices to update
+    farPriceRecencyCutoff = 6 * 3600 // interval during which the liquidation price is considered up to date if it's far
   ) {
     // group
     const knownLiqPrice = posArr.filter(p => p.liqPrice !== LIQ_PRICE_UNSET);
@@ -468,9 +469,14 @@ class Keeper {
     // sort unknown liq prices by leverage
     unknownLiqPrice.sort((p1, p2) => p2.leverage - p1.leverage); //desc
 
+    const outdatedLiqPrices = liqPriceFar.filter(
+      p =>
+        p.liqPriceUpdatedTimestamp <
+        this.blockTipTimestamp - farPriceRecencyCutoff
+    );
     // sort far liquidation prices by how out of date they are
     // this should constantly update old positions' liq price
-    liqPriceFar.sort(
+    outdatedLiqPrices.sort(
       (p1, p2) => p1.liqPriceUpdatedTimestamp - p2.liqPriceUpdatedTimestamp
     ); //asc
 
@@ -478,7 +484,7 @@ class Keeper {
     return [
       liqPriceClose, // all close prices within threshold
       unknownLiqPrice, // all unknown liq prices (to get them updated)
-      liqPriceFar.slice(0, maxFarPricesToUpdate), // some max number of of outdated prices to reduce spamming the node and prevent self DOS when there are many positions
+      outdatedLiqPrices.slice(0, maxFarPricesToUpdate), // some max number of of outdated prices to reduce spamming the node and prevent self DOS when there are many positions
     ];
   }
 

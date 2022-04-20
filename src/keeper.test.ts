@@ -499,6 +499,7 @@ describe("keeper", () => {
       provider: {},
     } as any;
     const keeper = new Keeper(arg);
+    keeper.blockTipTimestamp = 10;
     keeper.assetPrice = 10;
     // global order
     const props = { id: "1", event: "?", liqPriceUpdatedTimestamp: 0 };
@@ -515,10 +516,24 @@ describe("keeper", () => {
         size: 1,
         ...props,
         liqPriceUpdatedTimestamp: 1,
-      }, // should be dropped if only 1 far price is to be checked
+      }, // should be dropped due to limit on amount of far prices if applied
+      {
+        account: "h",
+        liqPrice: 5,
+        leverage: 1.2,
+        size: 1,
+        ...props,
+        liqPriceUpdatedTimestamp: 9,
+      }, // should be dropped since it's not outdated yet
     ];
-    const out1 = keeper.liquidationGroups(posArrIn, 0.1, 1);
+    const out1 = keeper.liquidationGroups(posArrIn, 0.1, 3, 5);
     expect(out1.map(group => group.map(p => p.account))).toEqual([
+      ["a"],
+      ["b", "c", "d"],
+      ["f", "g"],
+    ]);
+    const out2 = keeper.liquidationGroups(posArrIn, 0.1, 1, 5);
+    expect(out2.map(group => group.map(p => p.account))).toEqual([
       ["a"],
       ["b", "c", "d"],
       ["f"],
