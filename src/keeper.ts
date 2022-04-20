@@ -1,7 +1,7 @@
 import { Contract } from "@ethersproject/contracts";
 import { chunk, orderBy } from "lodash";
 import ethers, { BigNumber, utils } from "ethers";
-import winston, { format, Logger, transports } from "winston";
+import { Logger } from "winston";
 import * as metrics from "./metrics";
 import SignerPool from "./signer-pool";
 import {
@@ -10,6 +10,7 @@ import {
 } from "@ethersproject/abstract-provider";
 import { wei } from "@synthetixio/wei";
 import Denque from "denque"; // double sided queue for volume measurement
+import { createLogger } from "./logging";
 
 const UNIT = utils.parseUnits("1");
 const LIQ_PRICE_UNSET = -1;
@@ -81,25 +82,8 @@ class Keeper {
     // Contracts.
     this.futuresMarket = futuresMarket;
 
-    this.logger = winston.createLogger({
-      level: "info",
-      format: format.combine(
-        format.colorize(),
-        format.timestamp(),
-        format.label({ label: `FuturesMarket [${baseAsset}]` }),
-        format.printf(info => {
-          return [
-            info.timestamp,
-            info.level,
-            info.label,
-            info.component,
-            info.message,
-          ]
-            .filter(x => !!x)
-            .join(" ");
-        })
-      ),
-      transports: [new transports.Console()],
+    this.logger = createLogger({
+      componentName: `FuturesMarket [${baseAsset}]`,
     });
     this.logger.info(`market deployed at ${futuresMarket.address}`);
 
@@ -500,7 +484,9 @@ class Keeper {
 
   async runKeepers(deps = { BATCH_SIZE: 5, WAIT: 0, metrics }) {
     // make into an array and filter position 0 size positions
-    const openPositions = Object.values(this.positions).filter(p => Math.abs(p.size) > 0);
+    const openPositions = Object.values(this.positions).filter(
+      p => Math.abs(p.size) > 0
+    );
 
     deps.metrics.futuresOpenPositions.set(
       { market: this.baseAsset, network: this.network },
