@@ -10,15 +10,17 @@
 		"dev": "name=futures-keeper-kovan ts-node-dev --respawn --transpile-only src/index.ts run",
 		"dev-mainnet": "name=futures-keeper-mainnet ts-node-dev --respawn --transpile-only src/index.ts run",
 		"build": "tsc && cp .env build/ && cp .env.staging build/",
-		"lint": "eslint \"src/**/*.js\" \"tools/**/*.js\" *.js",
-		"lint:fix": "eslint --fix \"src/**/*.js\" \"tools/**/*.js\" *.js",
+		"lint": "eslint .",
+		"lint:fix": "eslint --fix .",
 		"postinstall": "patch-package",
-		"test": "jest"
+		"test": "jest",
+		"check-types": "tsc --noEmit"
 	},
 	"engines": {
 		"node": ">=10.0.0"
 	},
 	"dependencies": {
+		"@aws-sdk/client-cloudwatch-logs": "3.72.0",
 		"@ethersproject/abstract-provider": "5.5.1",
 		"@ethersproject/experimental": "5.6.0",
 		"@synthetixio/contracts-interface": "2.67.0-alpha",
@@ -47,7 +49,8 @@
 		"prom-client": "^14.0.0",
 		"synthetix": "2.67.0-alpha",
 		"typescript": "4.5.2",
-		"winston": "^3.3.3"
+		"winston": "^3.3.3",
+		"winston-cloudwatch": "4.0.1"
 	},
 	"devDependencies": {
 		"@nomiclabs/hardhat-ethers": "2.0.4",

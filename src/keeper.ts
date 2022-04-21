@@ -1,7 +1,7 @@
 import { Contract } from "@ethersproject/contracts";
 import { chunk, orderBy } from "lodash";
 import ethers, { BigNumber, utils } from "ethers";
-import winston, { format, Logger, transports } from "winston";
+import { Logger } from "winston";
 import * as metrics from "./metrics";
 import SignerPool from "./signer-pool";
 import {
@@ -10,6 +10,7 @@ import {
 } from "@ethersproject/abstract-provider";
 import { wei } from "@synthetixio/wei";
 import Denque from "denque"; // double sided queue for volume measurement
+import { createLogger } from "./logging";
 
 const UNIT = utils.parseUnits("1");
 const LIQ_PRICE_UNSET = -1;
@@ -81,25 +82,8 @@ class Keeper {
     // Contracts.
     this.futuresMarket = futuresMarket;
 
-    this.logger = winston.createLogger({
-      level: "info",
-      format: format.combine(
-        format.colorize(),
-        format.timestamp(),
-        format.label({ label: `FuturesMarket [${baseAsset}]` }),
-        format.printf(info => {
-          return [
-            info.timestamp,
-            info.level,
-            info.label,
-            info.component,
-            info.message,
-          ]
-            .filter(x => !!x)
-            .join(" ");
-        })
-      ),
-      transports: [new transports.Console()],
+    this.logger = createLogger({
+      componentName: `FuturesMarket [${baseAsset}]`,
     });
     this.logger.info(`market deployed at ${futuresMarket.address}`);
 
@@ -454,7 +438,8 @@ class Keeper {
   liquidationGroups(
     posArr: Position[],
     priceProximityThreshold = 0.05,
-    maxFarPricesToUpdate = 1 // max number of older liquidation prices to update
+    maxFarPricesToUpdate = 1, // max number of older liquidation prices to update
+    farPriceRecencyCutoff = 6 * 3600 // interval during which the liquidation price is considered up to date if it's far
   ) {
     // group
     const knownLiqPrice = posArr.filter(p => p.liqPrice !== LIQ_PRICE_UNSET);
@@ -484,9 +469,14 @@ class Keeper {
     // sort unknown liq prices by leverage
     unknownLiqPrice.sort((p1, p2) => p2.leverage - p1.leverage); //desc
 
+    const outdatedLiqPrices = liqPriceFar.filter(
+      p =>
+        p.liqPriceUpdatedTimestamp <
+        this.blockTipTimestamp - farPriceRecencyCutoff
+    );
     // sort far liquidation prices by how out of date they are
     // this should constantly update old positions' liq price
-    liqPriceFar.sort(
+    outdatedLiqPrices.sort(
       (p1, p2) => p1.liqPriceUpdatedTimestamp - p2.liqPriceUpdatedTimestamp
     ); //asc
 
@@ -494,7 +484,7 @@ class Keeper {
     return [
       liqPriceClose, // all close prices within threshold
       unknownLiqPrice, // all unknown liq prices (to get them updated)
-      liqPriceFar.slice(0, maxFarPricesToUpdate), // some max number of of outdated prices to reduce spamming the node and prevent self DOS when there are many positions
+      outdatedLiqPrices.slice(0, maxFarPricesToUpdate), // some max number of of outdated prices to reduce spamming the node and prevent self DOS when there are many positions
     ];
   }
 

@@ -21,3 +21,5 @@ jest.mock("winston", () => ({
     Console: jest.fn(),
   },
 }));
+
+jest.mock("winston-cloudwatch", () => {});

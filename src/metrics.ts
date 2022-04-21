@@ -92,7 +92,7 @@ export function runServer(
   // Setup registry.
   const Registry = deps.promClient.Registry;
   const register = new Registry();
-  console.log("____", register);
+
   register.setDefaultLabels({ network });
   // Register metrics.
   deps.promClient.collectDefaultMetrics({ register });
