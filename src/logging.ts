@@ -37,9 +37,13 @@ export function createLogger({ componentName }: { componentName: string }) {
         new WinstonCloudWatch({
           logGroupName,
           logStreamName: logGroupName,
-          awsRegion: process.env.AWS_REGION,
-          awsAccessKeyId: process.env.AWS_ACCESS_KEY,
-          awsSecretKey: process.env.AWS_SECRET_KEY,
+          awsOptions: {
+            region: process.env.AWS_REGION,
+            credentials: {
+              accessKeyId: process.env.AWS_ACCESS_KEY,
+              secretAccessKey: process.env.AWS_SECRET_KEY,
+            },
+          },
         })
       )
     );
