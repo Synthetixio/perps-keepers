@@ -5,8 +5,6 @@ export function createLogger({ componentName }: { componentName: string }) {
   const logger = winston.createLogger({
     level: "info",
     format: format.combine(
-      format.colorize(),
-      format.timestamp(),
       format.label({ label: componentName }),
       format.printf(info => {
         return [
@@ -32,18 +30,20 @@ export function createLogger({ componentName }: { componentName: string }) {
       process.env.name === "futures-keeper-kovan"
         ? "futures-liquidations-keeper-staging"
         : "futures-liquidations-keeper-production";
+
     logger.add(
-      winston.add(
-        new WinstonCloudWatch({
-          logGroupName,
-          logStreamName: logGroupName,
-          awsRegion: process.env.AWS_REGION,
-          awsAccessKeyId: process.env.AWS_ACCESS_KEY,
-          awsSecretKey: process.env.AWS_SECRET_KEY,
-        })
-      )
+      new WinstonCloudWatch({
+        logGroupName,
+        logStreamName: logGroupName,
+        awsOptions: {
+          region: process.env.AWS_REGION,
+          credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY,
+            secretAccessKey: process.env.AWS_SECRET_KEY,
+          },
+        },
+      })
     );
   }
-
   return logger;
 }
