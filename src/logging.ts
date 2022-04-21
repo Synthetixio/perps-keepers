@@ -35,6 +35,10 @@ export function createLogger({ componentName }: { componentName: string }) {
       new WinstonCloudWatch({
         logGroupName,
         logStreamName: logGroupName,
+        messageFormatter(x) {
+          //passed in meta data is not available here :(
+          return `${x.level} ${componentName} ${x.message}`;
+        },
         awsOptions: {
           region: process.env.AWS_REGION,
           credentials: {
