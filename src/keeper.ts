@@ -593,7 +593,7 @@ class Keeper {
           (await this.futuresMarket.liquidationPrice(account)).price
         )
       );
-      this.positions[account].liqPriceUpdatedTimestamp = Date.now();
+      this.positions[account].liqPriceUpdatedTimestamp = this.blockTipTimestamp;
       this.logger.log(
         "info",
         `Cannot liquidate order, updated liqPrice ${this.positions[account].liqPrice}`,
