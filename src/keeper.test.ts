@@ -59,6 +59,8 @@ describe("keeper", () => {
       .fn()
       .mockReturnValue("__FundingRecomputed_EVENT_FILTER__");
     const event = "__EVENT__";
+    const toBlock = 2;
+    const fromBlock = 0;
     const arg = {
       baseAsset: "sBTC",
       futuresMarket: {
@@ -73,7 +75,7 @@ describe("keeper", () => {
           .mockResolvedValue({ price: BigNumber.from(100), invalid: false }),
       },
       signerPool: jest.fn(),
-      provider: { on: jest.fn() },
+      provider: { on: jest.fn(), getBlockNumber: async () => toBlock },
     } as any;
     const keeper = new Keeper(arg);
     const updateIndexSpy = jest.spyOn(keeper, "updateIndex");
@@ -86,20 +88,20 @@ describe("keeper", () => {
     expect(arg.futuresMarket.queryFilter).toHaveBeenNthCalledWith(
       1,
       "__PositionLiquidated_EVENT_FILTER__",
-      0,
-      "latest"
+      fromBlock,
+      toBlock
     );
     expect(arg.futuresMarket.queryFilter).toHaveBeenNthCalledWith(
       2,
       "__PositionModified_EVENT_FILTER__",
-      0,
-      "latest"
+      fromBlock,
+      toBlock
     );
     expect(arg.futuresMarket.queryFilter).toHaveBeenNthCalledWith(
       3,
       "__FundingRecomputed_EVENT_FILTER__",
-      0,
-      "latest"
+      fromBlock,
+      toBlock
     );
     expect(updateIndexSpy).toBeCalledTimes(1);
     expect(updateIndexSpy).toHaveBeenCalledWith([event, event, event]);
@@ -323,20 +325,20 @@ describe("keeper", () => {
     expect(arg.futuresMarket.queryFilter).toHaveBeenNthCalledWith(
       1,
       "__PositionLiquidated_EVENT_FILTER__",
-      "1",
-      "1"
+      1,
+      1
     );
     expect(arg.futuresMarket.queryFilter).toHaveBeenNthCalledWith(
       2,
       "__PositionModified_EVENT_FILTER__",
-      "1",
-      "1"
+      1,
+      1
     );
     expect(arg.futuresMarket.queryFilter).toHaveBeenNthCalledWith(
       3,
       "__FundingRecomputed_EVENT_FILTER__",
-      "1",
-      "1"
+      1,
+      1
     );
     expect(updateIndexSpy).toBeCalledTimes(1);
     expect(updateIndexSpy).toBeCalledWith([event, event, event]);

@@ -1,5 +1,5 @@
 import { Contract } from "@ethersproject/contracts";
-import { chunk, orderBy } from "lodash";
+import { chunk } from "lodash";
 import ethers, { BigNumber, utils } from "ethers";
 import { Logger } from "winston";
 import * as metrics from "./metrics";
@@ -11,6 +11,7 @@ import {
 import { wei } from "@synthetixio/wei";
 import Denque from "denque"; // double sided queue for volume measurement
 import { createLogger } from "./logging";
+import { getEvents } from "./keeper-helpers";
 
 const UNIT = utils.parseUnits("1");
 const LIQ_PRICE_UNSET = -1;
@@ -153,41 +154,14 @@ class Keeper {
       }
     }
   }
-  async getEvents(fromBlock: string | number, toBlock: string | number) {
-    const eventNames = Object.values(EventsOfInterest);
-    const nestedEvents = await Promise.all(
-      eventNames.map(eventName => {
-        // For some reason query filters logs out stuff to the console
-        return this.futuresMarket.queryFilter(
-          this.futuresMarket.filters[eventName](),
-          fromBlock,
-          toBlock
-        );
-      })
-    );
-    // warn about requesting too many events
-    nestedEvents.map((singleFilterEvents, index) => {
-      if (singleFilterEvents.length > 1000) {
-        // at some point we'll issues getting enough events
-        this.logger.log(
-          "warn",
-          `Got ${singleFilterEvents.length} ${eventNames[index]} events, will run into RPC limits at 10000`,
-          { component: "Indexer" }
-        );
-      }
-    });
-    const events = nestedEvents.flat(1);
-    // sort by block, tx index, and log index, so that events are processed in order
-    events.sort(
-      (a, b) =>
-        a.blockNumber - b.blockNumber ||
-        a.transactionIndex - b.transactionIndex ||
-        a.logIndex - b.logIndex
-    );
-    return events;
-  }
+
   async run({ fromBlock }: { fromBlock: string | number }) {
-    const events = await this.getEvents(fromBlock, "latest");
+    const toBlock = await this.provider.getBlockNumber();
+    const events = await getEvents(
+      Object.values(EventsOfInterest),
+      this.futuresMarket,
+      { fromBlock, toBlock }
+    );
     this.logger.log("info", `Rebuilding index from ${fromBlock} to latest`, {
       component: "Indexer",
     });
@@ -231,7 +205,11 @@ class Keeper {
 
     // now process new events to update index, since it's impossible for a position that
     // was just updated to be liquidatable at the same block
-    const events = await this.getEvents(blockNumber, blockNumber);
+    const events = await getEvents(
+      Object.values(EventsOfInterest),
+      this.futuresMarket,
+      { fromBlock: blockNumber, toBlock: blockNumber }
+    );
     this.blockTip = blockNumber;
     if (!events.length) {
       // set block timestamp here in case there were no events to update the timestamp from
