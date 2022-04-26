@@ -1,29 +1,28 @@
 import { getEvents, getPaginatedFromAndTo } from "./keeper-helpers";
 
 describe("getPaginatedToAndFrom", () => {
-  const result = getPaginatedFromAndTo(0, 9998);
-  expect(result).toEqual([
-    {
-      fromBlock: 0,
-      toBlock: 2000,
-    },
-    {
-      fromBlock: 2000,
-      toBlock: 4000,
-    },
-    {
-      fromBlock: 4000,
-      toBlock: 6000,
-    },
-    {
-      fromBlock: 6000,
-      toBlock: 8000,
-    },
-    {
-      fromBlock: 8000,
-      toBlock: 9998,
-    },
-  ]);
+  test("one block", () => {
+    const result = getPaginatedFromAndTo(1000, 1000);
+    expect(result).toEqual([
+      {
+        fromBlock: 1000,
+        toBlock: 1000,
+      },
+    ]);
+  });
+  test("a lot of blocks", () => {
+    const result = getPaginatedFromAndTo(4500000, 5999999);
+    expect(result).toEqual([
+      { fromBlock: 4500000, toBlock: 4700000 },
+      { fromBlock: 4700000, toBlock: 4900000 },
+      { fromBlock: 4900000, toBlock: 5100000 },
+      { fromBlock: 5100000, toBlock: 5300000 },
+      { fromBlock: 5300000, toBlock: 5500000 },
+      { fromBlock: 5500000, toBlock: 5700000 },
+      { fromBlock: 5700000, toBlock: 5900000 },
+      { fromBlock: 5900000, toBlock: 5999999 },
+    ]);
+  });
 });
 describe("getEvents", () => {
   test("sorts correctly", async () => {
@@ -70,17 +69,17 @@ describe("getEvents", () => {
 
     const events = await getEvents(eventNames, contract, {
       fromBlock: 1,
-      toBlock: 1000,
+      toBlock: 200000,
     });
-    expect(contract.queryFilter).toBeCalledTimes(3);
+    expect(contract.queryFilter).toBeCalledTimes(3); // 1 call for each event name
     expect(events.length).toBe(3);
     contract.queryFilter.mockReset();
 
     const events1 = await getEvents(eventNames, contract, {
       fromBlock: 1,
-      toBlock: 3000,
+      toBlock: 600000,
     });
-    expect(contract.queryFilter).toBeCalledTimes(6);
-    expect(events.length).toBe(3);
+    expect(contract.queryFilter).toBeCalledTimes(9); // 3 calls for each event name
+    expect(events1.length).toBe(9);
   });
 });
