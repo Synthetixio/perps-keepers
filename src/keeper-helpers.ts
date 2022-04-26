@@ -1,7 +1,8 @@
 import { ethers } from "ethers";
 import { range } from "lodash";
 
-const MAX_BLOCKS = 2000;
+const MAX_BLOCKS = 200000;
+
 // exported for test
 export const getPaginatedFromAndTo = (fromBlock: number, toBlock: number) => {
   const numberOfBlocks = toBlock - fromBlock;
