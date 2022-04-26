@@ -202,7 +202,7 @@ class Keeper {
         this.blockQueue.push(blockNumber);
       });
 
-      this.startProcessNewBlockConsumer();
+      await this.startProcessNewBlockConsumer();
     } catch (err) {
       // handle anything else here by just logging it and hoping for better luck next time
       this.logger.log("error", `error \n${String(err)}`, {
