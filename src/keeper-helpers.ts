@@ -28,16 +28,25 @@ export const getEvents = async (
 ) => {
   const nestedEvents = await Promise.all(
     eventNames.map(async eventName => {
+      const pagination = getPaginatedFromAndTo(
+        Number(fromBlock),
+        Number(toBlock)
+      );
+      if (pagination.length > 1) {
+        // Only log this for when we're doing pagination
+        logger.info(
+          `Making ${pagination.length} requests to infura to index ${eventName}`
+        );
+      }
+
       const events = await Promise.all(
-        getPaginatedFromAndTo(Number(fromBlock), Number(toBlock)).map(
-          ({ fromBlock, toBlock }) => {
-            return contract.queryFilter(
-              contract.filters[eventName](),
-              fromBlock,
-              toBlock
-            );
-          }
-        )
+        pagination.map(({ fromBlock, toBlock }) => {
+          return contract.queryFilter(
+            contract.filters[eventName](),
+            fromBlock,
+            toBlock
+          );
+        })
       );
       return events.flat(1);
     })
