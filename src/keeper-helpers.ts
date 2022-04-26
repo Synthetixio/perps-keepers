@@ -1,8 +1,10 @@
 import { ethers } from "ethers";
 import { range } from "lodash";
+import { createLogger } from "./logging";
 
 const MAX_BLOCKS = 200000;
 
+const logger = createLogger({ componentName: "Keeper Helpers" });
 // exported for test
 export const getPaginatedFromAndTo = (fromBlock: number, toBlock: number) => {
   const numberOfBlocks = toBlock - fromBlock;
@@ -51,6 +53,16 @@ export const getEvents = async (
       return events.flat(1);
     })
   );
+  nestedEvents.forEach((singleFilterEvents, index) => {
+    if (singleFilterEvents.length > 4000) {
+      // at some point we'll issues getting enough events
+      logger.log(
+        "warn",
+        `Got ${singleFilterEvents.length} ${eventNames[index]} events, will run into RPC limits at 10000`,
+        { component: "Indexer" }
+      );
+    }
+  });
   const events = nestedEvents.flat(1);
   // sort by block, tx index, and log index, so that events are processed in order
   events.sort(
