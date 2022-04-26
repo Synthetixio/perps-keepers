@@ -7,18 +7,16 @@ const MAX_BLOCKS = 200000;
 const logger = createLogger({ componentName: "Keeper Helpers" });
 // exported for test
 export const getPaginatedFromAndTo = (fromBlock: number, toBlock: number) => {
-  const numberOfBlocks = toBlock - fromBlock;
-  if (numberOfBlocks > MAX_BLOCKS) {
-    const numberOfGroups = Math.ceil(numberOfBlocks / MAX_BLOCKS);
-    return range(0, numberOfGroups).map((x: number) => {
-      const newFrom = fromBlock + x * MAX_BLOCKS;
-      return {
-        fromBlock: newFrom,
-        toBlock: Math.min(newFrom + MAX_BLOCKS, toBlock),
-      };
-    });
-  }
-  return [{ fromBlock, toBlock }];
+  const numberOfBlocks = toBlock - fromBlock || 1;
+
+  const numberOfGroups = Math.ceil(numberOfBlocks / MAX_BLOCKS);
+  return range(0, numberOfGroups).map((x: number) => {
+    const newFrom = fromBlock + x * MAX_BLOCKS;
+    return {
+      fromBlock: newFrom,
+      toBlock: Math.min(newFrom + MAX_BLOCKS, toBlock),
+    };
+  });
 };
 export const getEvents = async (
   eventNames: string[],
