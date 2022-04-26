@@ -144,7 +144,7 @@ class Keeper {
     // keeper tasks that need running that aren't already active.
     while (1) {
       if (!this.blockQueue.length) {
-        await new Promise((resolve, reject) => setTimeout(resolve, 10));
+        await this.delay(10);
         continue;
       }
 
@@ -154,52 +154,69 @@ class Keeper {
       }
     }
   }
+  delay(ms: number) {
+    return new Promise((resolve, reject) => setTimeout(resolve, ms));
+  }
 
   async run({ fromBlock }: { fromBlock: string | number }) {
-    const toBlock = await this.provider.getBlockNumber();
-    const events = await getEvents(
-      Object.values(EventsOfInterest),
-      this.futuresMarket,
-      { fromBlock, toBlock }
-    );
-    this.logger.log("info", `Rebuilding index from ${fromBlock} to latest`, {
-      component: "Indexer",
-    });
-    this.logger.log("info", `${events.length} events to process`, {
-      component: "Indexer",
-    });
-    await this.updateIndex(events);
+    try {
+      const toBlock = await this.provider.getBlockNumber();
+      const events = await getEvents(
+        Object.values(EventsOfInterest),
+        this.futuresMarket,
+        { fromBlock, toBlock }
+      );
+      this.logger.log("info", `Rebuilding index from ${fromBlock} to latest`, {
+        component: "Indexer",
+      });
+      this.logger.log("info", `${events.length} events to process`, {
+        component: "Indexer",
+      });
+      await this.updateIndex(events);
 
-    this.logger.log(
-      "debug",
-      `VolumeQueue after sync: total ${
-        this.recentVolume
-      } ${this.volumeQueue.size()} trades:${this.volumeQueue
-        .toArray()
-        .map(o => `\n${o.tradeSizeUSD} ${o.timestamp} ${o.account}`)}`,
-      { component: "Indexer" }
-    );
+      this.logger.log(
+        "debug",
+        `VolumeQueue after sync: total ${
+          this.recentVolume
+        } ${this.volumeQueue.size()} trades:${this.volumeQueue
+          .toArray()
+          .map(o => `\n${o.tradeSizeUSD} ${o.timestamp} ${o.account}`)}`,
+        { component: "Indexer" }
+      );
 
-    this.logger.log("info", `Index build complete!`, { component: "Indexer" });
-    this.logger.log("info", `Starting keeper loop`);
-    await this.runKeepers();
+      this.logger.log("info", `Index build complete!`, {
+        component: "Indexer",
+      });
+      this.logger.log("info", `Starting keeper loop`);
+      await this.runKeepers();
 
-    this.logger.log("info", `Listening for events`);
-    this.provider.on("block", async blockNumber => {
-      if (!this.blockTip) {
-        // Don't process the first block we see.
-        this.blockTip = blockNumber;
-        return;
-      }
+      this.logger.log("info", `Listening for events`);
+      this.provider.on("block", async blockNumber => {
+        if (!this.blockTip) {
+          // Don't process the first block we see.
+          this.blockTip = blockNumber;
+          return;
+        }
 
-      this.logger.log("debug", `New block: ${blockNumber}`);
-      this.blockQueue.push(blockNumber);
-    });
+        this.logger.log("debug", `New block: ${blockNumber}`);
+        this.blockQueue.push(blockNumber);
+      });
 
-    this.startProcessNewBlockConsumer();
+      this.startProcessNewBlockConsumer();
+    } catch (err) {
+      // handle anything else here by just logging it and hoping for better luck next time
+      this.logger.log("error", `error \n${String(err)}`, {
+        component: `keeper main`,
+      });
+      // wait a minute in case it's just node issues, and start again
+      await this.delay(60 * 1000);
+      // try again
+      await this.run({ fromBlock });
+    }
   }
 
   async processNewBlock(blockNumber: string) {
+    this.blockTip = blockNumber;
     // first try to liquidate any positions that can be liquidated now
     await this.runKeepers();
 
@@ -210,7 +227,6 @@ class Keeper {
       this.futuresMarket,
       { fromBlock: blockNumber, toBlock: blockNumber }
     );
-    this.blockTip = blockNumber;
     if (!events.length) {
       // set block timestamp here in case there were no events to update the timestamp from
       this.blockTipTimestamp = (
@@ -511,7 +527,7 @@ class Keeper {
               );
             })
           );
-          await new Promise((res, rej) => setTimeout(res, deps.WAIT));
+          await this.delay(deps.WAIT);
         }
       }
     }
