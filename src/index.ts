@@ -9,8 +9,15 @@ require("dotenv").config({
 });
 import { program } from "commander";
 import { cmd } from "./run";
+import { createLogger } from "./logging";
+import logProcessError from "log-process-errors";
 
-require("pretty-error").start();
+logProcessError({
+  log(error, level) {
+    const logger = createLogger({ componentName: "Unhandled Exceptions" });
+    logger.log(level, error.stack);
+  },
+});
 
 cmd(program);
 
