@@ -2,6 +2,7 @@ import client from "prom-client";
 import express from "express";
 import { formatEther } from "@ethersproject/units";
 import { BigNumber, ethers } from "ethers";
+import { createLogger } from "./logging";
 
 // constants
 export const VOLUME_RECENCY_CUTOFF = 6 * 3600; // 1 day
@@ -119,6 +120,7 @@ export function bnToNumber(bn: BigNumber) {
   return parseFloat(formatEther(bn));
 }
 
+const logger = createLogger({ componentName: "Balance tracker" });
 // Tracker functions.
 export function trackKeeperBalance(
   signer: ethers.Signer,
@@ -131,13 +133,18 @@ export function trackKeeperBalance(
   }
 ) {
   setInterval(async () => {
-    const [account, balance] = await Promise.all([
-      signer.getAddress(),
-      signer.getBalance(),
-    ]);
-    const sUSDBalance = await SynthsUSD.balanceOf(account);
-
-    deps.keeperEthBalance.set({ account, network }, bnToNumber(balance));
-    deps.keeperSusdBalance.set({ account, network }, bnToNumber(sUSDBalance));
+    try {
+      const [account, balance] = await Promise.all([
+        signer.getAddress(),
+        signer.getBalance(),
+      ]);
+      const sUSDBalance = await SynthsUSD.balanceOf(account);
+      deps.keeperEthBalance.set({ account, network }, bnToNumber(balance));
+      deps.keeperSusdBalance.set({ account, network }, bnToNumber(sUSDBalance));
+    } catch (error) {
+      logger.error(
+        `We're having problems getting balances, error: \n ${String(Error)}`
+      );
+    }
   }, deps.intervalTimeMs);
 }
