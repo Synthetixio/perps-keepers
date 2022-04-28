@@ -114,6 +114,20 @@ class Keeper {
     this.assetPrice = 0;
   }
 
+  resetState() {
+    this.activeKeeperTasks = {};
+    this.positions = {};
+
+    this.blockTip = null;
+    this.blockTipTimestamp = 0;
+
+    this.blockQueue = new Denque();
+    this.volumeQueue = new Denque();
+
+    this.recentVolume = 0;
+    this.assetPrice = 0;
+  }
+
   static async create({
     futuresMarket,
     signerPool,
@@ -159,6 +173,9 @@ class Keeper {
   }
 
   async run({ fromBlock }: { fromBlock: string | number }) {
+    // ensure state is reset in case this is being invoked recursively
+    this.resetState();
+
     try {
       const toBlock = await this.provider.getBlockNumber();
       const events = await getEvents(
@@ -546,15 +563,8 @@ class Keeper {
     try {
       await cb();
     } catch (err) {
-      let errorMessage = String(err);
-      this.logger.log("error", `error \n${errorMessage}`, {
+      this.logger.log("error", `error \n${String(err)}`, {
         component: `Keeper [${taskLabel}] id=${id}`,
-      });
-
-      metrics.keeperErrors.inc({
-        market: this.baseAsset,
-        network: this.network,
-        errorMessage: errorMessage,
       });
     }
     this.logger.log("debug", `done`, {
@@ -627,6 +637,13 @@ class Keeper {
             signer.setTransactionCount(nonce);
           }
         }
+
+        // increment liquidation errors here so that only liquidation errors are counted
+        metrics.keeperErrors.inc({
+          market: this.baseAsset,
+          network: this.network,
+          errorMessage: String(err),
+        });
 
         throw err;
       }
