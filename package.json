@@ -48,7 +48,6 @@
 		"prettier": "1.19.1",
 		"pretty-error": "3.0.4",
 		"prom-client": "14.0.0",
-		"synthetix": "2.67.0-alpha",
 		"typescript": "4.5.2",
 		"winston": "3.3.3",
 		"winston-cloudwatch": "4.0.1"
