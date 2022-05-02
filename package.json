@@ -27,7 +27,6 @@
 		"@synthetixio/wei": "2.57.1",
 		"chalk": "4.1.1",
 		"commander": "9.0.0",
-		"denque": "2.0.1",
 		"dotenv": "10.0.0",
 		"eslint": "7.6.0",
 		"eslint-config-prettier": "3.6.0",
