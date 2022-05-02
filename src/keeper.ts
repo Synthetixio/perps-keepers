@@ -9,7 +9,6 @@ import {
   TransactionResponse,
 } from "@ethersproject/abstract-provider";
 import { wei } from "@synthetixio/wei";
-import Denque from "denque"; // double sided queue for volume measurement
 import { createLogger } from "./logging";
 import { getEvents } from "./keeper-helpers";
 
@@ -49,12 +48,12 @@ class Keeper {
   provider:
     | ethers.providers.WebSocketProvider
     | ethers.providers.JsonRpcProvider;
-  blockQueue: Denque<string>;
+  blockQueue: Array<string>;
   blockTip: string | null;
   blockTipTimestamp: number;
   signerPool: SignerPool;
   network: string;
-  volumeQueue: Denque<{
+  volumeArray: Array<{
     tradeSizeUSD: number;
     timestamp: number;
     account: string;
@@ -95,7 +94,7 @@ class Keeper {
     this.activeKeeperTasks = {};
 
     // A FIFO queue of blocks to be processed.
-    this.blockQueue = new Denque();
+    this.blockQueue = [];
 
     this.blockTip = null;
     this.blockTipTimestamp = 0;
@@ -103,11 +102,9 @@ class Keeper {
     this.signerPool = signerPool;
 
     // volume accounting for metrics
-    // this queue maintains 24h worth of recent volume updates so that rolling
+    // this array maintains recent volume updates so that rolling
     // volume can be computed.
-    // Denque is used in order for this to be computed efficiently in
-    // linear time instead of quadratic (for a regular array)
-    this.volumeQueue = new Denque();
+    this.volumeArray = [];
     this.recentVolume = 0;
 
     // required for sorting position by proximity of liquidation price to current price
@@ -121,8 +118,8 @@ class Keeper {
     this.blockTip = null;
     this.blockTipTimestamp = 0;
 
-    this.blockQueue = new Denque();
-    this.volumeQueue = new Denque();
+    this.blockQueue = [];
+    this.volumeArray = [];
 
     this.recentVolume = 0;
     this.assetPrice = 0;
@@ -162,6 +159,8 @@ class Keeper {
         continue;
       }
 
+      // sort in case it's unsorted for some reason
+      this.blockQueue.sort();
       const blockNumber = this.blockQueue.shift();
       if (blockNumber) {
         await this.processNewBlock(blockNumber);
@@ -192,12 +191,12 @@ class Keeper {
       await this.updateIndex(events);
 
       this.logger.log(
-        "debug",
-        `VolumeQueue after sync: total ${
-          this.recentVolume
-        } ${this.volumeQueue.size()} trades:${this.volumeQueue
-          .toArray()
-          .map(o => `\n${o.tradeSizeUSD} ${o.timestamp} ${o.account}`)}`,
+        "info",
+        `VolumeQueue after sync: total ${this.recentVolume} ${
+          this.volumeArray.length
+        } trades:${this.volumeArray.map(
+          o => `${o.tradeSizeUSD} ${o.timestamp} ${o.account}`
+        )}`,
         { component: "Indexer" }
       );
 
@@ -376,12 +375,13 @@ class Keeper {
       .div(UNIT)
       .toNumber();
     // push into rolling queue
-    this.volumeQueue.push({
+    this.volumeArray.push({
       tradeSizeUSD: tradeSizeUSD,
       timestamp: this.blockTipTimestamp,
       account: account,
     });
-    // add to total volume sum
+    // add to total volume sum, this isn't strictly needed as it will be 
+    // overridden by filter and sum in updateVolumeMetrics, but it keeps it up to date, and checked in tests
     this.recentVolume += tradeSizeUSD;
   }
 
@@ -392,16 +392,14 @@ class Keeper {
   ) {
     const cutoffTimestamp =
       this.blockTipTimestamp - metrics.VOLUME_RECENCY_CUTOFF; // old values
-    let peekFront = this.volumeQueue.peekFront();
-    // remove old entries from the queue
-    while (peekFront && peekFront.timestamp < cutoffTimestamp) {
-      // remove from queue
-      const removedEntry = this.volumeQueue.shift();
-      // update sum of volume
-      this.recentVolume -= removedEntry?.tradeSizeUSD || 0; // ts
-      // update peekfront value for the loop condition
-      peekFront = this.volumeQueue.peekFront();
-    }
+    // filter only recent trades
+    this.volumeArray = this.volumeArray.filter(
+      v => v.timestamp > cutoffTimestamp
+    );
+    // sum
+    this.recentVolume = this.volumeArray
+      .map(v => v.tradeSizeUSD)
+      .reduce((a, b) => a + b, 0);
     args.recentVolumeMetric.set(
       { market: this.baseAsset, network: this.network },
       this.recentVolume
