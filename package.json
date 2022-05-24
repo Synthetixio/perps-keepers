@@ -48,7 +48,7 @@
 		"pretty-error": "3.0.4",
 		"prom-client": "14.0.0",
 		"typescript": "4.5.2",
-		"winston": "3.3.3",
+		"winston": "3.7.2",
 		"winston-cloudwatch": "4.0.1"
 	},
 	"devDependencies": {
