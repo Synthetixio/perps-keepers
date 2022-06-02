@@ -44,10 +44,8 @@ jobs:
       - name: Install dependencies
         run: npm install --prefer-offline --no-audit
 
-      - name: Update all @synthetixio/* dependency
-        run: "sed -i 's/\"@synthetixio\\/\\(.*\\)\": \".*\"/\"@synthetixio\\/\\1\": \"${{ github.event.inputs.monorepo_version }}\"/' package.json"
-
-      - run: npm install
+      - name: Update all @synthetixio dependencies
+        run: "npm run upgrade-synthetix"
 
       - name: Commit changes
         run: |
