@@ -44,13 +44,11 @@ jobs:
       - name: Install dependencies
         run: npm install --prefer-offline --no-audit
 
-      - name: Update all @synthetixio/* dependency
-        run: "sed -i 's/\"@synthetixio\\/\\(.*\\)\": \".*\"/\"@synthetixio\\/\\1\": \"${{ github.event.inputs.monorepo_version }}\"/' package.json"
-
-      - run: npm install
+      - name: Update all @synthetixio dependencies
+        run: "npm run upgrade-synthetix"
 
       - name: Commit changes
         run: |
           git config --global user.email "team@synthetix.io" && git config --global user.name "Synthetix Team"
-          git commit -am 'contracts-interface@${{ github.event.inputs.version }}'
+          git commit -am 'contracts-interface@${{ github.event.inputs.monorepo_version }}'
           git push origin develop
