@@ -32,6 +32,7 @@ jobs:
           echo AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }} >> .env
           echo AWS_REGION=${{ secrets.AWS_REGION }} >> .env
           echo FROM_BLOCK=4552552 >> .env  # mainnet deployment block
+          echo RUN_EVERY_X_BLOCK=3 >> .env
         if: github.ref == 'refs/heads/master'
       
       - name: Create prometheus .env file
@@ -58,7 +59,8 @@ jobs:
           echo AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }} >> .env.staging
           echo AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }} >> .env.staging
           echo AWS_REGION=${{ secrets.AWS_REGION }} >> .env.staging
-          echo FROM_BLOCK=1570291 >> .env  # kovan deployment block
+          echo FROM_BLOCK=1570291 >> .env.staging  # kovan deployment block
+          echo RUN_EVERY_X_BLOCK=10 >> .env.staging
         if: github.ref == 'refs/heads/develop'
 
       - name: Deploy
