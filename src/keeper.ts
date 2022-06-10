@@ -302,18 +302,6 @@ class Keeper {
           return;
         }
 
-        //   PositionModified(
-        //     uint indexed id,
-        //     address indexed account,
-        //     uint margin,
-        //     int size,
-        //     int tradeSize,
-        //     uint lastPrice,
-        //     uint fundingIndex,
-        //     uint fee
-        // )
-        // This is what's avaiable, ideally we should calculate the liq price based on margin and size maybe?
-
         this.positions[account] = {
           id,
           event,
@@ -382,7 +370,7 @@ class Keeper {
       timestamp: this.blockTipTimestamp,
       account: account,
     });
-    // add to total volume sum, this isn't strictly needed as it will be 
+    // add to total volume sum, this isn't strictly needed as it will be
     // overridden by filter and sum in updateVolumeMetrics, but it keeps it up to date, and checked in tests
     this.recentVolume += tradeSizeUSD;
   }
