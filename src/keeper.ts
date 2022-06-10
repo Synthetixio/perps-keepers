@@ -48,8 +48,8 @@ class Keeper {
   provider:
     | ethers.providers.WebSocketProvider
     | ethers.providers.JsonRpcProvider;
-  blockQueue: Array<string>;
-  blockTip: string | null;
+  blockQueue: Array<number>;
+  lastProcessedBlock: number | null;
   blockTipTimestamp: number;
   signerPool: SignerPool;
   network: string;
@@ -96,7 +96,7 @@ class Keeper {
     // A FIFO queue of blocks to be processed.
     this.blockQueue = [];
 
-    this.blockTip = null;
+    this.lastProcessedBlock = null;
     this.blockTipTimestamp = 0;
     this.provider = provider;
     this.signerPool = signerPool;
@@ -115,7 +115,7 @@ class Keeper {
     this.activeKeeperTasks = {};
     this.positions = {};
 
-    this.blockTip = null;
+    this.lastProcessedBlock = null;
     this.blockTipTimestamp = 0;
 
     this.blockQueue = [];
@@ -207,10 +207,11 @@ class Keeper {
       await this.runKeepers();
 
       this.logger.log("info", `Listening for events`);
-      this.provider.on("block", async blockNumber => {
-        if (!this.blockTip) {
+      this.provider.on("block", async (blockNumber: number) => {
+        if (blockNumber % Number(process.env.RUN_EVERY_X_BLOCK) !== 0) return;
+        if (!this.lastProcessedBlock) {
           // Don't process the first block we see.
-          this.blockTip = blockNumber;
+          this.lastProcessedBlock = blockNumber;
           return;
         }
 
@@ -231,17 +232,18 @@ class Keeper {
     }
   }
 
-  async processNewBlock(blockNumber: string) {
-    this.blockTip = blockNumber;
+  async processNewBlock(blockNumber: number) {
     // first try to liquidate any positions that can be liquidated now
     await this.runKeepers();
-
+    const fromBlock = this.lastProcessedBlock
+      ? this.lastProcessedBlock + 1
+      : blockNumber;
     // now process new events to update index, since it's impossible for a position that
     // was just updated to be liquidatable at the same block
     const events = await getEvents(
       Object.values(EventsOfInterest),
       this.futuresMarket,
-      { fromBlock: blockNumber, toBlock: blockNumber }
+      { fromBlock: fromBlock, toBlock: blockNumber }
     );
     if (!events.length) {
       // set block timestamp here in case there were no events to update the timestamp from
@@ -257,6 +259,8 @@ class Keeper {
       }
     );
     await this.updateIndex(events);
+    // update the lastProcessedBlock
+    this.lastProcessedBlock = blockNumber;
   }
 
   async updateIndex(
@@ -299,18 +303,6 @@ class Keeper {
           delete this.positions[account];
           return;
         }
-
-        //   PositionModified(
-        //     uint indexed id,
-        //     address indexed account,
-        //     uint margin,
-        //     int size,
-        //     int tradeSize,
-        //     uint lastPrice,
-        //     uint fundingIndex,
-        //     uint fee
-        // )
-        // This is what's avaiable, ideally we should calculate the liq price based on margin and size maybe?
 
         this.positions[account] = {
           id,
@@ -380,7 +372,7 @@ class Keeper {
       timestamp: this.blockTipTimestamp,
       account: account,
     });
-    // add to total volume sum, this isn't strictly needed as it will be 
+    // add to total volume sum, this isn't strictly needed as it will be
     // overridden by filter and sum in updateVolumeMetrics, but it keeps it up to date, and checked in tests
     this.recentVolume += tradeSizeUSD;
   }

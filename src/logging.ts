@@ -21,7 +21,7 @@ export function createLogger({ componentName }: { componentName: string }) {
           .join(" ");
       })
     ),
-    transports: [new transports.Console()],
+    transports: process.env.pm_id ? [] : [new transports.Console()],
   });
 
   if (

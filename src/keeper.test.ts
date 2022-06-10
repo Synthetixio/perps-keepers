@@ -318,32 +318,34 @@ describe("keeper", () => {
       signerPool: jest.fn(),
     } as any;
     const keeper = new Keeper(arg);
+    keeper.lastProcessedBlock = 10;
     const updateIndexSpy = jest.spyOn(keeper, "updateIndex");
     const runKeepersSpy = jest.spyOn(keeper, "runKeepers");
-    await keeper.processNewBlock("1");
+    await keeper.processNewBlock(20);
     expect(arg.futuresMarket.queryFilter).toBeCalledTimes(3);
     expect(arg.futuresMarket.queryFilter).toHaveBeenNthCalledWith(
       1,
       "__PositionLiquidated_EVENT_FILTER__",
-      1,
-      1
+      11,
+      20
     );
     expect(arg.futuresMarket.queryFilter).toHaveBeenNthCalledWith(
       2,
       "__PositionModified_EVENT_FILTER__",
-      1,
-      1
+      11,
+      20
     );
     expect(arg.futuresMarket.queryFilter).toHaveBeenNthCalledWith(
       3,
       "__FundingRecomputed_EVENT_FILTER__",
-      1,
-      1
+      11,
+      20
     );
     expect(updateIndexSpy).toBeCalledTimes(1);
     expect(updateIndexSpy).toBeCalledWith([event, event, event]);
     expect(runKeepersSpy).toBeCalledTimes(1);
     expect(keeper.blockTipTimestamp).toEqual(100000);
+    expect(keeper.lastProcessedBlock).toEqual(20);
   });
   test("runKeepers", async () => {
     const arg = {
