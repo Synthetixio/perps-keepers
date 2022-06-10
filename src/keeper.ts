@@ -48,8 +48,8 @@ class Keeper {
   provider:
     | ethers.providers.WebSocketProvider
     | ethers.providers.JsonRpcProvider;
-  blockQueue: Array<string>;
-  blockTip: string | null;
+  blockQueue: Array<number>;
+  blockTip: number | null;
   blockTipTimestamp: number;
   signerPool: SignerPool;
   network: string;
@@ -207,7 +207,7 @@ class Keeper {
       await this.runKeepers();
 
       this.logger.log("info", `Listening for events`);
-      this.provider.on("block", async blockNumber => {
+      this.provider.on("block", async (blockNumber: number) => {
         if (!this.blockTip) {
           // Don't process the first block we see.
           this.blockTip = blockNumber;
@@ -231,7 +231,7 @@ class Keeper {
     }
   }
 
-  async processNewBlock(blockNumber: string) {
+  async processNewBlock(blockNumber: number) {
     this.blockTip = blockNumber;
     // first try to liquidate any positions that can be liquidated now
     await this.runKeepers();

@@ -320,7 +320,7 @@ describe("keeper", () => {
     const keeper = new Keeper(arg);
     const updateIndexSpy = jest.spyOn(keeper, "updateIndex");
     const runKeepersSpy = jest.spyOn(keeper, "runKeepers");
-    await keeper.processNewBlock("1");
+    await keeper.processNewBlock(1);
     expect(arg.futuresMarket.queryFilter).toBeCalledTimes(3);
     expect(arg.futuresMarket.queryFilter).toHaveBeenNthCalledWith(
       1,
