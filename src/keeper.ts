@@ -14,6 +14,7 @@ import { getEvents } from "./keeper-helpers";
 
 const UNIT = utils.parseUnits("1");
 const LIQ_PRICE_UNSET = -1;
+const RUN_EVERY_X_BLOCK = 10;
 
 function isObjectOrErrorWithCode(x: unknown): x is { code: string } {
   if (typeof x !== "object") return false;
@@ -208,6 +209,7 @@ class Keeper {
 
       this.logger.log("info", `Listening for events`);
       this.provider.on("block", async (blockNumber: number) => {
+        if (blockNumber % RUN_EVERY_X_BLOCK !== 0) return;
         if (!this.blockTip) {
           // Don't process the first block we see.
           this.blockTip = blockNumber;
