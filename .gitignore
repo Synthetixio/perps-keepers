@@ -6,4 +6,4 @@ coverage
 artifacts
 cache
 .DS_Store
-.vscode/launch.json
+.vscode
