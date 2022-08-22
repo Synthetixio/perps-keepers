@@ -3,7 +3,7 @@
 require("dotenv").config({
   path:
     // I would prefer to set NODE_ENV in ecosystem.config.js but the dot-env package and pm2 env configuration doesn't play nicely together
-    process.env.name === "futures-keeper-kovan"
+    process.env.name === "futures-keeper-goerli"
       ? require("path").resolve(__dirname, "../.env.staging")
       : require("path").resolve(__dirname, "../.env"),
 });

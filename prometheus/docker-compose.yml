@@ -11,7 +11,7 @@ services:
      - PROM_HTTP_PASSWORD
     extra_hosts:
     - "host.docker.internal:host-gateway"
-  prometheus-kovan:
+  prometheus-goerli:
     build: .
     ports:
      - ${PROM_STAGING_PORT}:9090

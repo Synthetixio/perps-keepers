@@ -87,7 +87,7 @@ describe("provider", () => {
         ethNodeHeartbeatRTT: { observe: jest.fn() },
       } as any;
 
-      const stopMonitoring = monitorProvider(providerMock, "kovan-ovm", deps);
+      const stopMonitoring = monitorProvider(providerMock, "goerli-ovm", deps);
 
       // Assert event listeners gets setup correctly
       expect(providerMock._websocket.on).toBeCalledTimes(3);
@@ -119,12 +119,12 @@ describe("provider", () => {
       // Assert that metrics gets called.
       expect(deps.ethNodeUptime.set).toBeCalledTimes(1);
       expect(deps.ethNodeUptime.set).toBeCalledWith(
-        { network: "kovan-ovm" },
+        { network: "goerli-ovm" },
         1
       );
       expect(deps.ethNodeHeartbeatRTT.observe).toBeCalledTimes(1);
       expect(deps.ethNodeHeartbeatRTT.observe).toBeCalledWith(
-        { network: "kovan-ovm" },
+        { network: "goerli-ovm" },
         expect.any(Number)
       );
       // Stop monitoring to avoid jest worker process warning
@@ -152,7 +152,7 @@ describe("provider", () => {
         ethNodeHeartbeatRTT: { observe: jest.fn() },
       } as any;
       const processExitSpy = jest.spyOn(process, "exit").mockImplementation();
-      const stopMonitoring = monitorProvider(providerMock, "kovan-ovm", deps);
+      const stopMonitoring = monitorProvider(providerMock, "goerli-ovm", deps);
       jest.advanceTimersByTime(deps.WS_PROVIDER_TIMEOUT);
 
       expect(processExitSpy).toBeCalledWith(1);
@@ -172,7 +172,7 @@ describe("provider", () => {
         ethNodeHeartbeatRTT: { observe: jest.fn() },
       } as any;
       jest.useFakeTimers();
-      const stopMonitoring = monitorProvider(providerMock, "kovan-ovm", deps);
+      const stopMonitoring = monitorProvider(providerMock, "goerli-ovm", deps);
       jest.advanceTimersByTime(deps.HTTP_PROVIDER_TIMEOUT - 1); // important that it's less than HTTP_PROVIDER_TIMEOUT
       jest.useRealTimers();
       await new Promise(process.nextTick);
@@ -181,12 +181,12 @@ describe("provider", () => {
       // Assert that metrics gets called.
       expect(deps.ethNodeUptime.set).toBeCalledTimes(1);
       expect(deps.ethNodeUptime.set).toBeCalledWith(
-        { network: "kovan-ovm" },
+        { network: "goerli-ovm" },
         1
       );
       expect(deps.ethNodeHeartbeatRTT.observe).toBeCalledTimes(1);
       expect(deps.ethNodeHeartbeatRTT.observe).toBeCalledWith(
-        { network: "kovan-ovm" },
+        { network: "goerli-ovm" },
         expect.any(Number)
       );
       stopMonitoring();
@@ -206,7 +206,7 @@ describe("provider", () => {
       jest.useFakeTimers();
       const processExitSpy = jest.spyOn(process, "exit").mockImplementation();
 
-      const stopMonitoring = monitorProvider(providerMock, "kovan-ovm", deps);
+      const stopMonitoring = monitorProvider(providerMock, "goerli-ovm", deps);
       jest.advanceTimersByTime(deps.HTTP_PROVIDER_TIMEOUT); // Move forward in time to trigger the heartbeatTimeout
 
       expect(processExitSpy).toBeCalledWith(1);

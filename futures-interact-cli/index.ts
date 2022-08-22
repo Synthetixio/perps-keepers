@@ -215,7 +215,7 @@ const setupProgram = () => {
     .option(
       "-n --network <value>",
       "Ethereum network to connect to.",
-      "kovan-ovm"
+      "goerli-ovm"
     );
   program
     .command("fundAndModifyPosition")

@@ -7,7 +7,7 @@ module.exports = {
       args: "run",
     },
     {
-      name: "futures-keeper-kovan",
+      name: "futures-keeper-goerli",
       script: "./build/src/index.js",
       args: "run",
     },

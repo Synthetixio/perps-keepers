@@ -30,7 +30,7 @@ export function createLogger({ componentName }: { componentName: string }) {
     process.env.AWS_REGION
   ) {
     const logGroupName =
-      process.env.name === "futures-keeper-kovan"
+      process.env.name === "futures-keeper-goerli"
         ? "futures-liquidations-keeper-staging"
         : "futures-liquidations-keeper-production";
 
