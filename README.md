@@ -43,7 +43,7 @@ Run the keeper
 
 Options:
   -b, --from-block <value>    Rebuild the keeper index from a starting block, before initiating keeper actions. (default: "latest")
-  --network <value>           Ethereum network to connect to. (default: "kovan-ovm")
+  --network <value>           Ethereum network to connect to. (default: "goerli-ovm")
   -n, --num-accounts <value>  Number of accounts from the HD wallet to use for parallel tx submission. Improves performance. (default: 10)
   -m, --markets <value>       Runs keeper operations for the specified markets, delimited by a comma. Supported markets: sETH, sBTC, sLINK. (default:
                               "sBTC,sETH,sLINK")
@@ -55,13 +55,13 @@ Options:
 ### Setup for local node:
 
 1. Start a local node:
-   `hardhat node --fork https://optimism-kovan.infura.io/v3/<infura key>`
+   `hardhat node --fork https://optimism-goerli.infura.io/v3/<infura key>`
 2. Fund one of the test wallets.
 
    - Checkout: https://github.com/synthetixio/synthetix
    - `git checkout futures-implementation`
    - npm install
-   - `npx hardhat fund-local-accounts --provider-url http://127.0.0.1:8545/ --target-network kovan-ovm --deployment-path ./publish/deployed/kovan-ovm/ --use-ovm --private-key $KOVAN_OVM_FUTURES_DEPLOYER_PRIVATE_KEY --account 0x8626f6940e2eb28930efb4cef49b2d1f2c9c1199`
+   - `npx hardhat fund-local-accounts --provider-url http://127.0.0.1:8545/ --target-network goerli-ovm --deployment-path ./publish/deployed/goerli-ovm/ --use-ovm --private-key $GOERLI_OVM_FUTURES_DEPLOYER_PRIVATE_KEY --account 0x8626f6940e2eb28930efb4cef49b2d1f2c9c1199`
      `0x8626f6940e2eb28930efb4cef49b2d1f2c9c1199` is one of the default accounts from hardhat node --fork
 
 ### Usage
@@ -94,7 +94,7 @@ Prometheus is a pull-based instrumentation system. We must run a separate Promet
 
 We use github actions for continuos deployments. See /.github/workflows/deploy-keeper.yml
 
-- Merge/Push to branch `develop` will trigger a staging release and start the keeper on `ovm-kovan`
+- Merge/Push to branch `develop` will trigger a staging release and start the keeper on `ovm-goerli`
 - Merge/Push to branch `master` will trigger a production release and start the keeper on `ovm-mainnet`
 
 To set this up as a fork we need to create github secrets for all required environment variables
