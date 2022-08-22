@@ -16,7 +16,7 @@ describe("run", () => {
       } as any)
     ).rejects.toEqual(Error("No futures market for marketKey: sDOGE"));
   });
-  test("happy path", async () => {
+  test.only("happy path", async () => {
     const getProviderMock = jest.fn().mockReturnValue("__PROVIDER__");
     const providerMonitorMock = jest.fn();
     const NonceManagerMock = jest.fn();
@@ -30,7 +30,6 @@ describe("run", () => {
     const getSynthetixContractsMock = jest.fn().mockReturnValue({
       FuturesMarketBTC: "BTC_CONTRACT",
       FuturesMarketETH: "ETH_CONTRACT",
-      FuturesMarketLINK: "LINK_CONTRACT",
     });
 
     const deps = {
@@ -48,12 +47,11 @@ describe("run", () => {
       futuresMarkets: [
         { asset: "sBTC" },
         { asset: "sETH" },
-        { asset: "sLINK" },
       ],
       getSynthetixContracts: getSynthetixContractsMock,
     } as any;
 
-    await run({ numAccounts: "1", markets: "sBTC,sETH,sLINK" }, deps);
+    await run({ numAccounts: "1", markets: "sBTC,sETH" }, deps);
 
     expect(metricsRunServerMock).toBeCalledTimes(1);
     expect(getSynthetixContractsMock).toBeCalled();
@@ -86,14 +84,14 @@ describe("run", () => {
       signers: ["__SIGNER__"],
     });
 
-    expect(KeeperMockCreate).toBeCalledTimes(3);
+    expect(KeeperMockCreate).toBeCalledTimes(2);
     expect(KeeperMockCreate).toBeCalledWith({
       network: "goerli-ovm",
       provider: "__PROVIDER__",
       futuresMarket: expect.any(String), // The mock just return a string, in real life this would be the contract
       signerPool: "__SIGNER_POOL__",
     });
-    expect(KeeperMockRun).toBeCalledTimes(3);
+    expect(KeeperMockRun).toBeCalledTimes(2);
     expect(KeeperMockRun).toBeCalledWith({
       fromBlock: Number(DEFAULTS.fromBlock),
     });
