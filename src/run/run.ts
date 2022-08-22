@@ -14,7 +14,7 @@ export const DEFAULTS = {
   fromBlock: process.env.FROM_BLOCK || "1",
   providerUrl: "http://localhost:8545",
   numAccounts: "1",
-  network: process.env.NETWORK || "kovan-ovm",
+  network: process.env.NETWORK || "goerli-ovm",
 };
 
 const logger = createLogger({ componentName: "Run" });
