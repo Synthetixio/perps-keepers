@@ -44,8 +44,8 @@ if [ "$ENVIRONMENT" = "production" ]; then
     echo "Starting mainnet keeper"
     ssh "$USER_AT_IP" "cd $FOLDER_NAME;npm run start-mainnet"
 else
-    echo "Starting kovan keeper"
-    ssh "$USER_AT_IP" "cd $FOLDER_NAME;npm run start-kovan"
+    echo "Starting goerli keeper"
+    ssh "$USER_AT_IP" "cd $FOLDER_NAME;npm run start-goerli"
 fi
 
 if [ "$ENVIRONMENT" = "production" ]; then
