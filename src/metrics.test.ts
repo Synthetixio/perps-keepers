@@ -24,7 +24,7 @@ describe("metrics", () => {
       promClient: promClientMock,
       metrics: metricsMock,
     } as any;
-    runServer("kovan-ovm", deps);
+    runServer("goerli-ovm", deps);
     expect(expressMock).toBeCalledTimes(1);
 
     expect(promClientMock.Registry.mock.instances.length).toBe(1);
@@ -61,7 +61,7 @@ describe("metrics", () => {
       keeperSusdBalance: { set: jest.fn() },
       intervalTimeMs: 2500,
     } as any;
-    trackKeeperBalance(signerMock, "kovan-ovm", SynthsUSDMock, deps);
+    trackKeeperBalance(signerMock, "goerli-ovm", SynthsUSDMock, deps);
 
     // Advance the fake timers to tricker the setInterval
     jest.advanceTimersByTime(deps.intervalTimeMs);
@@ -80,12 +80,12 @@ describe("metrics", () => {
     expect(SynthsUSDMock.balanceOf).toBeCalledWith("__ADDRESS__");
     expect(deps.keeperEthBalance.set).toBeCalledTimes(1);
     expect(deps.keeperEthBalance.set).toBeCalledWith(
-      { account: "__ADDRESS__", network: "kovan-ovm" },
+      { account: "__ADDRESS__", network: "goerli-ovm" },
       1e-18
     );
     expect(deps.keeperSusdBalance.set).toBeCalledTimes(1);
     expect(deps.keeperSusdBalance.set).toBeCalledWith(
-      { account: "__ADDRESS__", network: "kovan-ovm" },
+      { account: "__ADDRESS__", network: "goerli-ovm" },
       1e-15
     );
   });

@@ -3,7 +3,7 @@ import logAndStartTrackingBalances from "./logAndStartTrackingBalances";
 
 describe("logAndStartTrackingBalances", () => {
   test("happy path", async () => {
-    const network = "kovan-ovm";
+    const network = "goerli-ovm";
     const provider = "__PROVIDER__";
     const signerMock = {
       getBalance: jest.fn().mockResolvedValue(BigNumber.from(1)),
@@ -27,7 +27,7 @@ describe("logAndStartTrackingBalances", () => {
     expect(deps.trackKeeperBalance).toBeCalledTimes(1);
     expect(deps.trackKeeperBalance).toBeCalledWith(
       signerMock,
-      "kovan-ovm",
+      "goerli-ovm",
       SynthsUSD
     );
   });

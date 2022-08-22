@@ -40,7 +40,7 @@ describe("keeper", () => {
       futuresMarket: { baseAsset: baseAssetMock },
       signerPool: "__SIGNER_POOL__",
       provider: "__PROVIDER__",
-      network: "kovan",
+      network: "goerli",
     } as any;
 
     const result = await Keeper.create(args);

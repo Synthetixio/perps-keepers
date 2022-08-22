@@ -60,7 +60,7 @@ describe("run", () => {
     expect(getProviderMock).toBeCalledTimes(1);
     expect(getProviderMock).toBeCalledWith(DEFAULTS.providerUrl);
     expect(providerMonitorMock).toBeCalledTimes(1);
-    expect(providerMonitorMock).toBeCalledWith("__PROVIDER__", "kovan-ovm");
+    expect(providerMonitorMock).toBeCalledWith("__PROVIDER__", "goerli-ovm");
 
     expect(createWalletsMock).toBeCalledTimes(1);
     expect(createWalletsMock).toBeCalledWith({
@@ -88,7 +88,7 @@ describe("run", () => {
 
     expect(KeeperMockCreate).toBeCalledTimes(3);
     expect(KeeperMockCreate).toBeCalledWith({
-      network: "kovan-ovm",
+      network: "goerli-ovm",
       provider: "__PROVIDER__",
       futuresMarket: expect.any(String), // The mock just return a string, in real life this would be the contract
       signerPool: "__SIGNER_POOL__",
