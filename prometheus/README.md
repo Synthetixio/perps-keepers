@@ -19,7 +19,7 @@ The setup can be run with Docker Compose and configured using environment variab
 
     - `PROM_ENDPOINT_TO_SCRAPE` | `PROM_STAGING_ENDPOINT_TO_SCRAPE`
 
-      Some of the metrics cant access label so to be able do differentiate kovan-ovm from mainnet-ovm we can provide a job name
+      Some of the metrics cant access label so to be able do differentiate goerli-ovm from mainnet-ovm we can provide a job name
 
     - `PROM_JOB_NAME` | `PROM_STAGING_JOB_NAME`
 
@@ -40,7 +40,7 @@ The setup can be run with Docker Compose and configured using environment variab
 ## Deployment notes
 
 When code is merged to `master` the github action `deploy-keeper.yml` will run `docker-compose --env-file ./.env up -d`.
-This will start an instance for both kovan-ovm and mainnet-ovm. Currently there's no separate staging deployment
+This will start an instance for both goerli-ovm and mainnet-ovm. Currently there's no separate staging deployment
 
 ## Props.
 
