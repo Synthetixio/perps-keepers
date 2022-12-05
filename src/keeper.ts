@@ -149,6 +149,7 @@ class Keeper {
       network,
     });
   }
+
   async startProcessNewBlockConsumer() {
     // The L2 node is constantly mining blocks, one block per transaction. When a new block is received, we queue it
     // for processing in a FIFO queue. `processNewBlock` will scan its events, rebuild the index, and then run any
@@ -167,11 +168,12 @@ class Keeper {
       }
     }
   }
-  delay(ms: number) {
-    return new Promise((resolve, reject) => setTimeout(resolve, ms));
+
+  delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  async run({ fromBlock }: { fromBlock: string | number }) {
+  async run({ fromBlock }: { fromBlock: string | number }): Promise<void> {
     // ensure state is reset in case this is being invoked recursively
     this.resetState();
 
@@ -232,7 +234,7 @@ class Keeper {
     }
   }
 
-  async processNewBlock(blockNumber: number) {
+  async processNewBlock(blockNumber: number): Promise<void> {
     // first try to liquidate any positions that can be liquidated now
     await this.runKeepers();
     const fromBlock = this.lastProcessedBlock
@@ -271,7 +273,7 @@ class Keeper {
       marketSkewMetric: metrics.marketSkew,
       recentVolumeMetric: metrics.recentVolume,
     }
-  ) {
+  ): Promise<void> {
     events.forEach(({ event, args, blockNumber }) => {
       if (event === EventsOfInterest.FundingRecomputed && args) {
         // just a sneaky way to get timestamps without making awaiting getBlock() calls

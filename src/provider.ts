@@ -3,8 +3,10 @@ import { providers } from "ethers";
 import { ethNodeUptime, ethNodeHeartbeatRTT } from "./metrics";
 import { createLogger } from "./logging";
 
-const getErrorMessage = (e: unknown) => {
-  if (e instanceof Error) return e.message;
+const getErrorMessage = (e: unknown): string => {
+  if (e instanceof Error) {
+    return e.message;
+  }
   return e &&
     typeof e === "object" &&
     "toString" in e &&
@@ -15,7 +17,7 @@ const getErrorMessage = (e: unknown) => {
 
 const logger = createLogger({ componentName: "ProviderHeartbeat" });
 
-async function runNextTick(fn: () => Promise<void>) {
+async function runNextTick(fn: () => Promise<void>): Promise<void> {
   await new Promise((resolve, reject) => {
     process.nextTick(() => {
       fn()
@@ -33,11 +35,11 @@ class Stopwatch {
 
   stop() {
     const hrTime = process.hrtime(this.hrTime);
-    const ms = hrTime[0] * 1000 + hrTime[1] / 1000000;
-    return ms;
+    return hrTime[0] * 1000 + hrTime[1] / 1000000;
   }
 }
 
+// Retrieve and configure a provider given the necessary metadata.
 export const getProvider = (
   providerUrl: string,
   deps = { providers }
@@ -59,12 +61,14 @@ export const getProvider = (
       timeout: HTTP_PROVIDER_TIMEOUT,
     });
   }
-  throw new Error("Unknown provider protocol scheme - " + url.protocol);
+  throw new Error(`Unknown provider protocol scheme - ${url.protocol}`);
 };
 
 const WS_PROVIDER_TIMEOUT = 2 * 60 * 1000;
 const HTTP_PROVIDER_TIMEOUT = WS_PROVIDER_TIMEOUT;
 const HEARTBEAT_INTERVAL = 60000;
+
+// Given a provider, monitor for healthiness via heartbeats.
 export const monitorProvider = (
   provider: providers.JsonRpcProvider | providers.WebSocketProvider,
   network: string,
@@ -78,8 +82,11 @@ export const monitorProvider = (
 ) => {
   let heartbeatTimeout: NodeJS.Timeout | undefined;
   let heartbeatInterval: NodeJS.Timeout | undefined;
+
   const stopwatch = new Stopwatch();
   let running = true;
+
+  // Monitor for events using a push based model via websockets. Exit with -1 on failed heartbeat.
   if ("_websocket" in provider) {
     async function monitorWsProvider(provider: providers.WebSocketProvider) {
       while (running) {
@@ -97,9 +104,7 @@ export const monitorProvider = (
         // Heartbeat.
         try {
           logger.info(`ping (${provider.connection.url})`);
-          const pong = new Promise((res, rej) => {
-            provider._websocket.on("pong", res);
-          });
+          const pong = new Promise(res => provider._websocket.on("pong", res));
 
           stopwatch.start();
           await runNextTick(async () => provider._websocket.ping());
@@ -117,23 +122,20 @@ export const monitorProvider = (
         }
         clearTimeout(heartbeatTimeout);
 
-        await new Promise((res, rej) => {
-          heartbeatInterval = setTimeout(res, deps.HEARTBEAT_INTERVAL);
-        });
+        await new Promise(
+          res => (heartbeatInterval = setTimeout(res, deps.HEARTBEAT_INTERVAL))
+        );
       }
     }
 
-    provider._websocket.on("open", () => {
-      monitorWsProvider(provider);
-    });
-
+    provider._websocket.on("open", () => monitorWsProvider(provider));
     provider._websocket.on("close", () => {
       logger.error("The websocket connection was closed");
-
       heartbeatTimeout && clearTimeout(heartbeatTimeout);
       process.exit(1);
     });
   } else {
+    // Monitor for events using a pull base model.
     async function monitorJsonProvider() {
       while (running) {
         // Listen for timeout.
@@ -147,12 +149,12 @@ export const monitorProvider = (
         try {
           logger.info(`ping (${provider.connection.url})`);
           stopwatch.start();
+
           await runNextTick(async () => {
             await provider.getBlock("latest");
           });
 
           const ms = stopwatch.stop();
-
           logger.info(`pong rtt=${ms}ms`);
 
           deps.ethNodeUptime.set({ network }, 1);
@@ -164,7 +166,7 @@ export const monitorProvider = (
         }
         clearTimeout(heartbeatTimeout);
 
-        await new Promise((res, rej) => {
+        await new Promise(res => {
           heartbeatInterval = setTimeout(res, deps.HEARTBEAT_INTERVAL);
         });
       }
@@ -172,6 +174,7 @@ export const monitorProvider = (
 
     monitorJsonProvider();
   }
+
   return function stopMonitoring() {
     heartbeatInterval && clearTimeout(heartbeatInterval);
     heartbeatTimeout && clearTimeout(heartbeatTimeout);

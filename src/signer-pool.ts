@@ -2,10 +2,13 @@ import { Logger } from "winston";
 import { createLogger } from "./logging";
 import { NonceManager } from "@ethersproject/experimental";
 
+const SIGNER_POOL_ACQUIRE_TIMEOUT = 10;
+
 class SignerPool {
-  signers: NonceManager[];
-  pool: number[];
-  logger: Logger;
+  readonly signers: NonceManager[];
+  readonly pool: number[];
+  readonly logger: Logger;
+
   constructor(signers: NonceManager[]) {
     this.signers = signers;
     this.pool = Array.from(Array(this.signers.length).keys());
@@ -21,7 +24,9 @@ class SignerPool {
     let i = this.pool.pop();
 
     while (i === undefined) {
-      await new Promise((resolve, reject) => setTimeout(resolve, 10));
+      await new Promise(resolve =>
+        setTimeout(resolve, SIGNER_POOL_ACQUIRE_TIMEOUT)
+      );
       i = this.pool.pop();
     }
     this.logger.info(`acquired signer i=${i}`);

@@ -87,6 +87,7 @@ export async function run(
       return wrappedSigner.connect(provider);
     })
   );
+  signers.map(async s => console.log(await s.getAddress()));
 
   const signerPool = await deps.SignerPool.create({ signers });
   await deps.logAndStartTrackingBalances({ network, provider, signers });
@@ -99,8 +100,10 @@ export async function run(
     useOvm: true,
   });
 
-  const marketContracts = marketsArray.map(market => contracts[`FuturesMarket${market.slice(1)}`]);
-  
+  const marketContracts = marketsArray.map(
+    market => contracts[`FuturesMarket${market.slice(1)}`]
+  );
+
   for (const marketContract of marketContracts) {
     const keeper = await deps.Keeper.create({
       network,

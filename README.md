@@ -1,5 +1,7 @@
 # futures-keeper
 
+**Welcome to futuers-keepers!**
+
 Synthetix futures lets anyone liquidate a position by calling `liquidatePosition(address)` if the address has an open position that is under water. You can check if a wallet have a position under water by calling `canLiquidate(address)`
 
 This repository is an example liquidations keeper bot that anyone can run.
@@ -67,7 +69,8 @@ Options:
 ### Usage
 
 `npx ts-node --files futures-interact-cli` commands and options documented in the CLI.
-Current commands/ features:
+
+**Current commands/features:**
 
 - fundAndOpenPosition
 - fundMargin
@@ -92,7 +95,7 @@ Prometheus is a pull-based instrumentation system. We must run a separate Promet
 
 ## Deployment notes
 
-We use github actions for continuos deployments. See /.github/workflows/deploy-keeper.yml
+We use github actions for continuous deployments. See `/.github/workflows/deploy-keeper.yml`.
 
 - Merge/Push to branch `develop` will trigger a staging release and start the keeper on `ovm-goerli`
 - Merge/Push to branch `master` will trigger a production release and start the keeper on `ovm-mainnet`
