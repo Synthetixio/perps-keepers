@@ -1,7 +1,7 @@
-import { getEvents, getPaginatedFromAndTo } from "./keeper-helpers";
+import { getEvents, getPaginatedFromAndTo } from './keeper-helpers';
 
-describe("getPaginatedToAndFrom", () => {
-  test("one block", () => {
+describe('getPaginatedToAndFrom', () => {
+  test('one block', () => {
     const result = getPaginatedFromAndTo(1000, 1000);
     expect(result).toEqual([
       {
@@ -10,7 +10,7 @@ describe("getPaginatedToAndFrom", () => {
       },
     ]);
   });
-  test("a lot of blocks", () => {
+  test('a lot of blocks', () => {
     const result = getPaginatedFromAndTo(4500000, 5999999);
     expect(result).toEqual([
       { fromBlock: 4500000, toBlock: 4700000 },
@@ -24,9 +24,9 @@ describe("getPaginatedToAndFrom", () => {
     ]);
   });
 });
-describe("getEvents", () => {
-  test("sorts correctly", async () => {
-    const eventNames = ["FundingRecomputed"];
+describe('getEvents', () => {
+  test('sorts correctly', async () => {
+    const eventNames = ['FundingRecomputed'];
     const contract = {
       queryFilter: jest.fn(() => [
         { blockNumber: 1, transactionIndex: 1, logIndex: 1 },
@@ -52,12 +52,8 @@ describe("getEvents", () => {
       { blockNumber: 3, transactionIndex: 4, logIndex: 5 },
     ]);
   });
-  test("pagination correctly", async () => {
-    const eventNames = [
-      "PositionLiquidated",
-      "PositionModified",
-      "FundingRecomputed",
-    ];
+  test('pagination correctly', async () => {
+    const eventNames = ['PositionLiquidated', 'PositionModified', 'FundingRecomputed'];
     const contract = {
       queryFilter: jest.fn(),
       filters: {
