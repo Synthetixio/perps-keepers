@@ -37,6 +37,12 @@ interface Position {
   liqPriceUpdatedTimestamp: number;
 }
 
+enum KeeperTask {
+  LIQUIDATION = "LIQUIDATION",
+  DELAYED_ORDER = "DELAYED_ORDER",
+  OFFCHAIN_ORDER = "OFFCHAIN_ORDER",
+}
+
 class Keeper {
   baseAsset: string;
   futuresMarket: Contract;
@@ -531,7 +537,7 @@ class Keeper {
           await Promise.all(
             batch.map(async position => {
               const { id, account } = position;
-              await this.runKeeperTask(id, "liquidation", () =>
+              await this.runKeeperTask(id, KeeperTask.LIQUIDATION, () =>
                 this.liquidateOrder(id, account)
               );
             })
@@ -542,7 +548,11 @@ class Keeper {
     }
   }
 
-  async runKeeperTask(id: string, taskLabel: string, cb: () => Promise<void>) {
+  async runKeeperTask(
+    id: string,
+    taskLabel: KeeperTask,
+    cb: () => Promise<void>
+  ) {
     if (this.activeKeeperTasks[id]) {
       // Skip task as its already running.
       return;
@@ -574,9 +584,11 @@ class Keeper {
       metricKeeperChecks: metrics.keeperChecks,
     }
   ) {
-    const taskLabel = "liquidation";
+    const taskLabel = KeeperTask.LIQUIDATION;
+
     // check if it's liquidatable
     const canLiquidateOrder = await this.futuresMarket.canLiquidate(account);
+
     // increment number of checks performed
     deps.metricKeeperChecks.inc({
       market: this.baseAsset,
