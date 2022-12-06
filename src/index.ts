@@ -23,4 +23,6 @@ logProcessError({
 
 cmd(program);
 
-program.parseAsync(process.argv);
+program.parseAsync(process.argv).catch(err => {
+  throw err;
+});

@@ -46,7 +46,7 @@ describe('run', () => {
       getSynthetixContracts: getSynthetixContractsMock,
     } as any;
 
-    await run({ numAccounts: '1', markets: 'sBTC,sETH' }, deps);
+    await run({ markets: 'sBTC,sETH' }, deps);
 
     expect(metricsRunServerMock).toBeCalledTimes(1);
     expect(getSynthetixContractsMock).toBeCalled();

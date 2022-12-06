@@ -1,10 +1,7 @@
 import { NonceManager } from '@ethersproject/experimental';
-import { getDefaultProvider } from 'ethers';
-import snx from 'synthetix';
+import { getDefaultProvider, Wallet } from 'ethers';
 import { Keeper } from '../keeper';
-import { SignerPool } from '../signer-pool';
 import { Command } from 'commander';
-import { createWallets } from './createWallets';
 import { createLogger } from '../logging';
 import { getSynthetixContracts } from '../utils';
 
@@ -16,90 +13,34 @@ export const DEFAULTS = {
 };
 
 const logger = createLogger({ componentName: 'Run' });
+
 export async function run(
-  {
-    fromBlockRaw = DEFAULTS.fromBlock,
-    numAccounts = DEFAULTS.numAccounts,
-    markets = '',
-    network = DEFAULTS.network,
-  } = {},
+  { fromBlockRaw = DEFAULTS.fromBlock, network = DEFAULTS.network } = {},
   deps = {
     ETH_HDWALLET_MNEMONIC: process.env.ETH_HDWALLET_MNEMONIC,
+    PROVIDER_URL: process.env.PROVIDER_URL || DEFAULTS.providerUrl,
     NonceManager,
-    SignerPool,
     Keeper,
-    createWallets,
     getSynthetixContracts,
   }
 ) {
   if (!deps.ETH_HDWALLET_MNEMONIC) {
     throw new Error('ETH_HDWALLET_MNEMONIC environment variable is not configured.');
   }
-  const allFuturesMarkets = snx
-    .getFuturesMarkets({
-      network,
-      useOvm: true,
-    })
-    .map(({ marketKey }) => marketKey);
 
-  const providerUrl = process.env.PROVIDER_URL || DEFAULTS.providerUrl;
-  const marketKeys = markets ? markets.trim().split(',') : allFuturesMarkets;
+  const provider = getDefaultProvider(deps.PROVIDER_URL);
+  logger.info(`Connected to Ethereum node at ${deps.PROVIDER_URL}`);
 
-  // Verify markets.
-  marketKeys.forEach(marketKey => {
-    if (!allFuturesMarkets.includes(marketKey)) {
-      throw new Error(`No futures market for marketKey: ${marketKey}`);
-    }
-  });
+  const signer = Wallet.fromMnemonic(deps.ETH_HDWALLET_MNEMONIC).connect(provider);
+  logger.info(`Keeper address '${signer.address}'`);
+  const contracts = await deps.getSynthetixContracts({ network, signer, provider });
 
-  let fromBlock = fromBlockRaw === 'latest' ? fromBlockRaw : parseInt(fromBlockRaw);
-
-  // Setup.
-  const provider = getDefaultProvider(providerUrl);
-  // deps.monitorProvider(provider, network);
-
-  logger.info(`Connected to Ethereum node at ${providerUrl}`);
-
-  let unWrappedSigners = deps.createWallets({
-    provider,
-    mnemonic: deps.ETH_HDWALLET_MNEMONIC,
-    num: parseInt(numAccounts),
-  });
-
-  logger.info(`Using ${unWrappedSigners.length} account(s) to submit transactions:`);
-
-  const signers = await Promise.all(
-    unWrappedSigners.map(async (signer, i) => {
-      let wrappedSigner = new deps.NonceManager(signer);
-
-      // Each signer gets its own RPC connection.
-      // This seems to improve the transaction speed even further.
-      return wrappedSigner.connect(provider);
-    })
-  );
-  signers.map(async s => console.log(await s.getAddress()));
-
-  const signerPool = await deps.SignerPool.create({ signers });
-
-  // Load contracts.
-  const contracts = deps.getSynthetixContracts({
-    network,
-    provider,
-    useOvm: true,
-  });
-
-  // Grab every available market contract for the supported keys.
-  //
-  // NOTE: the `.slice(1)` to remove the `s` prefix: sBTCPERP => BTCPERP
-  const marketContracts = marketKeys.map(
-    marketKey => contracts[`FuturesMarket${marketKey.slice(1)}`]
-  );
-
-  for (const marketContract of marketContracts) {
+  const fromBlock = fromBlockRaw === 'latest' ? fromBlockRaw : parseInt(fromBlockRaw);
+  for (const market of Object.values(contracts.markets)) {
     const keeper = await deps.Keeper.create({
       network,
-      futuresMarket: marketContract,
-      signerPool,
+      market,
+      signer,
       provider,
     });
     keeper.run({ fromBlock });

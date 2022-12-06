@@ -1,8 +1,7 @@
-import { Contract } from '@ethersproject/contracts';
+import { Contract, Wallet } from 'ethers';
 import { chunk } from 'lodash';
 import ethers, { BigNumber, utils, providers } from 'ethers';
 import { Logger } from 'winston';
-import { SignerPool } from './signer-pool';
 import { TransactionReceipt, TransactionResponse } from '@ethersproject/abstract-provider';
 import { wei } from '@synthetixio/wei';
 import { createLogger } from './logging';
@@ -10,12 +9,6 @@ import { getEvents } from './keeper-helpers';
 
 const UNIT = utils.parseUnits('1');
 const LIQ_PRICE_UNSET = -1;
-
-function isObjectOrErrorWithCode(x: unknown): x is { code: string } {
-  if (typeof x !== 'object') return false;
-  if (x === null) return false;
-  return 'code' in x;
-}
 
 const EventsOfInterest = {
   PositionLiquidated: 'PositionLiquidated',
@@ -41,7 +34,7 @@ enum KeeperTask {
 
 export class Keeper {
   baseAsset: string;
-  futuresMarket: Contract;
+  market: Contract;
   logger: Logger;
   positions: {
     [account: string]: Position;
@@ -51,7 +44,7 @@ export class Keeper {
   blockQueue: Array<number>;
   lastProcessedBlock: number | null;
   blockTipTimestamp: number;
-  signerPool: SignerPool;
+  signer: Wallet;
   network: string;
   volumeArray: Array<{
     tradeSizeUSD: number;
@@ -62,15 +55,15 @@ export class Keeper {
   assetPrice: number;
 
   constructor({
-    futuresMarket,
+    market,
     baseAsset,
-    signerPool,
+    signer,
     network,
     provider,
   }: {
-    futuresMarket: ethers.Contract;
+    market: ethers.Contract;
     baseAsset: string;
-    signerPool: SignerPool;
+    signer: Wallet;
     network: string;
     provider: providers.BaseProvider;
   }) {
@@ -78,12 +71,12 @@ export class Keeper {
     this.network = network;
 
     // Contracts.
-    this.futuresMarket = futuresMarket;
+    this.market = market;
 
     this.logger = createLogger({
-      componentName: `FuturesMarket [${baseAsset}]`,
+      componentName: `PerpsV2Market [${baseAsset}]`,
     });
-    this.logger.info(`Market deployed at '${futuresMarket.address}'`);
+    this.logger.info(`Market deployed at '${market.address}'`);
 
     // The index.
     this.positions = {};
@@ -97,7 +90,7 @@ export class Keeper {
     this.lastProcessedBlock = null;
     this.blockTipTimestamp = 0;
     this.provider = provider;
-    this.signerPool = signerPool;
+    this.signer = signer;
 
     // volume accounting for metrics
     // this array maintains recent volume updates so that rolling
@@ -124,23 +117,23 @@ export class Keeper {
   }
 
   static async create({
-    futuresMarket,
-    signerPool,
+    market,
+    signer,
     provider,
     network,
   }: {
-    futuresMarket: Contract;
-    signerPool: SignerPool;
+    market: Contract;
+    signer: Wallet;
     network: string;
     provider: providers.BaseProvider;
   }) {
-    const baseAssetBytes32 = await futuresMarket.baseAsset();
+    const baseAssetBytes32 = await market.baseAsset();
     const baseAsset = utils.parseBytes32String(baseAssetBytes32);
 
     return new Keeper({
-      futuresMarket,
+      market,
       baseAsset,
-      signerPool,
+      signer,
       provider,
       network,
     });
@@ -175,7 +168,7 @@ export class Keeper {
 
     try {
       const toBlock = await this.provider.getBlockNumber();
-      const events = await getEvents(Object.values(EventsOfInterest), this.futuresMarket, {
+      const events = await getEvents(Object.values(EventsOfInterest), this.market, {
         fromBlock,
         toBlock,
       });
@@ -234,7 +227,7 @@ export class Keeper {
 
     // now process new events to update index, since it's impossible for a position that
     // was just updated to be liquidatable at the same block
-    const events = await getEvents(Object.values(EventsOfInterest), this.futuresMarket, {
+    const events = await getEvents(Object.values(EventsOfInterest), this.market, {
       fromBlock: fromBlock,
       toBlock: blockNumber,
     });
@@ -341,7 +334,7 @@ export class Keeper {
   }
 
   async updateAssetPrice() {
-    this.assetPrice = parseFloat(utils.formatUnits((await this.futuresMarket.assetPrice()).price));
+    this.assetPrice = parseFloat(utils.formatUnits((await this.market.assetPrice()).price));
     this.logger.info(`Latest price: ${this.assetPrice}`, {
       component: 'Indexer',
     });
@@ -454,63 +447,46 @@ export class Keeper {
   }
 
   async liquidateOrder(id: string, account: string) {
-    const taskLabel = KeeperTask.LIQUIDATION;
+    const logMetadata = {
+      component: `Keeper [${KeeperTask.LIQUIDATION}] id=${id}`,
+    };
 
-    // check if it's liquidatable
-    const canLiquidateOrder = await this.futuresMarket.canLiquidate(account);
-
+    const canLiquidateOrder = await this.market.canLiquidate(account);
     if (!canLiquidateOrder) {
       // if it's not liquidatable update it's liquidation price
       this.positions[account].liqPrice = parseFloat(
-        utils.formatUnits((await this.futuresMarket.liquidationPrice(account)).price)
+        utils.formatUnits((await this.market.liquidationPrice(account)).price)
       );
       this.positions[account].liqPriceUpdatedTimestamp = this.blockTipTimestamp;
       this.logger.info(
         `Cannot liquidate order, updated liqPrice ${this.positions[account].liqPrice}`,
-        {
-          component: `Keeper [${taskLabel}] id=${id}`,
-        }
+        logMetadata
       );
       return;
     }
 
-    this.logger.info(`Begin liquidatePosition`, {
-      component: `Keeper [${taskLabel}] id=${id}`,
-    });
+    this.logger.info(`Begin liquidatePosition`, logMetadata);
     let receipt: TransactionReceipt | undefined;
 
-    await this.signerPool.withSigner(async signer => {
-      try {
-        const tx: TransactionResponse = await this.futuresMarket
-          .connect(signer)
-          .liquidatePosition(account);
-        this.logger.info(`Submit liquidatePosition [nonce=${tx.nonce}]`, {
-          component: `Keeper [${taskLabel}] id=${id}`,
-        });
+    const tx: TransactionResponse = await this.market
+      .connect(this.signer)
+      .liquidatePosition(account);
 
-        receipt = await tx.wait(1);
-      } catch (err) {
-        if (isObjectOrErrorWithCode(err)) {
-          // Special handeling for NONCE_EXPIRED
-          if (err.code === 'NONCE_EXPIRED') {
-            this.logger.error(err.toString());
-            const nonce = signer.getTransactionCount('latest');
-            this.logger.info(`Updating nonce for Nonce manager to nonce ${nonce}`);
-            signer.setTransactionCount(nonce);
-          }
-        }
+    this.logger.info(`Submit liquidatePosition [nonce=${tx.nonce}]`, logMetadata);
 
-        throw err;
-      }
-    });
-
-    this.logger.info(
-      `done liquidatePosition`,
-      `block=${receipt?.blockNumber}`,
-      `success=${!!receipt?.status}`,
-      `tx=${receipt?.transactionHash}`,
-      `gasUsed=${receipt?.gasUsed}`,
-      { component: `Keeper [${taskLabel}] id=${id}` }
-    );
+    receipt = await tx.wait(1);
+    if (!receipt) {
+      this.logger.info('No receipt data...', logMetadata);
+    } else {
+      const { blockNumber, status, transactionHash, gasUsed } = receipt;
+      this.logger.info(
+        `done liquidatePosition`,
+        `block=${blockNumber}`,
+        `success=${status}`,
+        `tx=${transactionHash}`,
+        `gasUsed=${gasUsed}`,
+        logMetadata
+      );
+    }
   }
 }

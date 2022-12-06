@@ -414,7 +414,7 @@ describe('keeper', () => {
       metricKeeperChecks: { inc: jest.fn() },
     } as any;
 
-    await keeper.liquidateOrder('1', '__ACCOUNT__', deps);
+    await keeper.liquidateOrder('1', '__ACCOUNT__');
 
     expect(arg.futuresMarket.canLiquidate).toBeCalledTimes(1);
     expect(arg.futuresMarket.canLiquidate).toHaveBeenCalledWith('__ACCOUNT__');

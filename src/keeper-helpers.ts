@@ -6,7 +6,6 @@ const MAX_BLOCKS = 200000;
 
 const logger = createLogger({ componentName: 'Keeper Helpers' });
 
-// exported for test
 export const getPaginatedFromAndTo = (fromBlock: number, toBlock: number) => {
   const numberOfBlocks = toBlock - fromBlock || 1;
 
