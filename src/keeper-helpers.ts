@@ -44,8 +44,7 @@ export const getEvents = async (
   nestedEvents.forEach((singleFilterEvents, index) => {
     if (singleFilterEvents.length > 4000) {
       // at some point we'll issues getting enough events
-      logger.log(
-        'warn',
+      logger.warn(
         `Got ${singleFilterEvents.length} ${eventNames[index]} events, will run into RPC limits at 10000`,
         { component: 'Indexer' }
       );

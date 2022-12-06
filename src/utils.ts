@@ -1,13 +1,10 @@
-import {
-  NetworkIdByName,
-  NetworkName,
-  synthetix,
-} from "@synthetixio/contracts-interface";
-import { providers, Signer } from "ethers";
+import { NetworkIdByName, NetworkName, synthetix } from '@synthetixio/contracts-interface';
+import { providers, Signer } from 'ethers';
 
 export function isSupportedNetwork(name: string): name is NetworkName {
   return name in NetworkIdByName;
 }
+
 export const getSynthetixContracts = ({
   network,
   signer,
@@ -20,9 +17,7 @@ export const getSynthetixContracts = ({
   useOvm: boolean;
 }) => {
   if (!isSupportedNetwork(network)) {
-    throw Error(`Invalid network ${network}`);
+    throw Error(`Invalid network ${network} (unsupported)`);
   }
-  const networkId = NetworkIdByName[network];
-  const snx = synthetix({ networkId, useOvm, provider, signer });
-  return snx.contracts;
+  return synthetix({ networkId: NetworkIdByName[network], useOvm, provider, signer }).contracts;
 };

@@ -83,7 +83,7 @@ export class Keeper {
     this.logger = createLogger({
       componentName: `FuturesMarket [${baseAsset}]`,
     });
-    this.logger.info(`market deployed at ${futuresMarket.address}`);
+    this.logger.info(`Market deployed at '${futuresMarket.address}'`);
 
     // The index.
     this.positions = {};
@@ -179,29 +179,28 @@ export class Keeper {
         fromBlock,
         toBlock,
       });
-      this.logger.log('info', `Rebuilding index from ${fromBlock} to latest`, {
+      this.logger.info(`Rebuilding index from ${fromBlock} to latest`, {
         component: 'Indexer',
       });
-      this.logger.log('info', `${events.length} events to process`, {
+      this.logger.info(`${events.length} events to process`, {
         component: 'Indexer',
       });
       await this.updateIndex(events);
 
-      this.logger.log(
-        'info',
+      this.logger.info(
         `VolumeQueue after sync: total ${this.recentVolume} ${
           this.volumeArray.length
         } trades:${this.volumeArray.map(o => `${o.tradeSizeUSD} ${o.timestamp} ${o.account}`)}`,
         { component: 'Indexer' }
       );
 
-      this.logger.log('info', `Index build complete!`, {
+      this.logger.info('Index build complete! Starting keeper loop...', {
         component: 'Indexer',
       });
-      this.logger.log('info', `Starting keeper loop`);
       await this.runKeepers();
 
-      this.logger.log('info', `Listening for events`);
+      this.logger.info('Listening for events...');
+
       this.provider.on('block', async (blockNumber: number) => {
         if (blockNumber % Number(process.env.RUN_EVERY_X_BLOCK) !== 0) return;
         if (!this.lastProcessedBlock) {
@@ -210,19 +209,19 @@ export class Keeper {
           return;
         }
 
-        this.logger.log('debug', `New block: ${blockNumber}`);
+        this.logger.debug(`New block: ${blockNumber}`);
         this.blockQueue.push(blockNumber);
       });
 
       await this.startProcessNewBlockConsumer();
     } catch (err) {
       // handle anything else here by just logging it and hoping for better luck next time
-      this.logger.log('error', `error \n${String(err)}`, {
+      this.logger.error(`Error \n${String(err)}`, {
         component: `keeper main`,
       });
-      // wait a minute in case it's just node issues, and start again
+
+      // Wait a minute and retry (may just be Node issues).
       await this.delay(60 * 1000);
-      // try again
       await this.run({ fromBlock });
     }
   }
@@ -230,7 +229,9 @@ export class Keeper {
   async processNewBlock(blockNumber: number): Promise<void> {
     // first try to liquidate any positions that can be liquidated now
     await this.runKeepers();
+
     const fromBlock = this.lastProcessedBlock ? this.lastProcessedBlock + 1 : blockNumber;
+
     // now process new events to update index, since it's impossible for a position that
     // was just updated to be liquidatable at the same block
     const events = await getEvents(Object.values(EventsOfInterest), this.futuresMarket, {
@@ -241,14 +242,11 @@ export class Keeper {
       // set block timestamp here in case there were no events to update the timestamp from
       this.blockTipTimestamp = (await this.provider.getBlock(blockNumber)).timestamp;
     }
-    this.logger.log(
-      'info',
-      `Processing new block: ${blockNumber}, ${events.length} events to process`,
-      {
-        component: 'Indexer',
-      }
-    );
+    this.logger.info(`Processing new block: ${blockNumber}, ${events.length} events to process`, {
+      component: 'Indexer',
+    });
     await this.updateIndex(events);
+
     // update the lastProcessedBlock
     this.lastProcessedBlock = blockNumber;
   }
@@ -260,8 +258,7 @@ export class Keeper {
         // keeping track of time is needed for the volume metrics during the initial
         // sync so that we don't have to await getting block timestamp for each new block
         this.blockTipTimestamp = args.timestamp.toNumber();
-        this.logger.log(
-          'debug',
+        this.logger.debug(
           `FundingRecomputed timestamp ${this.blockTipTimestamp}, blocknumber ${blockNumber}`,
           { component: 'Indexer' }
         );
@@ -271,8 +268,7 @@ export class Keeper {
       if (event === EventsOfInterest.PositionModified && args) {
         const { id, account, size, margin, lastPrice, tradeSize } = args;
 
-        this.logger.log(
-          'debug',
+        this.logger.debug(
           `PositionModified id=${id} account=${account}, blocknumber ${blockNumber}`,
           { component: 'Indexer' }
         );
@@ -307,8 +303,7 @@ export class Keeper {
       }
       if (event === EventsOfInterest.PositionLiquidated && args) {
         const { account, liquidator } = args;
-        this.logger.log(
-          'debug',
+        this.logger.debug(
           `PositionLiquidated account=${account} liquidator=${liquidator}, blocknumber ${blockNumber}`,
           { component: 'Indexer' }
         );
@@ -401,14 +396,14 @@ export class Keeper {
     // make into an array and filter position 0 size positions
     const openPositions = Object.values(this.positions).filter(p => Math.abs(p.size) > 0);
 
-    this.logger.log('info', `${openPositions.length} open positions`, {
+    this.logger.info(`Found ${openPositions.length} open positions`, {
       component: 'Keeper',
     });
 
     // order the position in groups of priority that shouldn't be mixed in same batches
     const positionGroups = this.liquidationGroups(openPositions);
 
-    this.logger.log('info', `${positionGroups.reduce((a, g) => a + g.length, 0)} to check`, {
+    this.logger.info(`Found ${positionGroups.reduce((a, g) => a + g.length, 0)} to check`, {
       component: 'Keeper',
     });
 
@@ -416,7 +411,7 @@ export class Keeper {
       if (group.length) {
         // batch the groups to maintain internal order within groups
         for (let batch of chunk(group, deps.BATCH_SIZE)) {
-          this.logger.log('info', `Running keeper batch with ${batch.length} positions to keep`, {
+          this.logger.info(`Running keeper batch with ${batch.length} positions to keep`, {
             component: 'Keeper',
           });
 
@@ -441,17 +436,17 @@ export class Keeper {
     }
     this.activeKeeperTasks[id] = true;
 
-    this.logger.log('debug', `running`, {
+    this.logger.debug(`Keeper task running`, {
       component: `Keeper [${taskLabel}] id=${id}`,
     });
     try {
       await cb();
     } catch (err) {
-      this.logger.log('error', `error \n${String(err)}`, {
+      this.logger.error(`error \n${String(err)}`, {
         component: `Keeper [${taskLabel}] id=${id}`,
       });
     }
-    this.logger.log('debug', `done`, {
+    this.logger.debug(`Keeper task done`, {
       component: `Keeper [${taskLabel}] id=${id}`,
     });
 
@@ -470,8 +465,7 @@ export class Keeper {
         utils.formatUnits((await this.futuresMarket.liquidationPrice(account)).price)
       );
       this.positions[account].liqPriceUpdatedTimestamp = this.blockTipTimestamp;
-      this.logger.log(
-        'info',
+      this.logger.info(
         `Cannot liquidate order, updated liqPrice ${this.positions[account].liqPrice}`,
         {
           component: `Keeper [${taskLabel}] id=${id}`,
@@ -480,7 +474,7 @@ export class Keeper {
       return;
     }
 
-    this.logger.log('info', `begin liquidatePosition`, {
+    this.logger.info(`Begin liquidatePosition`, {
       component: `Keeper [${taskLabel}] id=${id}`,
     });
     let receipt: TransactionReceipt | undefined;
@@ -490,7 +484,7 @@ export class Keeper {
         const tx: TransactionResponse = await this.futuresMarket
           .connect(signer)
           .liquidatePosition(account);
-        this.logger.log('debug', `submit liquidatePosition [nonce=${tx.nonce}]`, {
+        this.logger.info(`Submit liquidatePosition [nonce=${tx.nonce}]`, {
           component: `Keeper [${taskLabel}] id=${id}`,
         });
 
@@ -510,8 +504,7 @@ export class Keeper {
       }
     });
 
-    this.logger.log(
-      'info',
+    this.logger.info(
       `done liquidatePosition`,
       `block=${receipt?.blockNumber}`,
       `success=${!!receipt?.status}`,
