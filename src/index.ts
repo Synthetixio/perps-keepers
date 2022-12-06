@@ -10,7 +10,7 @@ require('dotenv').config({
 });
 
 import { program } from 'commander';
-import { cmd } from './run/run';
+import { cmd } from './run';
 import { createLogger } from './logging';
 import logProcessError from 'log-process-errors';
 

@@ -2,7 +2,7 @@ import { Contract, Wallet } from 'ethers';
 import { chunk } from 'lodash';
 import ethers, { BigNumber, utils, providers } from 'ethers';
 import { Logger } from 'winston';
-import { TransactionReceipt, TransactionResponse } from '@ethersproject/abstract-provider';
+import { TransactionResponse } from '@ethersproject/abstract-provider';
 import { wei } from '@synthetixio/wei';
 import { createLogger } from './logging';
 import { getEvents } from './keeper-helpers';
@@ -423,25 +423,23 @@ export class Keeper {
   }
 
   async runKeeperTask(id: string, taskLabel: KeeperTask, cb: () => Promise<void>) {
+    const logMetadata = {
+      component: `Keeper [${taskLabel}] id=${id}`,
+    };
+
     if (this.activeKeeperTasks[id]) {
       // Skip task as its already running.
       return;
     }
     this.activeKeeperTasks[id] = true;
 
-    this.logger.debug(`Keeper task running`, {
-      component: `Keeper [${taskLabel}] id=${id}`,
-    });
+    this.logger.debug(`Keeper task running`, logMetadata);
     try {
       await cb();
     } catch (err) {
-      this.logger.error(`error \n${String(err)}`, {
-        component: `Keeper [${taskLabel}] id=${id}`,
-      });
+      this.logger.error(`error \n${String(err)}`, logMetadata);
     }
-    this.logger.debug(`Keeper task done`, {
-      component: `Keeper [${taskLabel}] id=${id}`,
-    });
+    this.logger.debug(`Keeper task complete`, logMetadata);
 
     delete this.activeKeeperTasks[id];
   }

@@ -1,9 +1,8 @@
-import { NonceManager } from '@ethersproject/experimental';
 import { getDefaultProvider, Wallet } from 'ethers';
-import { Keeper } from '../keeper';
+import { Keeper } from './keeper';
 import { Command } from 'commander';
-import { createLogger } from '../logging';
-import { getSynthetixContracts } from '../utils';
+import { createLogger } from './logging';
+import { getSynthetixContracts } from './utils';
 
 export const DEFAULTS = {
   fromBlock: process.env.FROM_BLOCK || '1',
@@ -19,7 +18,6 @@ export async function run(
   deps = {
     ETH_HDWALLET_MNEMONIC: process.env.ETH_HDWALLET_MNEMONIC,
     PROVIDER_URL: process.env.PROVIDER_URL || DEFAULTS.providerUrl,
-    NonceManager,
     Keeper,
     getSynthetixContracts,
   }
@@ -35,7 +33,7 @@ export async function run(
   logger.info(`Keeper address '${signer.address}'`);
   const contracts = await deps.getSynthetixContracts({ network, signer, provider });
 
-  const fromBlock = fromBlockRaw === 'latest' ? fromBlockRaw : parseInt(fromBlockRaw);
+  const fromBlock = fromBlockRaw === 'latest' ? fromBlockRaw : parseInt(fromBlockRaw, 10);
   for (const market of Object.values(contracts.markets)) {
     const keeper = await deps.Keeper.create({
       network,

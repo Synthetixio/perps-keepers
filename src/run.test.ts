@@ -8,7 +8,7 @@ describe('run', () => {
   });
   test('throws when called with unsupported market', () => {
     expect(() =>
-      run({ markets: 'sDOGE' }, {
+      run({
         futuresMarkets: [{ asset: 'sBTC' }],
         ETH_HDWALLET_MNEMONIC: 'some words',
       } as any)
@@ -46,7 +46,7 @@ describe('run', () => {
       getSynthetixContracts: getSynthetixContractsMock,
     } as any;
 
-    await run({ markets: 'sBTC,sETH' }, deps);
+    await run(deps);
 
     expect(metricsRunServerMock).toBeCalledTimes(1);
     expect(getSynthetixContractsMock).toBeCalled();
