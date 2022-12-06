@@ -1,10 +1,11 @@
-import { ethers } from "ethers";
-import { range } from "lodash";
-import { createLogger } from "./logging";
+import { ethers } from 'ethers';
+import { range } from 'lodash';
+import { createLogger } from './logging';
 
 const MAX_BLOCKS = 200000;
 
-const logger = createLogger({ componentName: "Keeper Helpers" });
+const logger = createLogger({ componentName: 'Keeper Helpers' });
+
 // exported for test
 export const getPaginatedFromAndTo = (fromBlock: number, toBlock: number) => {
   const numberOfBlocks = toBlock - fromBlock || 1;
@@ -18,34 +19,23 @@ export const getPaginatedFromAndTo = (fromBlock: number, toBlock: number) => {
     };
   });
 };
+
 export const getEvents = async (
   eventNames: string[],
   contract: ethers.Contract,
-  {
-    fromBlock,
-    toBlock,
-  }: { fromBlock: number | string; toBlock: number | string }
+  { fromBlock, toBlock }: { fromBlock: number | string; toBlock: number | string }
 ) => {
   const nestedEvents = await Promise.all(
     eventNames.map(async eventName => {
-      const pagination = getPaginatedFromAndTo(
-        Number(fromBlock),
-        Number(toBlock)
-      );
+      const pagination = getPaginatedFromAndTo(Number(fromBlock), Number(toBlock));
       if (pagination.length > 1) {
         // Only log this for when we're doing pagination
-        logger.info(
-          `Making ${pagination.length} requests to infura to index ${eventName}`
-        );
+        logger.info(`Making ${pagination.length} requests to infura to index ${eventName}`);
       }
 
       const events = await Promise.all(
         pagination.map(({ fromBlock, toBlock }) => {
-          return contract.queryFilter(
-            contract.filters[eventName](),
-            fromBlock,
-            toBlock
-          );
+          return contract.queryFilter(contract.filters[eventName](), fromBlock, toBlock);
         })
       );
       return events.flat(1);
@@ -55,9 +45,9 @@ export const getEvents = async (
     if (singleFilterEvents.length > 4000) {
       // at some point we'll issues getting enough events
       logger.log(
-        "warn",
+        'warn',
         `Got ${singleFilterEvents.length} ${eventNames[index]} events, will run into RPC limits at 10000`,
-        { component: "Indexer" }
+        { component: 'Indexer' }
       );
     }
   });

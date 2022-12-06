@@ -1,29 +1,26 @@
-import { Contract } from "@ethersproject/contracts";
-import { chunk } from "lodash";
-import ethers, { BigNumber, utils } from "ethers";
-import { Logger } from "winston";
-import SignerPool from "./signer-pool";
-import {
-  TransactionReceipt,
-  TransactionResponse,
-} from "@ethersproject/abstract-provider";
-import { wei } from "@synthetixio/wei";
-import { createLogger } from "./logging";
-import { getEvents } from "./keeper-helpers";
+import { Contract } from '@ethersproject/contracts';
+import { chunk } from 'lodash';
+import ethers, { BigNumber, utils } from 'ethers';
+import { Logger } from 'winston';
+import { SignerPool } from './signer-pool';
+import { TransactionReceipt, TransactionResponse } from '@ethersproject/abstract-provider';
+import { wei } from '@synthetixio/wei';
+import { createLogger } from './logging';
+import { getEvents } from './keeper-helpers';
 
-const UNIT = utils.parseUnits("1");
+const UNIT = utils.parseUnits('1');
 const LIQ_PRICE_UNSET = -1;
 
 function isObjectOrErrorWithCode(x: unknown): x is { code: string } {
-  if (typeof x !== "object") return false;
+  if (typeof x !== 'object') return false;
   if (x === null) return false;
-  return "code" in x;
+  return 'code' in x;
 }
 
 const EventsOfInterest = {
-  PositionLiquidated: "PositionLiquidated",
-  PositionModified: "PositionModified",
-  FundingRecomputed: "FundingRecomputed",
+  PositionLiquidated: 'PositionLiquidated',
+  PositionModified: 'PositionModified',
+  FundingRecomputed: 'FundingRecomputed',
 };
 
 interface Position {
@@ -37,12 +34,12 @@ interface Position {
 }
 
 enum KeeperTask {
-  LIQUIDATION = "LIQUIDATION",
-  DELAYED_ORDER = "DELAYED_ORDER",
-  OFFCHAIN_ORDER = "OFFCHAIN_ORDER",
+  LIQUIDATION = 'LIQUIDATION',
+  DELAYED_ORDER = 'DELAYED_ORDER',
+  OFFCHAIN_ORDER = 'OFFCHAIN_ORDER',
 }
 
-class Keeper {
+export class Keeper {
   baseAsset: string;
   futuresMarket: Contract;
   logger: Logger;
@@ -50,9 +47,7 @@ class Keeper {
     [account: string]: Position;
   };
   activeKeeperTasks: { [id: string]: boolean | undefined };
-  provider:
-    | ethers.providers.WebSocketProvider
-    | ethers.providers.JsonRpcProvider;
+  provider: ethers.providers.WebSocketProvider | ethers.providers.JsonRpcProvider;
   blockQueue: Array<number>;
   lastProcessedBlock: number | null;
   blockTipTimestamp: number;
@@ -77,9 +72,7 @@ class Keeper {
     baseAsset: string;
     signerPool: SignerPool;
     network: string;
-    provider:
-      | ethers.providers.WebSocketProvider
-      | ethers.providers.JsonRpcProvider;
+    provider: ethers.providers.WebSocketProvider | ethers.providers.JsonRpcProvider;
   }) {
     this.baseAsset = baseAsset;
     this.network = network;
@@ -139,9 +132,7 @@ class Keeper {
     futuresMarket: Contract;
     signerPool: SignerPool;
     network: string;
-    provider:
-      | ethers.providers.JsonRpcProvider
-      | ethers.providers.WebSocketProvider;
+    provider: ethers.providers.JsonRpcProvider | ethers.providers.WebSocketProvider;
   }) {
     const baseAssetBytes32 = await futuresMarket.baseAsset();
     const baseAsset = utils.parseBytes32String(baseAssetBytes32);
@@ -184,37 +175,34 @@ class Keeper {
 
     try {
       const toBlock = await this.provider.getBlockNumber();
-      const events = await getEvents(
-        Object.values(EventsOfInterest),
-        this.futuresMarket,
-        { fromBlock, toBlock }
-      );
-      this.logger.log("info", `Rebuilding index from ${fromBlock} to latest`, {
-        component: "Indexer",
+      const events = await getEvents(Object.values(EventsOfInterest), this.futuresMarket, {
+        fromBlock,
+        toBlock,
       });
-      this.logger.log("info", `${events.length} events to process`, {
-        component: "Indexer",
+      this.logger.log('info', `Rebuilding index from ${fromBlock} to latest`, {
+        component: 'Indexer',
+      });
+      this.logger.log('info', `${events.length} events to process`, {
+        component: 'Indexer',
       });
       await this.updateIndex(events);
 
       this.logger.log(
-        "info",
+        'info',
         `VolumeQueue after sync: total ${this.recentVolume} ${
           this.volumeArray.length
-        } trades:${this.volumeArray.map(
-          o => `${o.tradeSizeUSD} ${o.timestamp} ${o.account}`
-        )}`,
-        { component: "Indexer" }
+        } trades:${this.volumeArray.map(o => `${o.tradeSizeUSD} ${o.timestamp} ${o.account}`)}`,
+        { component: 'Indexer' }
       );
 
-      this.logger.log("info", `Index build complete!`, {
-        component: "Indexer",
+      this.logger.log('info', `Index build complete!`, {
+        component: 'Indexer',
       });
-      this.logger.log("info", `Starting keeper loop`);
+      this.logger.log('info', `Starting keeper loop`);
       await this.runKeepers();
 
-      this.logger.log("info", `Listening for events`);
-      this.provider.on("block", async (blockNumber: number) => {
+      this.logger.log('info', `Listening for events`);
+      this.provider.on('block', async (blockNumber: number) => {
         if (blockNumber % Number(process.env.RUN_EVERY_X_BLOCK) !== 0) return;
         if (!this.lastProcessedBlock) {
           // Don't process the first block we see.
@@ -222,14 +210,14 @@ class Keeper {
           return;
         }
 
-        this.logger.log("debug", `New block: ${blockNumber}`);
+        this.logger.log('debug', `New block: ${blockNumber}`);
         this.blockQueue.push(blockNumber);
       });
 
       await this.startProcessNewBlockConsumer();
     } catch (err) {
       // handle anything else here by just logging it and hoping for better luck next time
-      this.logger.log("error", `error \n${String(err)}`, {
+      this.logger.log('error', `error \n${String(err)}`, {
         component: `keeper main`,
       });
       // wait a minute in case it's just node issues, and start again
@@ -242,27 +230,22 @@ class Keeper {
   async processNewBlock(blockNumber: number): Promise<void> {
     // first try to liquidate any positions that can be liquidated now
     await this.runKeepers();
-    const fromBlock = this.lastProcessedBlock
-      ? this.lastProcessedBlock + 1
-      : blockNumber;
+    const fromBlock = this.lastProcessedBlock ? this.lastProcessedBlock + 1 : blockNumber;
     // now process new events to update index, since it's impossible for a position that
     // was just updated to be liquidatable at the same block
-    const events = await getEvents(
-      Object.values(EventsOfInterest),
-      this.futuresMarket,
-      { fromBlock: fromBlock, toBlock: blockNumber }
-    );
+    const events = await getEvents(Object.values(EventsOfInterest), this.futuresMarket, {
+      fromBlock: fromBlock,
+      toBlock: blockNumber,
+    });
     if (!events.length) {
       // set block timestamp here in case there were no events to update the timestamp from
-      this.blockTipTimestamp = (
-        await this.provider.getBlock(blockNumber)
-      ).timestamp;
+      this.blockTipTimestamp = (await this.provider.getBlock(blockNumber)).timestamp;
     }
     this.logger.log(
-      "info",
+      'info',
       `Processing new block: ${blockNumber}, ${events.length} events to process`,
       {
-        component: "Indexer",
+        component: 'Indexer',
       }
     );
     await this.updateIndex(events);
@@ -278,9 +261,9 @@ class Keeper {
         // sync so that we don't have to await getting block timestamp for each new block
         this.blockTipTimestamp = args.timestamp.toNumber();
         this.logger.log(
-          "debug",
+          'debug',
           `FundingRecomputed timestamp ${this.blockTipTimestamp}, blocknumber ${blockNumber}`,
-          { component: "Indexer" }
+          { component: 'Indexer' }
         );
         return;
       }
@@ -289,9 +272,9 @@ class Keeper {
         const { id, account, size, margin, lastPrice, tradeSize } = args;
 
         this.logger.log(
-          "debug",
+          'debug',
           `PositionModified id=${id} account=${account}, blocknumber ${blockNumber}`,
-          { component: "Indexer" }
+          { component: 'Indexer' }
         );
 
         // keep track of volume
@@ -325,9 +308,9 @@ class Keeper {
       if (event === EventsOfInterest.PositionLiquidated && args) {
         const { account, liquidator } = args;
         this.logger.log(
-          "debug",
+          'debug',
           `PositionLiquidated account=${account} liquidator=${liquidator}, blocknumber ${blockNumber}`,
-          { component: "Indexer" }
+          { component: 'Indexer' }
         );
 
         delete this.positions[account];
@@ -335,7 +318,7 @@ class Keeper {
       }
 
       this.logger.debug(`No handler for event ${event}`, {
-        component: "Indexer",
+        component: 'Indexer',
       });
     });
 
@@ -345,11 +328,7 @@ class Keeper {
     await this.updateAssetPrice();
   }
 
-  pushTradeToVolumeQueue(
-    tradeSize: BigNumber,
-    lastPrice: BigNumber,
-    account: string
-  ) {
+  pushTradeToVolumeQueue(tradeSize: BigNumber, lastPrice: BigNumber, account: string) {
     const tradeSizeUSD = wei(tradeSize)
       .abs()
       .mul(lastPrice)
@@ -367,11 +346,9 @@ class Keeper {
   }
 
   async updateAssetPrice() {
-    this.assetPrice = parseFloat(
-      utils.formatUnits((await this.futuresMarket.assetPrice()).price)
-    );
+    this.assetPrice = parseFloat(utils.formatUnits((await this.futuresMarket.assetPrice()).price));
     this.logger.info(`Latest price: ${this.assetPrice}`, {
-      component: "Indexer",
+      component: 'Indexer',
     });
   }
 
@@ -387,22 +364,17 @@ class Keeper {
     const unknownLiqPrice = posArr.filter(p => p.liqPrice === LIQ_PRICE_UNSET);
 
     const liqPriceClose = knownLiqPrice.filter(
-      p =>
-        Math.abs(p.liqPrice - this.assetPrice) / this.assetPrice <=
-        priceProximityThreshold
+      p => Math.abs(p.liqPrice - this.assetPrice) / this.assetPrice <= priceProximityThreshold
     );
     const liqPriceFar = knownLiqPrice.filter(
-      p =>
-        Math.abs(p.liqPrice - this.assetPrice) / this.assetPrice >
-        priceProximityThreshold
+      p => Math.abs(p.liqPrice - this.assetPrice) / this.assetPrice > priceProximityThreshold
     );
 
     // sort close prices by liquidation price and leverage
     liqPriceClose.sort(
       (p1, p2) =>
         // sort by ascending proximity of liquidation price to current price
-        Math.abs(p1.liqPrice - this.assetPrice) -
-          Math.abs(p2.liqPrice - this.assetPrice) ||
+        Math.abs(p1.liqPrice - this.assetPrice) - Math.abs(p2.liqPrice - this.assetPrice) ||
         // if liq price is the same, sort by descending leverage (which should be different)
         p2.leverage - p1.leverage // desc)
     );
@@ -411,15 +383,11 @@ class Keeper {
     unknownLiqPrice.sort((p1, p2) => p2.leverage - p1.leverage); //desc
 
     const outdatedLiqPrices = liqPriceFar.filter(
-      p =>
-        p.liqPriceUpdatedTimestamp <
-        this.blockTipTimestamp - farPriceRecencyCutoff
+      p => p.liqPriceUpdatedTimestamp < this.blockTipTimestamp - farPriceRecencyCutoff
     );
     // sort far liquidation prices by how out of date they are
     // this should constantly update old positions' liq price
-    outdatedLiqPrices.sort(
-      (p1, p2) => p1.liqPriceUpdatedTimestamp - p2.liqPriceUpdatedTimestamp
-    ); //asc
+    outdatedLiqPrices.sort((p1, p2) => p1.liqPriceUpdatedTimestamp - p2.liqPriceUpdatedTimestamp); //asc
 
     // first known close prices, then unknown prices yet
     return [
@@ -431,36 +399,26 @@ class Keeper {
 
   async runKeepers(deps = { BATCH_SIZE: 5, WAIT: 0 }) {
     // make into an array and filter position 0 size positions
-    const openPositions = Object.values(this.positions).filter(
-      p => Math.abs(p.size) > 0
-    );
+    const openPositions = Object.values(this.positions).filter(p => Math.abs(p.size) > 0);
 
-    this.logger.log("info", `${openPositions.length} open positions`, {
-      component: "Keeper",
+    this.logger.log('info', `${openPositions.length} open positions`, {
+      component: 'Keeper',
     });
 
     // order the position in groups of priority that shouldn't be mixed in same batches
     const positionGroups = this.liquidationGroups(openPositions);
 
-    this.logger.log(
-      "info",
-      `${positionGroups.reduce((a, g) => a + g.length, 0)} to check`,
-      {
-        component: "Keeper",
-      }
-    );
+    this.logger.log('info', `${positionGroups.reduce((a, g) => a + g.length, 0)} to check`, {
+      component: 'Keeper',
+    });
 
     for (let group of positionGroups) {
       if (group.length) {
         // batch the groups to maintain internal order within groups
         for (let batch of chunk(group, deps.BATCH_SIZE)) {
-          this.logger.log(
-            "info",
-            `Running keeper batch with ${batch.length} positions to keep`,
-            {
-              component: "Keeper",
-            }
-          );
+          this.logger.log('info', `Running keeper batch with ${batch.length} positions to keep`, {
+            component: 'Keeper',
+          });
 
           await Promise.all(
             batch.map(async position => {
@@ -476,28 +434,24 @@ class Keeper {
     }
   }
 
-  async runKeeperTask(
-    id: string,
-    taskLabel: KeeperTask,
-    cb: () => Promise<void>
-  ) {
+  async runKeeperTask(id: string, taskLabel: KeeperTask, cb: () => Promise<void>) {
     if (this.activeKeeperTasks[id]) {
       // Skip task as its already running.
       return;
     }
     this.activeKeeperTasks[id] = true;
 
-    this.logger.log("debug", `running`, {
+    this.logger.log('debug', `running`, {
       component: `Keeper [${taskLabel}] id=${id}`,
     });
     try {
       await cb();
     } catch (err) {
-      this.logger.log("error", `error \n${String(err)}`, {
+      this.logger.log('error', `error \n${String(err)}`, {
         component: `Keeper [${taskLabel}] id=${id}`,
       });
     }
-    this.logger.log("debug", `done`, {
+    this.logger.log('debug', `done`, {
       component: `Keeper [${taskLabel}] id=${id}`,
     });
 
@@ -513,13 +467,11 @@ class Keeper {
     if (!canLiquidateOrder) {
       // if it's not liquidatable update it's liquidation price
       this.positions[account].liqPrice = parseFloat(
-        utils.formatUnits(
-          (await this.futuresMarket.liquidationPrice(account)).price
-        )
+        utils.formatUnits((await this.futuresMarket.liquidationPrice(account)).price)
       );
       this.positions[account].liqPriceUpdatedTimestamp = this.blockTipTimestamp;
       this.logger.log(
-        "info",
+        'info',
         `Cannot liquidate order, updated liqPrice ${this.positions[account].liqPrice}`,
         {
           component: `Keeper [${taskLabel}] id=${id}`,
@@ -528,7 +480,7 @@ class Keeper {
       return;
     }
 
-    this.logger.log("info", `begin liquidatePosition`, {
+    this.logger.log('info', `begin liquidatePosition`, {
       component: `Keeper [${taskLabel}] id=${id}`,
     });
     let receipt: TransactionReceipt | undefined;
@@ -538,22 +490,18 @@ class Keeper {
         const tx: TransactionResponse = await this.futuresMarket
           .connect(signer)
           .liquidatePosition(account);
-        this.logger.log(
-          "debug",
-          `submit liquidatePosition [nonce=${tx.nonce}]`,
-          { component: `Keeper [${taskLabel}] id=${id}` }
-        );
+        this.logger.log('debug', `submit liquidatePosition [nonce=${tx.nonce}]`, {
+          component: `Keeper [${taskLabel}] id=${id}`,
+        });
 
         receipt = await tx.wait(1);
       } catch (err) {
         if (isObjectOrErrorWithCode(err)) {
           // Special handeling for NONCE_EXPIRED
-          if (err.code === "NONCE_EXPIRED") {
+          if (err.code === 'NONCE_EXPIRED') {
             this.logger.error(err.toString());
-            const nonce = signer.getTransactionCount("latest");
-            this.logger.info(
-              `Updating nonce for Nonce manager to nonce ${nonce}`
-            );
+            const nonce = signer.getTransactionCount('latest');
+            this.logger.info(`Updating nonce for Nonce manager to nonce ${nonce}`);
             signer.setTransactionCount(nonce);
           }
         }
@@ -563,7 +511,7 @@ class Keeper {
     });
 
     this.logger.log(
-      "info",
+      'info',
       `done liquidatePosition`,
       `block=${receipt?.blockNumber}`,
       `success=${!!receipt?.status}`,
@@ -573,5 +521,3 @@ class Keeper {
     );
   }
 }
-
-export default Keeper;

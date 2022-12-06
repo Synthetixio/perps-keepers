@@ -123,34 +123,24 @@ describe("keeper", () => {
       provider: jest.fn(),
     } as any;
 
-    const deps = {
-      totalLiquidationsMetric: { inc: jest.fn() },
-      marketSizeMetric: { set: jest.fn() },
-      marketSkewMetric: { set: jest.fn() },
-      recentVolumeMetric: { set: jest.fn() },
-    } as any;
-
     const keeper = new Keeper(arg);
     keeper.positions = getMockPositions();
     /**
      * PositionModified
      */
-    await keeper.updateIndex(
-      [
-        {
-          event: "PositionModified",
-          args: {
-            id: "1",
-            account: "___ACCOUNT1__",
-            size: wei(1).toBN(),
-            tradeSize: wei(1).toBN(),
-            lastPrice: price,
-            margin: wei(20000).toBN(),
-          },
+    await keeper.updateIndex([
+      {
+        event: "PositionModified",
+        args: {
+          id: "1",
+          account: "___ACCOUNT1__",
+          size: wei(1).toBN(),
+          tradeSize: wei(1).toBN(),
+          lastPrice: price,
+          margin: wei(20000).toBN(),
         },
-      ] as any,
-      deps
-    );
+      },
+    ] as any);
     expect(keeper.positions["___ACCOUNT1__"]).toEqual({
       account: "___ACCOUNT1__",
       event: "PositionModified",
@@ -161,62 +151,34 @@ describe("keeper", () => {
       liqPriceUpdatedTimestamp: 0,
     });
 
-    const expectedSize = wei(1)
-      .toBN()
-      .add(utils.parseEther("20")); // old positions minus ___ACCOUNT1__
-    const expectedSizeUSD = parseFloat(
-      utils.formatEther(price.mul(expectedSize).div(utils.parseEther("1")))
-    );
-    // size
-    expect(deps.marketSizeMetric.set).toBeCalledTimes(1);
-    expect(deps.marketSizeMetric.set).toBeCalledWith(
-      { market: arg.baseAsset },
-      expectedSizeUSD
-    );
-    // skew
-    expect(deps.marketSkewMetric.set).toBeCalledTimes(1);
-    expect(deps.marketSkewMetric.set).toBeCalledWith(
-      { market: arg.baseAsset },
-      expectedSizeUSD
-    );
-    // volume is called
-    expect(deps.recentVolumeMetric.set).toBeCalledTimes(1);
-
     /**
      * PositionModified to 0
      */
-    await keeper.updateIndex(
-      [
-        {
-          event: "PositionModified",
-          args: {
-            id: "1",
-            account: "___ACCOUNT1__",
-            size: BigNumber.from(0),
-            margin: BigNumber.from(0),
-            tradeSize: BigNumber.from(0),
-            lastPrice: BigNumber.from(1),
-          },
+    await keeper.updateIndex([
+      {
+        event: "PositionModified",
+        args: {
+          id: "1",
+          account: "___ACCOUNT1__",
+          size: BigNumber.from(0),
+          margin: BigNumber.from(0),
+          tradeSize: BigNumber.from(0),
+          lastPrice: BigNumber.from(1),
         },
-      ] as any,
-      deps
-    );
+      },
+    ] as any);
     expect(keeper.positions["___ACCOUNT1__"]).toEqual(undefined);
 
     /**
      * PositionLiquidated
      */
-    await keeper.updateIndex(
-      [
-        {
-          event: "PositionLiquidated",
-          args: { account: "___ACCOUNT2__" },
-        },
-      ] as any,
-      deps
-    );
+    await keeper.updateIndex([
+      {
+        event: "PositionLiquidated",
+        args: { account: "___ACCOUNT2__" },
+      },
+    ] as any);
     expect(keeper.positions["___ACCOUNT2__"]).toEqual(undefined);
-    expect(deps.totalLiquidationsMetric.inc).toBeCalledTimes(1);
 
     // After these event we only expect ___ACCOUNT3__ to have a position
     expect(keeper.positions).toEqual({
@@ -378,9 +340,6 @@ describe("keeper", () => {
     await keeper.runKeepers({
       BATCH_SIZE: 1,
       WAIT: 1,
-      metrics: {
-        futuresOpenPositions: { set: futuresOpenPositionsSetMock },
-      } as any,
     });
 
     expect(futuresOpenPositionsSetMock).toBeCalledTimes(1);

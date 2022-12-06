@@ -1,7 +1,7 @@
-import { providers, Wallet } from "ethers";
-import { HDNode } from "ethers/lib/utils";
+import { providers, Wallet } from 'ethers';
+import { HDNode } from 'ethers/lib/utils';
 
-function createWallets(
+export function createWallets(
   {
     provider,
     mnemonic,
@@ -18,14 +18,9 @@ function createWallets(
 
   for (let i = 0; i < num; i++) {
     wallets.push(
-      new deps.Wallet(
-        masterNode.derivePath(`m/44'/60'/0'/0/${i}`).privateKey,
-        provider
-      )
+      new deps.Wallet(masterNode.derivePath(`m/44'/60'/0'/0/${i}`).privateKey, provider)
     );
   }
 
   return wallets;
 }
-
-export default createWallets;

@@ -1,10 +1,10 @@
-import { Logger } from "winston";
-import { createLogger } from "./logging";
-import { NonceManager } from "@ethersproject/experimental";
+import { Logger } from 'winston';
+import { createLogger } from './logging';
+import { NonceManager } from '@ethersproject/experimental';
 
 const SIGNER_POOL_ACQUIRE_TIMEOUT = 10;
 
-class SignerPool {
+export class SignerPool {
   readonly signers: NonceManager[];
   readonly pool: number[];
   readonly logger: Logger;
@@ -12,7 +12,7 @@ class SignerPool {
   constructor(signers: NonceManager[]) {
     this.signers = signers;
     this.pool = Array.from(Array(this.signers.length).keys());
-    this.logger = createLogger({ componentName: "SignerPool" });
+    this.logger = createLogger({ componentName: 'SignerPool' });
   }
 
   static async create({ signers }: { signers: NonceManager[] }) {
@@ -20,13 +20,11 @@ class SignerPool {
   }
 
   async acquire(): Promise<[number, NonceManager]> {
-    this.logger.info("awaiting signer");
+    this.logger.info('awaiting signer');
     let i = this.pool.pop();
 
     while (i === undefined) {
-      await new Promise(resolve =>
-        setTimeout(resolve, SIGNER_POOL_ACQUIRE_TIMEOUT)
-      );
+      await new Promise(resolve => setTimeout(resolve, SIGNER_POOL_ACQUIRE_TIMEOUT));
       i = this.pool.pop();
     }
     this.logger.info(`acquired signer i=${i}`);
@@ -50,5 +48,3 @@ class SignerPool {
     }
   }
 }
-
-export default SignerPool;
