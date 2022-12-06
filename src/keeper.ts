@@ -466,27 +466,21 @@ export class Keeper {
     }
 
     this.logger.info(`Begin liquidatePosition`, logMetadata);
-    let receipt: TransactionReceipt | undefined;
-
     const tx: TransactionResponse = await this.market
       .connect(this.signer)
       .liquidatePosition(account);
 
     this.logger.info(`Submit liquidatePosition [nonce=${tx.nonce}]`, logMetadata);
 
-    receipt = await tx.wait(1);
-    if (!receipt) {
-      this.logger.info('No receipt data...', logMetadata);
-    } else {
-      const { blockNumber, status, transactionHash, gasUsed } = receipt;
-      this.logger.info(
-        `done liquidatePosition`,
-        `block=${blockNumber}`,
-        `success=${status}`,
-        `tx=${transactionHash}`,
-        `gasUsed=${gasUsed}`,
-        logMetadata
-      );
-    }
+    const receipt = await tx.wait(1);
+    const { blockNumber, status, transactionHash, gasUsed } = receipt;
+    this.logger.info(
+      `done liquidatePosition`,
+      `block=${blockNumber}`,
+      `success=${status}`,
+      `tx=${transactionHash}`,
+      `gasUsed=${gasUsed}`,
+      logMetadata
+    );
   }
 }
