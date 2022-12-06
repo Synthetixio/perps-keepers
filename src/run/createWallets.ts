@@ -7,7 +7,7 @@ export function createWallets(
     mnemonic,
     num,
   }: {
-    provider: providers.JsonRpcProvider | providers.WebSocketProvider;
+    provider: providers.BaseProvider;
     mnemonic: string;
     num: number;
   },

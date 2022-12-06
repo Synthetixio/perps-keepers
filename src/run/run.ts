@@ -1,8 +1,8 @@
 import { NonceManager } from '@ethersproject/experimental';
+import { getDefaultProvider } from 'ethers';
 import snx from 'synthetix';
 import { Keeper } from '../keeper';
 import { SignerPool } from '../signer-pool';
-import { getProvider, monitorProvider } from '../provider';
 import { Command } from 'commander';
 import { createWallets } from './createWallets';
 import { createLogger } from '../logging';
@@ -25,8 +25,6 @@ export async function run(
   } = {},
   deps = {
     ETH_HDWALLET_MNEMONIC: process.env.ETH_HDWALLET_MNEMONIC,
-    getProvider,
-    monitorProvider,
     NonceManager,
     SignerPool,
     Keeper,
@@ -57,8 +55,8 @@ export async function run(
   let fromBlock = fromBlockRaw === 'latest' ? fromBlockRaw : parseInt(fromBlockRaw);
 
   // Setup.
-  const provider = deps.getProvider(providerUrl);
-  deps.monitorProvider(provider, network);
+  const provider = getDefaultProvider(providerUrl);
+  // deps.monitorProvider(provider, network);
 
   logger.info(`Connected to Ethereum node at ${providerUrl}`);
 

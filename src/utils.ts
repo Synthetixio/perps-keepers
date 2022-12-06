@@ -13,7 +13,7 @@ export const getSynthetixContracts = ({
 }: {
   network: string;
   signer?: Signer;
-  provider: providers.JsonRpcProvider | providers.WebSocketProvider;
+  provider: providers.BaseProvider;
   useOvm: boolean;
 }) => {
   if (!isSupportedNetwork(network)) {

@@ -1,6 +1,6 @@
 import { Contract } from '@ethersproject/contracts';
 import { chunk } from 'lodash';
-import ethers, { BigNumber, utils } from 'ethers';
+import ethers, { BigNumber, utils, providers } from 'ethers';
 import { Logger } from 'winston';
 import { SignerPool } from './signer-pool';
 import { TransactionReceipt, TransactionResponse } from '@ethersproject/abstract-provider';
@@ -47,7 +47,7 @@ export class Keeper {
     [account: string]: Position;
   };
   activeKeeperTasks: { [id: string]: boolean | undefined };
-  provider: ethers.providers.WebSocketProvider | ethers.providers.JsonRpcProvider;
+  provider: providers.BaseProvider;
   blockQueue: Array<number>;
   lastProcessedBlock: number | null;
   blockTipTimestamp: number;
@@ -72,7 +72,7 @@ export class Keeper {
     baseAsset: string;
     signerPool: SignerPool;
     network: string;
-    provider: ethers.providers.WebSocketProvider | ethers.providers.JsonRpcProvider;
+    provider: providers.BaseProvider;
   }) {
     this.baseAsset = baseAsset;
     this.network = network;
@@ -132,7 +132,7 @@ export class Keeper {
     futuresMarket: Contract;
     signerPool: SignerPool;
     network: string;
-    provider: ethers.providers.JsonRpcProvider | ethers.providers.WebSocketProvider;
+    provider: providers.BaseProvider;
   }) {
     const baseAssetBytes32 = await futuresMarket.baseAsset();
     const baseAsset = utils.parseBytes32String(baseAssetBytes32);
