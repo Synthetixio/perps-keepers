@@ -2,11 +2,9 @@ import { NonceManager } from "@ethersproject/experimental";
 import snx from "synthetix";
 import Keeper from "../keeper";
 import SignerPool from "../signer-pool";
-import { runServer as runMetricServer } from "../metrics";
 import { getProvider, monitorProvider } from "../provider";
 import { Command } from "commander";
 import createWallets from "./createWallets";
-import logAndStartTrackingBalances from "./logAndStartTrackingBalances";
 import { createLogger } from "../logging";
 import { getSynthetixContracts } from "../utils";
 
@@ -33,8 +31,6 @@ export async function run(
     SignerPool,
     Keeper,
     createWallets,
-    logAndStartTrackingBalances,
-    runMetricServer,
     getSynthetixContracts,
   }
 ) {
@@ -58,8 +54,6 @@ export async function run(
       throw new Error(`No futures market for marketKey: ${marketKey}`);
     }
   });
-
-  deps.runMetricServer(network);
 
   let fromBlock =
     fromBlockRaw === "latest" ? fromBlockRaw : parseInt(fromBlockRaw);
@@ -90,7 +84,6 @@ export async function run(
   signers.map(async s => console.log(await s.getAddress()));
 
   const signerPool = await deps.SignerPool.create({ signers });
-  await deps.logAndStartTrackingBalances({ network, provider, signers });
 
   // Load contracts.
 

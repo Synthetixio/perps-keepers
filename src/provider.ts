@@ -1,6 +1,4 @@
 import { providers } from "ethers";
-
-import { ethNodeUptime, ethNodeHeartbeatRTT } from "./metrics";
 import { createLogger } from "./logging";
 
 const getErrorMessage = (e: unknown): string => {
@@ -76,8 +74,6 @@ export const monitorProvider = (
     WS_PROVIDER_TIMEOUT,
     HTTP_PROVIDER_TIMEOUT,
     HEARTBEAT_INTERVAL,
-    ethNodeUptime,
-    ethNodeHeartbeatRTT,
   }
 ) => {
   let heartbeatTimeout: NodeJS.Timeout | undefined;
@@ -112,9 +108,6 @@ export const monitorProvider = (
           const ms = stopwatch.stop();
 
           logger.info(`pong rtt=${ms}ms`);
-
-          deps.ethNodeUptime.set({ network }, 1);
-          deps.ethNodeHeartbeatRTT.observe({ network }, ms);
         } catch (e) {
           const errorMessage = getErrorMessage(e);
           logger.error("Error while pinging provider: " + errorMessage);
@@ -156,9 +149,6 @@ export const monitorProvider = (
 
           const ms = stopwatch.stop();
           logger.info(`pong rtt=${ms}ms`);
-
-          deps.ethNodeUptime.set({ network }, 1);
-          deps.ethNodeHeartbeatRTT.observe({ network }, ms);
         } catch (e) {
           const errorMessage = getErrorMessage(e);
           logger.error("Error while pinging provider: " + errorMessage);

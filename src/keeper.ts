@@ -2,7 +2,6 @@ import { Contract } from "@ethersproject/contracts";
 import { chunk } from "lodash";
 import ethers, { BigNumber, utils } from "ethers";
 import { Logger } from "winston";
-import * as metrics from "./metrics";
 import SignerPool from "./signer-pool";
 import {
   TransactionReceipt,
@@ -271,15 +270,7 @@ class Keeper {
     this.lastProcessedBlock = blockNumber;
   }
 
-  async updateIndex(
-    events: ethers.Event[],
-    deps = {
-      totalLiquidationsMetric: metrics.totalLiquidations,
-      marketSizeMetric: metrics.marketSize,
-      marketSkewMetric: metrics.marketSkew,
-      recentVolumeMetric: metrics.recentVolume,
-    }
-  ): Promise<void> {
+  async updateIndex(events: ethers.Event[]): Promise<void> {
     events.forEach(({ event, args, blockNumber }) => {
       if (event === EventsOfInterest.FundingRecomputed && args) {
         // just a sneaky way to get timestamps without making awaiting getBlock() calls
@@ -339,10 +330,6 @@ class Keeper {
           { component: "Indexer" }
         );
 
-        deps.totalLiquidationsMetric.inc({
-          market: this.baseAsset,
-          network: this.network,
-        });
         delete this.positions[account];
         return;
       }
@@ -352,16 +339,10 @@ class Keeper {
       });
     });
 
-    // update volume metrics
-    this.updateVolumeMetrics(deps);
-
     // required for metrics and liquidations order
     // it's updated after running keepers because even if it's one-block old, it shouldn't
     // affect liquidation order too much, but awaiting this might introduce latency
     await this.updateAssetPrice();
-
-    // update open interest metrics
-    this.updateOIMetrics(deps);
   }
 
   pushTradeToVolumeQueue(
@@ -385,30 +366,6 @@ class Keeper {
     this.recentVolume += tradeSizeUSD;
   }
 
-  updateVolumeMetrics(
-    args = {
-      recentVolumeMetric: metrics.recentVolume,
-    }
-  ) {
-    const cutoffTimestamp =
-      this.blockTipTimestamp - metrics.VOLUME_RECENCY_CUTOFF; // old values
-    // filter only recent trades
-    this.volumeArray = this.volumeArray.filter(
-      v => v.timestamp > cutoffTimestamp
-    );
-    // sum
-    this.recentVolume = this.volumeArray
-      .map(v => v.tradeSizeUSD)
-      .reduce((a, b) => a + b, 0);
-    args.recentVolumeMetric.set(
-      { market: this.baseAsset, network: this.network },
-      this.recentVolume
-    );
-    this.logger.debug(`Recent volume: ${this.recentVolume}`, {
-      component: "Indexer",
-    });
-  }
-
   async updateAssetPrice() {
     this.assetPrice = parseFloat(
       utils.formatUnits((await this.futuresMarket.assetPrice()).price)
@@ -416,31 +373,6 @@ class Keeper {
     this.logger.info(`Latest price: ${this.assetPrice}`, {
       component: "Indexer",
     });
-  }
-
-  updateOIMetrics(
-    args = {
-      marketSizeMetric: metrics.marketSize,
-      marketSkewMetric: metrics.marketSkew,
-    }
-  ) {
-    const marketSize = Object.values(this.positions).reduce(
-      (a, v) => a + Math.abs(v.size),
-      0
-    );
-    const marketSkew = Object.values(this.positions).reduce(
-      (a, v) => a + v.size,
-      0
-    );
-
-    args.marketSizeMetric.set(
-      { market: this.baseAsset, network: this.network },
-      marketSize * this.assetPrice
-    );
-    args.marketSkewMetric.set(
-      { market: this.baseAsset, network: this.network },
-      marketSkew * this.assetPrice
-    );
   }
 
   // global ordering of position for liquidations by their likelihood of being liquidatable
@@ -497,16 +429,12 @@ class Keeper {
     ];
   }
 
-  async runKeepers(deps = { BATCH_SIZE: 5, WAIT: 0, metrics }) {
+  async runKeepers(deps = { BATCH_SIZE: 5, WAIT: 0 }) {
     // make into an array and filter position 0 size positions
     const openPositions = Object.values(this.positions).filter(
       p => Math.abs(p.size) > 0
     );
 
-    deps.metrics.futuresOpenPositions.set(
-      { market: this.baseAsset, network: this.network },
-      openPositions.length
-    );
     this.logger.log("info", `${openPositions.length} open positions`, {
       component: "Keeper",
     });
@@ -576,24 +504,12 @@ class Keeper {
     delete this.activeKeeperTasks[id];
   }
 
-  async liquidateOrder(
-    id: string,
-    account: string,
-    deps = {
-      metricFuturesLiquidations: metrics.futuresLiquidations,
-      metricKeeperChecks: metrics.keeperChecks,
-    }
-  ) {
+  async liquidateOrder(id: string, account: string) {
     const taskLabel = KeeperTask.LIQUIDATION;
 
     // check if it's liquidatable
     const canLiquidateOrder = await this.futuresMarket.canLiquidate(account);
 
-    // increment number of checks performed
-    deps.metricKeeperChecks.inc({
-      market: this.baseAsset,
-      network: this.network,
-    });
     if (!canLiquidateOrder) {
       // if it's not liquidatable update it's liquidation price
       this.positions[account].liqPrice = parseFloat(
@@ -642,20 +558,8 @@ class Keeper {
           }
         }
 
-        // increment liquidation errors here so that only liquidation errors are counted
-        metrics.keeperErrors.inc({
-          market: this.baseAsset,
-          network: this.network,
-          errorMessage: String(err),
-        });
-
         throw err;
       }
-    });
-
-    deps.metricFuturesLiquidations.inc({
-      market: this.baseAsset,
-      network: this.network,
     });
 
     this.logger.log(
