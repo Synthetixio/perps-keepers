@@ -1,10 +1,13 @@
-# futures-keeper
+# perps-keepers
 
-**Welcome to futuers-keepers!**
+**Welcome to perps-keepers!**
 
-Synthetix futures lets anyone liquidate a position by calling `liquidatePosition(address)` if the address has an open position that is under water. You can check if a wallet have a position under water by calling `canLiquidate(address)`
+This repository houses keepers to maintain the Synthetix Perps v2 protocol. This is an example keeper that anyone can use or made modifications to. We encourage the community to implement and run their own keepe. This keeper includes the following:
 
-This repository is an example liquidations keeper bot that anyone can run.
+1. Liquidation
+1. Delayed orders
+1. Off-chain delayed orders
+1. Cancellation of delayed and off-chain orders
 
 Features include:
 
