@@ -2,16 +2,12 @@
 set -ex
 
 
-
-
 if [ -z $1 ] ; then
     echo "USER:IP parameter required!" && exit 1;
 fi
 if [ -z $2 ] ; then
     echo "SERVER_HOME_PATH parameter required!" && exit 1;
 fi
-
-
 
 USER_AT_IP=$1
 SERVER_HOME_PATH=$2
@@ -54,7 +50,5 @@ if [ "$ENVIRONMENT" = "production" ]; then
 else
     echo "ENVIRONMENT is $ENVIRONMENT, skipping prometheus and removing prometheus code"
     ssh "$USER_AT_IP" "cd $FOLDER_NAME; rm -r prometheus"
-    
+
 fi
-
-

@@ -8,7 +8,7 @@ const logger = {
 };
 
 // IMPORTANT First mock winston
-jest.mock("winston", () => ({
+jest.mock('winston', () => ({
   format: {
     colorize: jest.fn(),
     combine: jest.fn(),
@@ -22,4 +22,4 @@ jest.mock("winston", () => ({
   },
 }));
 
-jest.mock("winston-cloudwatch", () => {});
+jest.mock('winston-cloudwatch', () => {});

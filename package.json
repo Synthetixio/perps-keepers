@@ -1,13 +1,13 @@
 {
-	"name": "futures-keepers",
-	"version": "1.0.0",
+	"name": "perps-keepers",
+	"version": "2.0.0",
 	"main": "src/index.js",
 	"license": "MIT",
 	"scripts": {
 		"start": "pm2 start ecosystem.config.js",
 		"start-mainnet": "pm2 start ecosystem.config.js --only futures-keeper-mainnet",
-		"start-goerli": "pm2 start ecosystem.config.js --only futures-keeper-goerli",
-		"dev": "name=futures-keeper-goerli ts-node-dev --respawn --transpile-only src/index.ts run",
+		"start-goerli": "pm2 start ecosystem.config.js --only perps-keeper-goerli",
+		"dev": "name=perps-keeper-goerli ts-node-dev --respawn --transpile-only src/index.ts run",
 		"dev-mainnet": "name=futures-keeper-mainnet ts-node-dev --respawn --transpile-only src/index.ts run",
 		"build": "tsc && cp .env build/ && cp .env.staging build/",
 		"lint": "eslint .",

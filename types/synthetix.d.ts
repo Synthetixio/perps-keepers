@@ -1,4 +1,4 @@
-declare module "synthetix" {
+declare module 'synthetix' {
   function getFuturesMarkets({
     network: string,
     useOvm: boolean,
