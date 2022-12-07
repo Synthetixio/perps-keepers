@@ -1,4 +1,4 @@
-import { ethers } from 'ethers';
+import { Contract } from 'ethers';
 import { range } from 'lodash';
 import { createLogger } from './logging';
 
@@ -21,7 +21,7 @@ export const getPaginatedFromAndTo = (fromBlock: number, toBlock: number) => {
 
 export const getEvents = async (
   eventNames: string[],
-  contract: ethers.Contract,
+  contract: Contract,
   { fromBlock, toBlock }: { fromBlock: number | string; toBlock: number | string }
 ) => {
   const nestedEvents = await Promise.all(
