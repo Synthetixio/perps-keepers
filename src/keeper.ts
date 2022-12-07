@@ -69,8 +69,6 @@ export class Keeper {
   }) {
     this.baseAsset = baseAsset;
     this.network = network;
-
-    // Contracts.
     this.market = market;
 
     this.logger = createLogger({
@@ -180,13 +178,6 @@ export class Keeper {
       });
       await this.updateIndex(events);
 
-      this.logger.info(
-        `VolumeQueue after sync: total ${this.recentVolume} ${
-          this.volumeArray.length
-        } trades:${this.volumeArray.map(o => `${o.tradeSizeUSD} ${o.timestamp} ${o.account}`)}`,
-        { component: 'Indexer' }
-      );
-
       this.logger.info('Index build complete! Starting keeper loop...', {
         component: 'Indexer',
       });
@@ -266,9 +257,6 @@ export class Keeper {
           { component: 'Indexer' }
         );
 
-        // keep track of volume
-        this.pushTradeToVolumeQueue(tradeSize, lastPrice, account);
-
         if (margin.eq(BigNumber.from(0))) {
           // Position has been closed.
           delete this.positions[account];
@@ -314,23 +302,6 @@ export class Keeper {
     // it's updated after running keepers because even if it's one-block old, it shouldn't
     // affect liquidation order too much, but awaiting this might introduce latency
     await this.updateAssetPrice();
-  }
-
-  pushTradeToVolumeQueue(tradeSize: BigNumber, lastPrice: BigNumber, account: string) {
-    const tradeSizeUSD = wei(tradeSize)
-      .abs()
-      .mul(lastPrice)
-      .div(UNIT)
-      .toNumber();
-    // push into rolling queue
-    this.volumeArray.push({
-      tradeSizeUSD: tradeSizeUSD,
-      timestamp: this.blockTipTimestamp,
-      account: account,
-    });
-    // add to total volume sum, this isn't strictly needed as it will be
-    // overridden by filter and sum in updateVolumeMetrics, but it keeps it up to date, and checked in tests
-    this.recentVolume += tradeSizeUSD;
   }
 
   async updateAssetPrice() {

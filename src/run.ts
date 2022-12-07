@@ -3,7 +3,10 @@ import { Keeper } from './keeper';
 import { Command } from 'commander';
 import { createLogger } from './logging';
 import { getSynthetixContracts } from './utils';
+import { Distributor } from './distributor';
+import { LiquidationKeeper } from './keepers/liquidation';
 
+// TODO: Move all of this into a config manager.
 export const DEFAULTS = {
   fromBlock: process.env.FROM_BLOCK || '1',
   providerUrl: 'http://localhost:8545',
@@ -34,14 +37,12 @@ export async function run(
   const contracts = await deps.getSynthetixContracts({ network, signer, provider });
 
   const fromBlock = fromBlockRaw === 'latest' ? fromBlockRaw : parseInt(fromBlockRaw, 10);
+  const skipBlockMod = Number(process.env.RUN_EVERY_X_BLOCK ?? 1);
+
   for (const market of Object.values(contracts.markets)) {
-    const keeper = await deps.Keeper.create({
-      network,
-      market,
-      signer,
-      provider,
-    });
-    keeper.run({ fromBlock });
+    const distributor = new Distributor(provider, fromBlock, skipBlockMod);
+    distributor.registerKeeper(await LiquidationKeeper.create(market, signer, network, provider));
+    distributor.listen();
   }
 }
 
