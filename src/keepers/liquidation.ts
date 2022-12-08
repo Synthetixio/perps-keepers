@@ -167,7 +167,7 @@ export class LiquidationKeeper extends Keeper {
     const tx: TransactionResponse = await this.market
       .connect(this.signer)
       .liquidatePosition(account);
-    this.logger.info(`Submit liquidatePosition() [nonce=${tx.nonce}]`);
+    this.logger.info(`Submitted liquidatePosition(${account}) [nonce=${tx.nonce}]`);
 
     await this.waitAndLogTx(tx);
   }

@@ -4,6 +4,8 @@ import { Keeper } from '.';
 import { getEvents } from './helpers';
 import { DelayedOrder, PerpsEvent } from '../typed';
 
+const MAX_EXECUTION_ATTEMPTS = 10;
+
 export class DelayedOrdersKeeper extends Keeper {
   // The index
   private orders: Record<string, DelayedOrder> = {};
@@ -36,16 +38,10 @@ export class DelayedOrdersKeeper extends Keeper {
     for (const evt of events) {
       const { event, args, blockNumber } = evt;
       if (!args) {
-        return;
+        break;
       }
 
       switch (event) {
-        case PerpsEvent.DelayedOrderRemoved: {
-          const { account } = args;
-          this.logger.info(`Order cancelled or executed. Removing from index '${account}'`);
-          delete this.orders[account];
-          return;
-        }
         case PerpsEvent.DelayedOrderSubmitted: {
           const { account, targetRoundId, executableAtTime } = args;
           this.logger.info(`New order submitted. Adding to index '${account}'`);
@@ -57,13 +53,19 @@ export class DelayedOrdersKeeper extends Keeper {
           const { timestamp } = blockCache[blockNumber];
 
           this.orders[account] = {
-            targetRoundId: targetRoundId.toString(),
-            executableAtTime: executableAtTime.toString(),
+            targetRoundId: targetRoundId,
+            executableAtTime: executableAtTime,
             account,
             intentionTime: timestamp,
             executionFailures: 0,
           };
-          return;
+          break;
+        }
+        case PerpsEvent.DelayedOrderRemoved: {
+          const { account } = args;
+          this.logger.info(`Order cancelled or executed. Removing from index '${account}'`);
+          delete this.orders[account];
+          break;
         }
         default:
           this.logger.debug(`No handler for event ${event} (${blockNumber})`);
@@ -85,12 +87,16 @@ export class DelayedOrdersKeeper extends Keeper {
   private async executeOrder(account: string): Promise<void> {
     try {
       this.logger.info(`Begin executeDelayedOrder(${account})`);
-      const tx = await this.market.connect(this.signer).executeDelayedOrder(account);
-      this.logger.info(`Submit executeDelayedOrder() [nonce=${tx.nonce}]`);
+      const tx = await this.market.executeDelayedOrder(account);
+      this.logger.info(`Submitted executeDelayedOrder(${account}) [nonce=${tx.nonce}]`);
 
       await this.waitAndLogTx(tx);
     } catch (err) {
       this.orders[account].executionFailures += 1;
+      if (this.orders[account].executionFailures > MAX_EXECUTION_ATTEMPTS) {
+        this.logger.info(`Order execution exceeded max attempts '${account}'`);
+        delete this.orders[account];
+      }
       throw err;
     }
   }
@@ -112,6 +118,10 @@ export class DelayedOrdersKeeper extends Keeper {
         );
       }
     );
+
+    if (executableOrders.length === 0) {
+      return;
+    }
 
     this.logger.info(`Found '${executableOrders.length}' order(s) that can be executed`);
     for (const order of executableOrders) {
