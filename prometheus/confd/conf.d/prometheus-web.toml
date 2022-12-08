@@ -1,3 +1,0 @@
-[template]
-src = "prometheus-web.yml"
-dest = "/etc/prometheus/confd-prometheus-web.yml"

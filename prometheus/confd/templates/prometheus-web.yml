@@ -1,2 +1,0 @@
-basic_auth_users:
-  grafana: {{ getenv "PROM_HTTP_PASSWORD" }} 
