@@ -1,5 +1,4 @@
-import { getDefaultProvider, Wallet } from 'ethers';
-import { Keeper } from './keeper';
+import { getDefaultProvider, utils, Wallet } from 'ethers';
 import { Command } from 'commander';
 import { createLogger } from './logging';
 import { getSynthetixContracts } from './utils';
@@ -15,7 +14,7 @@ export const DEFAULTS = {
   runEveryXblock: Number(process.env.RUN_EVERY_X_BLOCK ?? 1),
 };
 
-const logger = createLogger({ componentName: 'Run' });
+const logger = createLogger('Run');
 
 // TODO: Fix up this deps code...
 export async function run(
@@ -23,7 +22,6 @@ export async function run(
   deps = {
     ETH_HDWALLET_MNEMONIC: process.env.ETH_HDWALLET_MNEMONIC,
     PROVIDER_URL: process.env.PROVIDER_URL || DEFAULTS.providerUrl,
-    Keeper,
     getSynthetixContracts,
   }
 ) {
@@ -41,8 +39,17 @@ export async function run(
   const fromBlock = fromBlockRaw === 'latest' ? fromBlockRaw : parseInt(fromBlockRaw, 10);
 
   for (const market of Object.values(contracts.markets)) {
-    const distributor = new Distributor(market, provider, fromBlock, DEFAULTS.runEveryXblock);
-    distributor.registerKeeper([await LiquidationKeeper.create(market, signer, network, provider)]);
+    const baseAsset = utils.parseBytes32String(await market.baseAsset());
+    const distributor = new Distributor(
+      market,
+      baseAsset,
+      provider,
+      fromBlock,
+      DEFAULTS.runEveryXblock
+    );
+    distributor.registerKeeper([
+      new LiquidationKeeper(market, baseAsset, signer, provider, network),
+    ]);
     distributor.listen();
   }
 }

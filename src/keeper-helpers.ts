@@ -1,10 +1,11 @@
 import { Contract } from 'ethers';
 import { range } from 'lodash';
 import { createLogger } from './logging';
+import { PerpsEvent } from './typed';
 
 const MAX_BLOCKS = 200000;
 
-const logger = createLogger({ componentName: 'Keeper Helpers' });
+const logger = createLogger('KeeperHelpers');
 
 export const getPaginatedFromAndTo = (fromBlock: number, toBlock: number) => {
   const numberOfBlocks = toBlock - fromBlock || 1;
@@ -20,7 +21,7 @@ export const getPaginatedFromAndTo = (fromBlock: number, toBlock: number) => {
 };
 
 export const getEvents = async (
-  eventNames: string[],
+  eventNames: PerpsEvent[],
   contract: Contract,
   { fromBlock, toBlock }: { fromBlock: number | string; toBlock: number | string }
 ) => {

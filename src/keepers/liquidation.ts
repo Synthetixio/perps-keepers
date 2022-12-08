@@ -1,7 +1,7 @@
 import { TransactionResponse } from '@ethersproject/abstract-provider';
 import { wei } from '@synthetixio/wei';
 import { BigNumber, Contract, Event, providers, utils, Wallet } from 'ethers';
-import { chunk } from 'lodash';
+import { chunk, flatten } from 'lodash';
 import { Keeper } from '.';
 import { getEvents } from '../keeper-helpers';
 import { PerpsEvent, Position } from '../typed';
@@ -17,7 +17,13 @@ export class LiquidationKeeper extends Keeper {
   private activeKeeperTasks: Record<string, boolean> = {};
   private blockTipTimestamp: number = 0;
 
-  protected constructor(
+  private readonly EVENTS_OF_INTEREST: PerpsEvent[] = [
+    PerpsEvent.FundingRecomputed,
+    PerpsEvent.PositionLiquidated,
+    PerpsEvent.PositionModified,
+  ];
+
+  constructor(
     market: Contract,
     baseAsset: string,
     signer: Wallet,
@@ -27,16 +33,22 @@ export class LiquidationKeeper extends Keeper {
     super(market, baseAsset, signer, provider, network);
   }
 
-  private async updateAssetPrice(): Promise<void> {
-    this.assetPrice = parseFloat(utils.formatUnits((await this.market.assetPrice()).price));
-    this.logger.info(`Latest price: ${this.assetPrice}`);
-  }
-
-  async updateIndex(events: Event[], block?: providers.Block): Promise<void> {
+  async updateIndex(events: Event[], block?: providers.Block, assetPrice?: number): Promise<void> {
     if (block) {
       // Set block timestamp here in case there were no events to update the timestamp from.
       this.blockTipTimestamp = block.timestamp;
     }
+
+    if (assetPrice) {
+      // Necessary to determine if the notional value of positions is underwater.
+      this.assetPrice = assetPrice;
+    }
+
+    if (!events.length) {
+      return;
+    }
+
+    this.logger.info(`'${events.length}' event(s) available to index. Performing index...`);
     events.forEach(({ event, args, blockNumber }) => {
       if (!args) {
         return;
@@ -82,13 +94,6 @@ export class LiquidationKeeper extends Keeper {
           this.logger.debug(`No handler for event ${event} (${blockNumber})`);
       }
     });
-
-    // required for metrics and liquidations order
-    // it's updated after running keepers because even if it's one-block old, it shouldn't
-    // affect liquidation order too much, but awaiting this might introduce latency
-    //
-    // TODO: Consider pulling this to the distributor
-    await this.updateAssetPrice();
   }
 
   async index(fromBlock: number | string): Promise<void> {
@@ -100,9 +105,8 @@ export class LiquidationKeeper extends Keeper {
     this.logger.info(`Rebuilding index from '${fromBlock}' to latest`);
 
     const toBlock = await this.provider.getBlockNumber();
-    const events = await getEvents(this.getEventsOfInterest(), this.market, { fromBlock, toBlock });
+    const events = await getEvents(this.EVENTS_OF_INTEREST, this.market, { fromBlock, toBlock });
 
-    this.logger.info(`Found '${events.length}' to index. Indexing...`);
     await this.updateIndex(events);
   }
 
@@ -205,12 +209,11 @@ export class LiquidationKeeper extends Keeper {
     // Grab all open positions.
     const openPositions = Object.values(this.positions).filter(p => Math.abs(p.size) > 0);
 
-    this.logger.info(`Found '${openPositions.length}' open position(s)`);
-
     // Order the position in groups of priority that shouldn't be mixed in same batches
     const positionGroups = this.liquidationGroups(openPositions);
+    const positionCount = flatten(positionGroups).length;
 
-    this.logger.info(`Found ${positionGroups.reduce((a, g) => a + g.length, 0)} to check`);
+    this.logger.info(`Found ${positionCount} position(s) to check`);
     for (let group of positionGroups) {
       if (!group.length) {
         continue;
@@ -228,6 +231,4 @@ export class LiquidationKeeper extends Keeper {
       }
     }
   }
-
-  async dispatch(events: Event[]): Promise<void> {}
 }

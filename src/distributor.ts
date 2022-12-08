@@ -1,4 +1,4 @@
-import { Contract, providers, Event } from 'ethers';
+import { Contract, providers, Event, utils } from 'ethers';
 import { Logger } from 'winston';
 import { getEvents } from './keeper-helpers';
 import { Keeper } from './keepers';
@@ -13,11 +13,12 @@ export class Distributor {
 
   constructor(
     private readonly market: Contract,
+    protected readonly baseAsset: string,
     private readonly provider: providers.BaseProvider,
     private readonly fromBlock: number | string,
     private readonly runEveryXblock: number
   ) {
-    this.logger = createLogger({ componentName: 'Distributor' });
+    this.logger = createLogger(`Distributor [${baseAsset}]`);
   }
 
   delay(ms: number): Promise<void> {
@@ -25,18 +26,20 @@ export class Distributor {
   }
 
   registerKeeper(keepers: Keeper[]) {
-    keepers.forEach(keeper => {
-      this.keepers.push(keeper);
-      this.logger.info(`Registered keeper '${keeper.constructor.name}' (${this.keepers.length})`);
-    });
+    keepers.forEach(keeper => this.keepers.push(keeper));
+    this.logger.info(`Registered keepers (${this.keepers.length})`);
   }
 
   private async indexKeepers(): Promise<void> {
     await Promise.all(this.keepers.map(keeper => keeper.index(this.fromBlock)));
   }
 
-  private async updateKeeperIndexes(events: Event[], block: providers.Block): Promise<void> {
-    await Promise.all(this.keepers.map(keeper => keeper.updateIndex(events, block)));
+  private async updateKeeperIndexes(
+    events: Event[],
+    block: providers.Block,
+    assetPrice: number
+  ): Promise<void> {
+    await Promise.all(this.keepers.map(keeper => keeper.updateIndex(events, block, assetPrice)));
   }
 
   private async executeKeepers(): Promise<void> {
@@ -49,10 +52,12 @@ export class Distributor {
       toBlock: blockNumber,
     });
     const block = await this.provider.getBlock(blockNumber);
+    const assetPrice = parseFloat(utils.formatUnits((await this.market.assetPrice()).price));
 
-    this.logger.info(`New block: ${blockNumber} with '${events.length}' event(s) to process`);
-
-    await this.updateKeeperIndexes(events, block);
+    this.logger.info(
+      `New block (${blockNumber}); '${events.length}' event(s) to process ($${assetPrice})`
+    );
+    await this.updateKeeperIndexes(events, block, assetPrice);
     await this.executeKeepers();
   }
 

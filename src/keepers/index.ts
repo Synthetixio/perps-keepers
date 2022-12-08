@@ -1,40 +1,22 @@
-import { Contract, Event, providers, utils, Wallet } from 'ethers';
+import { Contract, Event, providers, Wallet } from 'ethers';
 import { Logger } from 'winston';
 import { createLogger } from '../logging';
-import { PerpsEvent } from '../typed';
 
 export class Keeper {
   protected readonly logger: Logger;
 
-  protected constructor(
+  constructor(
     protected readonly market: Contract,
     protected readonly baseAsset: string,
     protected readonly signer: Wallet,
     protected readonly provider: providers.BaseProvider,
     protected readonly network: string
   ) {
-    this.logger = createLogger({
-      componentName: `PerpsV2Market [${baseAsset}]`,
-    });
+    this.logger = createLogger(`PerpsMarketKeeper [${baseAsset}]`);
     this.logger.info(`Market deployed at '${market.address}'`);
   }
 
-  static async create(
-    market: Contract,
-    signer: Wallet,
-    network: string,
-    provider: providers.BaseProvider
-  ) {
-    const baseAssetBytes32 = await market.baseAsset();
-    const baseAsset = utils.parseBytes32String(baseAssetBytes32);
-    return new Keeper(market, baseAsset, signer, provider, network);
-  }
-
-  getEventsOfInterest(): string[] {
-    return Object.values(PerpsEvent);
-  }
-
-  async updateIndex(events: Event[], block?: providers.Block): Promise<void> {
+  async updateIndex(events: Event[], block?: providers.Block, assetPrice?: number): Promise<void> {
     new Error('NotImplementedError');
   }
 
@@ -43,10 +25,6 @@ export class Keeper {
   }
 
   async execute(): Promise<void> {
-    new Error('NotImplementedError');
-  }
-
-  async dispatch(events: Event[]): Promise<void> {
     new Error('NotImplementedError');
   }
 

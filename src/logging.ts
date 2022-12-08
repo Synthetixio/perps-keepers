@@ -4,15 +4,11 @@ import WinstonCloudWatch from 'winston-cloudwatch';
 const date = new Date();
 const logStreamName = date.toDateString() + ' - ' + date.getTime();
 
-interface CreateLoggerParams {
-  componentName: string;
-}
-
-export const createLogger = ({ componentName }: CreateLoggerParams): winston.Logger => {
+export const createLogger = (label: string): winston.Logger => {
   const logger = winston.createLogger({
     level: 'info',
     format: format.combine(
-      format.label({ label: componentName }),
+      format.label({ label }),
       format.printf(info => {
         return [info.timestamp, info.level, info.label, info.component, info.message]
           .filter(x => !!x)
@@ -34,7 +30,7 @@ export const createLogger = ({ componentName }: CreateLoggerParams): winston.Log
       new WinstonCloudWatch({
         logGroupName,
         logStreamName,
-        messageFormatter: ({ level, message }) => `${level} ${componentName} ${message}`,
+        messageFormatter: ({ level, message }) => `${level.toUpperCase()} [${label}] ${message}`,
         awsOptions: {
           region: process.env.AWS_REGION,
           credentials: {

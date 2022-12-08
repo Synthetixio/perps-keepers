@@ -16,8 +16,7 @@ import logProcessError from 'log-process-errors';
 
 logProcessError({
   log(error, level) {
-    const logger = createLogger({ componentName: 'Unhandled Exceptions' });
-    logger.log(level, error.stack);
+    createLogger('Errors').log(level, error.stack);
   },
 });
 
