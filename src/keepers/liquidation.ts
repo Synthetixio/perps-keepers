@@ -3,10 +3,8 @@ import { wei } from '@synthetixio/wei';
 import { BigNumber, Contract, Event, providers, utils, Wallet } from 'ethers';
 import { chunk, flatten } from 'lodash';
 import { Keeper } from '.';
-import { getEvents } from './helpers';
+import { getEvents, UNIT } from './helpers';
 import { PerpsEvent, Position } from '../typed';
-
-const UNIT = utils.parseUnits('1');
 
 export class LiquidationKeeper extends Keeper {
   // Required for sorting position by proximity of liquidation price to current price
@@ -14,7 +12,6 @@ export class LiquidationKeeper extends Keeper {
 
   // The index
   private positions: Record<string, Position> = {};
-  private activeKeeperTasks: Record<string, boolean> = {};
   private blockTipTimestamp: number = 0;
 
   private readonly EVENTS_OF_INTEREST: PerpsEvent[] = [
@@ -30,7 +27,7 @@ export class LiquidationKeeper extends Keeper {
     provider: providers.BaseProvider,
     network: string
   ) {
-    super(market, baseAsset, signer, provider, network);
+    super('LiquidationKeeper', market, baseAsset, signer, provider, network);
   }
 
   async updateIndex(events: Event[], block?: providers.Block, assetPrice?: number): Promise<void> {
@@ -154,24 +151,6 @@ export class LiquidationKeeper extends Keeper {
     ];
   }
 
-  private async execAsyncKeeperCallback(id: string, cb: () => Promise<void>) {
-    if (this.activeKeeperTasks[id]) {
-      // Skip task as its already running.
-      return;
-    }
-    this.activeKeeperTasks[id] = true;
-
-    try {
-      this.logger.debug(`Keeper task running (${id})`);
-      await cb();
-    } catch (err) {
-      this.logger.error(`Error (${id})\n${String(err)}`);
-    }
-    this.logger.debug(`Keeper task complete (${id})`);
-
-    delete this.activeKeeperTasks[id];
-  }
-
   private async liquidatePosition(account: string) {
     const canLiquidateOrder = await this.market.canLiquidate(account);
     if (!canLiquidateOrder) {
@@ -188,18 +167,9 @@ export class LiquidationKeeper extends Keeper {
     const tx: TransactionResponse = await this.market
       .connect(this.signer)
       .liquidatePosition(account);
-
     this.logger.info(`Submit liquidatePosition() [nonce=${tx.nonce}]`);
 
-    const receipt = await tx.wait(1);
-    const { blockNumber, status, transactionHash, gasUsed } = receipt;
-    this.logger.info(
-      `Completed liquidatePosition(${account})`,
-      `block=${blockNumber}`,
-      `success=${status}`,
-      `tx=${transactionHash}`,
-      `gasUsed=${gasUsed}`
-    );
+    await this.waitAndLogTx(tx);
   }
 
   async execute(): Promise<void> {
