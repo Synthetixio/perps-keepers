@@ -6,6 +6,9 @@ import { createLogger } from '../logging';
 export class Keeper {
   protected readonly logger: Logger;
 
+  protected readonly MAX_BATCH_SIZE = 5;
+  protected readonly BATCH_WAIT_TIME = 100;
+
   protected activeKeeperTasks: Record<string, boolean> = {};
 
   constructor(

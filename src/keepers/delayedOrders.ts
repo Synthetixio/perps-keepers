@@ -3,12 +3,13 @@ import { BigNumber, Contract, Event, providers, utils, Wallet } from 'ethers';
 import { Keeper } from '.';
 import { getEvents } from './helpers';
 import { DelayedOrder, PerpsEvent } from '../typed';
-
-const MAX_EXECUTION_ATTEMPTS = 10;
+import { chunk } from 'lodash';
 
 export class DelayedOrdersKeeper extends Keeper {
   // The index
   private orders: Record<string, DelayedOrder> = {};
+
+  private readonly MAX_EXECUTION_ATTEMPTS = 10;
 
   private readonly EVENTS_OF_INTEREST: PerpsEvent[] = [
     PerpsEvent.DelayedOrderSubmitted,
@@ -85,24 +86,36 @@ export class DelayedOrdersKeeper extends Keeper {
   }
 
   private async executeOrder(account: string): Promise<void> {
+    // Cases:
+    //
+    //  - The market is paused. We cannot proceed
+    //  - The order is ready to be executed and the market allows for it
+    //  - We think the order is ready to be executed but on-chain, it is not
+    //  - The order missed execution window. It must be cancelled
+    //  - The order missed execution window. Cancellation is failing (e.g. paused)
+    //  - We think the order can be executed/cancelled but the order does not exist
+
+    if (this.orders[account].executionFailures > this.MAX_EXECUTION_ATTEMPTS) {
+      this.logger.info(`Order execution exceeded max attempts '${account}'`);
+      delete this.orders[account];
+      return;
+    }
+
     try {
       this.logger.info(`Begin executeDelayedOrder(${account})`);
       const tx = await this.market.executeDelayedOrder(account);
       this.logger.info(`Submitted executeDelayedOrder(${account}) [nonce=${tx.nonce}]`);
 
       await this.waitAndLogTx(tx);
+      delete this.orders[account];
     } catch (err) {
       this.orders[account].executionFailures += 1;
-      if (this.orders[account].executionFailures > MAX_EXECUTION_ATTEMPTS) {
-        this.logger.info(`Order execution exceeded max attempts '${account}'`);
-        delete this.orders[account];
-      }
       throw err;
     }
   }
 
   async execute(): Promise<void> {
-    // Get the latest CL roundId
+    // Get the latest CL roundId.
     const currentRoundId = await this.exchangeRates.getCurrentRoundId(
       utils.formatBytes32String(this.baseAsset)
     );
@@ -119,14 +132,20 @@ export class DelayedOrdersKeeper extends Keeper {
       }
     );
 
+    // No orders. Move on.
     if (executableOrders.length === 0) {
       return;
     }
 
     this.logger.info(`Found '${executableOrders.length}' order(s) that can be executed`);
-    for (const order of executableOrders) {
-      const { account } = order;
-      await this.execAsyncKeeperCallback(account, () => this.executeOrder(account));
+
+    for (const batch of chunk(executableOrders, this.MAX_BATCH_SIZE)) {
+      this.logger.info(`Running keeper batch with '${batch.length}' orders(s) to keep`);
+      const batches = batch.map(async ({ account }) => {
+        await this.execAsyncKeeperCallback(account, () => this.executeOrder(account));
+      });
+      await Promise.all(batches);
+      await this.delay(this.BATCH_WAIT_TIME);
     }
   }
 }

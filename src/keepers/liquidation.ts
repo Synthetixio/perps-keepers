@@ -173,9 +173,6 @@ export class LiquidationKeeper extends Keeper {
   }
 
   async execute(): Promise<void> {
-    const MAX_BATCH_SIZE = 5;
-    const TIME_WAIT = 100;
-
     // Grab all open positions.
     const openPositions = Object.values(this.positions).filter(p => Math.abs(p.size) > 0);
 
@@ -190,14 +187,13 @@ export class LiquidationKeeper extends Keeper {
       }
 
       // Batch the groups to maintain internal order within groups
-      for (let batch of chunk(group, MAX_BATCH_SIZE)) {
+      for (const batch of chunk(group, this.MAX_BATCH_SIZE)) {
         this.logger.info(`Running keeper batch with '${batch.length}' position(s) to keep`);
-        const batches = batch.map(async position => {
-          const { id, account } = position;
+        const batches = batch.map(async ({ id, account }) => {
           await this.execAsyncKeeperCallback(id, () => this.liquidatePosition(account));
         });
         await Promise.all(batches);
-        await this.delay(TIME_WAIT);
+        await this.delay(this.BATCH_WAIT_TIME);
       }
     }
   }
