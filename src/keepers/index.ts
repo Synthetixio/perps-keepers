@@ -12,7 +12,7 @@ export class Keeper {
     protected readonly provider: providers.BaseProvider,
     protected readonly network: string
   ) {
-    this.logger = createLogger(`PerpsMarketKeeper [${baseAsset}]`);
+    this.logger = createLogger(`[${baseAsset}] Keeper`);
     this.logger.info(`Market deployed at '${market.address}'`);
   }
 

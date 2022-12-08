@@ -1,7 +1,7 @@
 import { Contract } from 'ethers';
 import { range } from 'lodash';
-import { createLogger } from './logging';
-import { PerpsEvent } from './typed';
+import { createLogger } from '../logging';
+import { PerpsEvent } from '../typed';
 
 const MAX_BLOCKS = 200000;
 

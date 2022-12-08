@@ -1,6 +1,6 @@
 import { Contract, providers, Event, utils } from 'ethers';
 import { Logger } from 'winston';
-import { getEvents } from './keeper-helpers';
+import { getEvents } from './keepers/helpers';
 import { Keeper } from './keepers';
 import { createLogger } from './logging';
 import { PerpsEvent } from './typed';
@@ -18,7 +18,7 @@ export class Distributor {
     private readonly fromBlock: number | string,
     private readonly runEveryXblock: number
   ) {
-    this.logger = createLogger(`Distributor [${baseAsset}]`);
+    this.logger = createLogger(`[${baseAsset}] Distributor`);
   }
 
   delay(ms: number): Promise<void> {

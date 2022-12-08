@@ -27,7 +27,7 @@ const getFuturesMarketManagerAddress = (network: string): string => {
   }
 };
 
-export const getSynthetixContracts = async ({
+export const getSynthetixPerpsContracts = async ({
   network,
   signer,
   provider,

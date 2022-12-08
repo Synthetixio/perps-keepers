@@ -1,7 +1,7 @@
 import { getDefaultProvider, utils, Wallet } from 'ethers';
 import { Command } from 'commander';
 import { createLogger } from './logging';
-import { getSynthetixContracts } from './utils';
+import { getSynthetixPerpsContracts } from './utils';
 import { Distributor } from './distributor';
 import { LiquidationKeeper } from './keepers/liquidation';
 
@@ -22,7 +22,6 @@ export async function run(
   deps = {
     ETH_HDWALLET_MNEMONIC: process.env.ETH_HDWALLET_MNEMONIC,
     PROVIDER_URL: process.env.PROVIDER_URL || DEFAULTS.providerUrl,
-    getSynthetixContracts,
   }
 ) {
   if (!deps.ETH_HDWALLET_MNEMONIC) {
@@ -34,7 +33,7 @@ export async function run(
 
   const signer = Wallet.fromMnemonic(deps.ETH_HDWALLET_MNEMONIC).connect(provider);
   logger.info(`Keeper address '${signer.address}'`);
-  const contracts = await deps.getSynthetixContracts({ network, signer, provider });
+  const contracts = await getSynthetixPerpsContracts({ network, signer, provider });
 
   const fromBlock = fromBlockRaw === 'latest' ? fromBlockRaw : parseInt(fromBlockRaw, 10);
 
