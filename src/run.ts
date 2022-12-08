@@ -12,10 +12,12 @@ export const DEFAULTS = {
   providerUrl: 'http://localhost:8545',
   numAccounts: '1',
   network: process.env.NETWORK || 'goerli-ovm',
+  runEveryXblock: Number(process.env.RUN_EVERY_X_BLOCK ?? 1),
 };
 
 const logger = createLogger({ componentName: 'Run' });
 
+// TODO: Fix up this deps code...
 export async function run(
   { fromBlockRaw = DEFAULTS.fromBlock, network = DEFAULTS.network } = {},
   deps = {
@@ -37,11 +39,10 @@ export async function run(
   const contracts = await deps.getSynthetixContracts({ network, signer, provider });
 
   const fromBlock = fromBlockRaw === 'latest' ? fromBlockRaw : parseInt(fromBlockRaw, 10);
-  const skipBlockMod = Number(process.env.RUN_EVERY_X_BLOCK ?? 1);
 
   for (const market of Object.values(contracts.markets)) {
-    const distributor = new Distributor(provider, fromBlock, skipBlockMod);
-    distributor.registerKeeper(await LiquidationKeeper.create(market, signer, network, provider));
+    const distributor = new Distributor(market, provider, fromBlock, DEFAULTS.runEveryXblock);
+    distributor.registerKeeper([await LiquidationKeeper.create(market, signer, network, provider)]);
     distributor.listen();
   }
 }

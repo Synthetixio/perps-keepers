@@ -1,7 +1,9 @@
-import { providers } from 'ethers';
+import { Contract, providers, Event } from 'ethers';
 import { Logger } from 'winston';
+import { getEvents } from './keeper-helpers';
 import { Keeper } from './keepers';
 import { createLogger } from './logging';
+import { PerpsEvent } from './typed';
 
 export class Distributor {
   private readonly logger: Logger;
@@ -10,6 +12,7 @@ export class Distributor {
   private lastProcessedBlock?: number;
 
   constructor(
+    private readonly market: Contract,
     private readonly provider: providers.BaseProvider,
     private readonly fromBlock: number | string,
     private readonly runEveryXblock: number
@@ -21,20 +24,37 @@ export class Distributor {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  registerKeeper(keeper: Keeper) {
-    this.keepers.push(keeper);
-    this.logger.info(`Registered keeper '${keeper.constructor.name}' (${this.keepers.length})`);
+  registerKeeper(keepers: Keeper[]) {
+    keepers.forEach(keeper => {
+      this.keepers.push(keeper);
+      this.logger.info(`Registered keeper '${keeper.constructor.name}' (${this.keepers.length})`);
+    });
   }
 
   private async indexKeepers(): Promise<void> {
     await Promise.all(this.keepers.map(keeper => keeper.index(this.fromBlock)));
   }
 
+  private async updateKeeperIndexes(events: Event[], block: providers.Block): Promise<void> {
+    await Promise.all(this.keepers.map(keeper => keeper.updateIndex(events, block)));
+  }
+
   private async executeKeepers(): Promise<void> {
     await Promise.all(this.keepers.map(keeper => keeper.execute()));
   }
 
-  private async dispatchKeepers(blockNumber: number): Promise<void> {}
+  private async dispatchKeepers(blockNumber: number): Promise<void> {
+    const events = await getEvents(Object.values(PerpsEvent), this.market, {
+      fromBlock: this.lastProcessedBlock ? this.lastProcessedBlock + 1 : blockNumber,
+      toBlock: blockNumber,
+    });
+    const block = await this.provider.getBlock(blockNumber);
+
+    this.logger.info(`New block: ${blockNumber} with '${events.length}' event(s) to process`);
+
+    await this.updateKeeperIndexes(events, block);
+    await this.executeKeepers();
+  }
 
   async startProcessNewBlockConsumer() {
     // The L2 node is constantly mining blocks, one block per transaction. When a new block is received, we queue it
@@ -50,12 +70,8 @@ export class Distributor {
       this.blockQueue.sort();
       const blockNumber = this.blockQueue.shift();
       if (blockNumber) {
-        // Get all keepers
-        // Determine whether the keeper should be triggered
-        // For each trigger to be triggers, call `updateIndex` with the event
-        // Then trigger the keeper task. Repeat forever.
-
-        await this.processNewBlock(blockNumber);
+        await this.dispatchKeepers(blockNumber);
+        this.lastProcessedBlock = blockNumber;
       }
     }
   }

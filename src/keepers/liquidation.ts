@@ -4,7 +4,7 @@ import { BigNumber, Contract, Event, providers, utils, Wallet } from 'ethers';
 import { chunk } from 'lodash';
 import { Keeper } from '.';
 import { getEvents } from '../keeper-helpers';
-import { Position } from '../typed';
+import { PerpsEvent, Position } from '../typed';
 
 const UNIT = utils.parseUnits('1');
 
@@ -27,31 +27,30 @@ export class LiquidationKeeper extends Keeper {
     super(market, baseAsset, signer, provider, network);
   }
 
-  getEventsOfInterest(): string[] {
-    return ['PositionLiquidated', 'PositionModified', 'FundingRecomputed'];
-  }
-
   private async updateAssetPrice(): Promise<void> {
     this.assetPrice = parseFloat(utils.formatUnits((await this.market.assetPrice()).price));
     this.logger.info(`Latest price: ${this.assetPrice}`);
   }
 
-  private async updateIndex(events: Event[]): Promise<void> {
+  async updateIndex(events: Event[], block?: providers.Block): Promise<void> {
+    if (block) {
+      // Set block timestamp here in case there were no events to update the timestamp from.
+      this.blockTipTimestamp = block.timestamp;
+    }
     events.forEach(({ event, args, blockNumber }) => {
       if (!args) {
         return;
       }
-
       switch (event) {
-        case 'FundingRecomputed': {
+        case PerpsEvent.FundingRecomputed: {
           // just a sneaky way to get timestamps without making awaiting getBlock() calls
           // keeping track of time is needed for the volume metrics during the initial
           // sync so that we don't have to await getting block timestamp for each new block
           this.blockTipTimestamp = args.timestamp.toNumber();
           return;
         }
-        case 'PositionModified': {
-          const { id, account, size, margin, lastPrice, tradeSize } = args;
+        case PerpsEvent.PositionModified: {
+          const { id, account, size, margin, lastPrice } = args;
           if (margin.eq(BigNumber.from(0))) {
             // Position has been closed.
             delete this.positions[account];
@@ -75,7 +74,7 @@ export class LiquidationKeeper extends Keeper {
           };
           return;
         }
-        case 'PositionLiquidated': {
+        case PerpsEvent.PositionLiquidated: {
           delete this.positions[args.account];
           return;
         }
@@ -87,6 +86,8 @@ export class LiquidationKeeper extends Keeper {
     // required for metrics and liquidations order
     // it's updated after running keepers because even if it's one-block old, it shouldn't
     // affect liquidation order too much, but awaiting this might introduce latency
+    //
+    // TODO: Consider pulling this to the distributor
     await this.updateAssetPrice();
   }
 

@@ -1,6 +1,7 @@
 import { Contract, Event, providers, utils, Wallet } from 'ethers';
 import { Logger } from 'winston';
 import { createLogger } from '../logging';
+import { PerpsEvent } from '../typed';
 
 export class Keeper {
   protected readonly logger: Logger;
@@ -30,7 +31,11 @@ export class Keeper {
   }
 
   getEventsOfInterest(): string[] {
-    throw new Error('NotImplementedError');
+    return Object.values(PerpsEvent);
+  }
+
+  async updateIndex(events: Event[], block?: providers.Block): Promise<void> {
+    new Error('NotImplementedError');
   }
 
   async index(fromBlock: number | string): Promise<void> {
