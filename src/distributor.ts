@@ -46,7 +46,7 @@ export class Distributor {
     await Promise.all(this.keepers.map(keeper => keeper.execute()));
   }
 
-  private async dispatchKeepers(blockNumber: number): Promise<void> {
+  private async disburseToKeepers(blockNumber: number): Promise<void> {
     const events = await getEvents(Object.values(PerpsEvent), this.market, {
       fromBlock: this.lastProcessedBlock ? this.lastProcessedBlock + 1 : blockNumber,
       toBlock: blockNumber,
@@ -67,7 +67,7 @@ export class Distributor {
     // keeper tasks that need running that aren't already active.
     while (1) {
       if (!this.blockQueue.length) {
-        await this.delay(10);
+        await this.delay(100);
         continue;
       }
 
@@ -75,7 +75,7 @@ export class Distributor {
       this.blockQueue.sort();
       const blockNumber = this.blockQueue.shift();
       if (blockNumber) {
-        await this.dispatchKeepers(blockNumber);
+        await this.disburseToKeepers(blockNumber);
         this.lastProcessedBlock = blockNumber;
       }
     }

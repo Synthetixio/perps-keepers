@@ -13,9 +13,10 @@ import logProcessError from 'log-process-errors';
 import { createLogger } from './logging';
 import { getConfig, KeeperConfig } from './config';
 import { getDefaultProvider, utils, Wallet } from 'ethers';
-import { getSynthetixPerpsContracts } from './utils';
+import { getSynthetixPerpsContracts } from './contracts';
 import { Distributor } from './distributor';
 import { LiquidationKeeper } from './keepers/liquidation';
+import { DelayedOrdersKeeper } from './keepers/delayedOrders';
 
 logProcessError({
   log(error, level) {
@@ -44,7 +45,15 @@ export async function run(config: KeeperConfig) {
       config.runEveryXBlock
     );
     distributor.registerKeeper([
-      new LiquidationKeeper(market, baseAsset, signer, provider, config.network),
+      // new LiquidationKeeper(market, baseAsset, signer, provider, config.network),
+      new DelayedOrdersKeeper(
+        market,
+        contracts.exchangeRates,
+        baseAsset,
+        signer,
+        provider,
+        config.network
+      ),
     ]);
     distributor.listen();
   }

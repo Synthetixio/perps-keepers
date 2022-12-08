@@ -1,15 +1,12 @@
 import { Contract, providers, Signer } from 'ethers';
+import synthetix from 'synthetix';
 import FuturesMarketManagerJson from '../contracts/FuturesMarketManager.json';
 import PerpsV2MarketConsolidatedJson from '../contracts/PerpsV2MarketConsolidated.json';
 import { KeeperSupportedNetwork } from './config';
 
+// TODO: Use the Synthetix npm package to derive the ABI and address once merged and released.
 const FUTURES_MARKET_MANAGER_ADDRESS_GOERLI_OVM = '0xC8440d8e46D3C06beD106C6f2F918F30182bEb06';
 const FUTURES_MARKET_MANAGER_ADDRESS_MAINNET_OVM = '';
-
-interface PerpsV2Contracts {
-  marketManager: Contract;
-  markets: Record<string, Contract>;
-}
 
 const getFuturesMarketManagerAddress = (network: string): string => {
   switch (network) {
@@ -22,11 +19,17 @@ const getFuturesMarketManagerAddress = (network: string): string => {
   }
 };
 
+interface KeeperContracts {
+  exchangeRates: Contract;
+  marketManager: Contract;
+  markets: Record<string, Contract>;
+}
+
 export const getSynthetixPerpsContracts = async (
   network: KeeperSupportedNetwork,
   signer: Signer,
   provider: providers.BaseProvider
-): Promise<PerpsV2Contracts> => {
+): Promise<KeeperContracts> => {
   const futuresMarketManagerAddress = getFuturesMarketManagerAddress(network);
   const marketManager = new Contract(
     futuresMarketManagerAddress,
@@ -47,5 +50,9 @@ export const getSynthetixPerpsContracts = async (
     },
     {}
   );
-  return { marketManager, markets };
+  const exchangeRatesAddress = synthetix.getTarget({ network, contract: 'ExchangeRates' }).address;
+  const exchangeRateAbi = synthetix.getSource({ network, contract: 'ExchangeRates' }).abi;
+  const exchangeRates = new Contract(exchangeRatesAddress, exchangeRateAbi, provider);
+
+  return { exchangeRates, marketManager, markets };
 };

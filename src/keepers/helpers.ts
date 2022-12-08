@@ -1,4 +1,4 @@
-import { Contract } from 'ethers';
+import { Contract, utils } from 'ethers';
 import { range } from 'lodash';
 import { createLogger } from '../logging';
 import { PerpsEvent } from '../typed';
@@ -60,3 +60,5 @@ export const getEvents = async (
   );
   return events;
 };
+
+export const UNIT = utils.parseUnits('1');
