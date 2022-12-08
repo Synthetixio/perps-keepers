@@ -2,7 +2,7 @@
 module.exports = {
   apps: [
     {
-      name: 'futures-keeper-mainnet',
+      name: 'perps-keeper-mainnet',
       script: './build/src/index.js',
       args: 'run',
     },
