@@ -54,19 +54,6 @@ export const getConfig = (force = false): KeeperConfig => {
     return _config;
   }
 
-  console.log({
-    fromBlock: process.env.FROM_BLOCK,
-    providerUrl: process.env.PROVIDER_URL,
-    network: process.env.NETWORK,
-    runEveryXBlock: process.env.RUN_EVERY_X_BLOCK,
-    ethHdwalletMnemonic: process.env.ETH_HDWALLET_MNEMONIC,
-
-    // This should really not exist? If deployed to AWS, VM should be IAM configured.
-    awsRegion: process.env.AWS_REGION,
-    awsAccessKeyId: process.env.AWS_ACCESS_KEY,
-    awsSecretAccessKey: process.env.AWS_SECRET_KEY,
-  });
-
   const { value, error } = KeeperConfigSchema.validate({
     fromBlock: process.env.FROM_BLOCK,
     providerUrl: process.env.PROVIDER_URL,
