@@ -35,7 +35,7 @@ export class Keeper {
     new Error('NotImplementedError');
   }
 
-  protected async execAsyncKeeperCallback(id: string, cb: () => Promise<void>) {
+  protected async execAsyncKeeperCallback(id: string, cb: () => Promise<void>): Promise<void> {
     if (this.activeKeeperTasks[id]) {
       // Skip task as its already running.
       return;

@@ -86,8 +86,9 @@ export class DelayedOrdersKeeper extends Keeper {
   private async executeOrder(account: string): Promise<void> {
     // Cases:
     //
-    //  - The market is paused. We cannot proceed
+    // (A) Invokes execute
     //  - The order is ready to be executed and the market allows for it
+    // (B) Invokes execute and fails after n attempts and discards
     //  - We think the order is ready to be executed but on-chain, it is not
     //  - The order missed execution window. It must be cancelled
     //  - The order missed execution window. Cancellation is failing (e.g. paused)
