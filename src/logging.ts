@@ -12,7 +12,7 @@ export const createLogger = (label: string): winston.Logger => {
     format: format.combine(
       format.label({ label }),
       format.printf(info => {
-        return [info.timestamp, info.level, info.label, info.component, info.message]
+        return [info.timestamp, info.level, info.label, info.component, '-', info.message]
           .filter(x => !!x)
           .join(' ');
       })

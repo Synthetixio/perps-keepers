@@ -27,12 +27,12 @@ export class DelayedOrdersKeeper extends Keeper {
     super('DelayedOrdersKeeper', market, baseAsset, signer, provider, network);
   }
 
-  async updateIndex(events: Event[], block?: providers.Block): Promise<void> {
+  async updateIndex(events: Event[]): Promise<void> {
     if (!events.length) {
       return;
     }
 
-    this.logger.info(`(${block?.number}) '${events.length}' event(s) available to index...`);
+    this.logger.info(`'${events.length}' event(s) available to index...`);
     const blockCache: Record<number, Block> = {};
     for (const evt of events) {
       const { event, args, blockNumber } = evt;
