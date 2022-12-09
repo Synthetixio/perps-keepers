@@ -144,9 +144,9 @@ export class DelayedOrdersKeeper extends Keeper {
 
     for (const batch of chunk(executableOrders, this.MAX_BATCH_SIZE)) {
       this.logger.info(`Running keeper batch with '${batch.length}' orders(s) to keep`);
-      const batches = batch.map(async ({ account }) => {
-        await this.execAsyncKeeperCallback(account, () => this.executeOrder(account));
-      });
+      const batches = batch.map(({ account }) =>
+        this.execAsyncKeeperCallback(account, () => this.executeOrder(account))
+      );
       await Promise.all(batches);
       await this.delay(this.BATCH_WAIT_TIME);
     }

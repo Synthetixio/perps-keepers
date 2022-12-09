@@ -189,9 +189,9 @@ export class LiquidationKeeper extends Keeper {
       // Batch the groups to maintain internal order within groups
       for (const batch of chunk(group, this.MAX_BATCH_SIZE)) {
         this.logger.info(`Running keeper batch with '${batch.length}' position(s) to keep`);
-        const batches = batch.map(async ({ id, account }) => {
-          await this.execAsyncKeeperCallback(id, () => this.liquidatePosition(account));
-        });
+        const batches = batch.map(({ id, account }) =>
+          this.execAsyncKeeperCallback(id, () => this.liquidatePosition(account))
+        );
         await Promise.all(batches);
         await this.delay(this.BATCH_WAIT_TIME);
       }
