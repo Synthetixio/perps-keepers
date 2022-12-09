@@ -1,6 +1,6 @@
 import Joi from 'joi';
 
-export enum KeeperSupportedNetwork {
+export enum Network {
   GOERLI_OVM = 'goerli-ovm',
   MAINNET_OVM = 'mainnet-ovm',
 }
@@ -9,7 +9,7 @@ export interface KeeperConfig {
   // Keeper config
   fromBlock: number | 'latest';
   providerUrl: string;
-  network: KeeperSupportedNetwork;
+  network: Network;
   runEveryXBlock: number;
   ethHdwalletMnemonic: string;
 
@@ -21,7 +21,7 @@ export interface KeeperConfig {
 
 export const DEFAULT_CONFIG = {
   fromBlock: 1,
-  network: KeeperSupportedNetwork.GOERLI_OVM,
+  network: Network.GOERLI_OVM,
   runEveryXBlock: 1,
 };
 
@@ -32,7 +32,7 @@ export const KeeperConfigSchema = Joi.object({
     .required(),
   providerUrl: Joi.string().required(),
   network: Joi.string()
-    .valid(...Object.values(KeeperSupportedNetwork))
+    .valid(...Object.values(Network))
     .default(DEFAULT_CONFIG.network)
     .required(),
   runEveryXBlock: Joi.number()
