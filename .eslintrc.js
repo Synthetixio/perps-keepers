@@ -14,7 +14,6 @@ module.exports = {
     'no-process-exit': 'off',
     'standard/computed-property-even-spacing': 'off',
     'no-only-tests/no-only-tests': 'error',
-
     'promise/always-return': 'error',
     'promise/no-return-wrap': 'error',
     'promise/param-names': 'off',

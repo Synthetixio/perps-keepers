@@ -11,6 +11,8 @@ export class Distributor {
   private blockQueue: Array<number> = [];
   private lastProcessedBlock?: number;
 
+  private readonly MAX_CONSUME_WAIT_TIME = 100;
+
   constructor(
     private readonly market: Contract,
     protected readonly baseAsset: string,
@@ -67,7 +69,7 @@ export class Distributor {
     // keeper tasks that need running that aren't already active.
     while (1) {
       if (!this.blockQueue.length) {
-        await this.delay(100);
+        await this.delay(this.MAX_CONSUME_WAIT_TIME);
         continue;
       }
 
