@@ -17,6 +17,7 @@ import { getSynthetixPerpsContracts } from './contracts';
 import { Distributor } from './distributor';
 import { LiquidationKeeper } from './keepers/liquidation';
 import { DelayedOrdersKeeper } from './keepers/delayedOrders';
+import { DelayedOffchainOrdersKeeper } from './keepers/delayedOffchainOrders';
 
 logProcessError({
   log(error, level) {
@@ -46,9 +47,18 @@ export async function run(config: KeeperConfig) {
     );
     distributor.registerKeeper([
       // new LiquidationKeeper(market, baseAsset, signer, provider, config.network),
-      new DelayedOrdersKeeper(
+      // new DelayedOrdersKeeper(
+      //   market,
+      //   contracts.exchangeRates,
+      //   baseAsset,
+      //   signer,
+      //   provider,
+      //   config.network
+      // ),
+      new DelayedOffchainOrdersKeeper(
         market,
-        contracts.exchangeRates,
+        contracts.marketSettings,
+        '<INSERT_PRICE_FEED>',
         baseAsset,
         signer,
         provider,

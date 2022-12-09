@@ -45,7 +45,7 @@ export class LiquidationKeeper extends Keeper {
       return;
     }
 
-    this.logger.info(`'${events.length}' event(s) available to index. Performing index...`);
+    this.logger.info(`(${block?.number}) '${events.length}' event(s) available to index...`);
     events.forEach(({ event, args, blockNumber }) => {
       if (!args) {
         return;

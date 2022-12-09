@@ -1,11 +1,11 @@
 import { Block } from '@ethersproject/abstract-provider';
-import { BigNumber, Contract, Event, providers, utils, Wallet } from 'ethers';
+import { BigNumber, Contract, ethers, Event, providers, utils, Wallet } from 'ethers';
 import { Keeper } from '.';
 import { getEvents } from './helpers';
 import { DelayedOrder, PerpsEvent } from '../typed';
 import { chunk } from 'lodash';
 
-export class DelayedOrdersKeeper extends Keeper {
+export class DelayedOffchainOrdersKeeper extends Keeper {
   // The index
   private orders: Record<string, DelayedOrder> = {};
 
@@ -18,13 +18,14 @@ export class DelayedOrdersKeeper extends Keeper {
 
   constructor(
     market: Contract,
-    private readonly exchangeRates: Contract,
+    private readonly marketSettings: Contract,
+    private readonly offchainPriceFeedId: string,
     baseAsset: string,
     signer: Wallet,
     provider: providers.BaseProvider,
     network: string
   ) {
-    super('DelayedOrdersKeeper', market, baseAsset, signer, provider, network);
+    super('DelayedOffchainOrdersKeeper', market, baseAsset, signer, provider, network);
   }
 
   async updateIndex(events: Event[], block?: providers.Block): Promise<void> {
@@ -84,25 +85,18 @@ export class DelayedOrdersKeeper extends Keeper {
   }
 
   private async executeOrder(account: string): Promise<void> {
-    // Cases:
-    //
-    //  - The market is paused. We cannot proceed
-    //  - The order is ready to be executed and the market allows for it
-    //  - We think the order is ready to be executed but on-chain, it is not
-    //  - The order missed execution window. It must be cancelled
-    //  - The order missed execution window. Cancellation is failing (e.g. paused)
-    //  - We think the order can be executed/cancelled but the order does not exist
-
     if (this.orders[account].executionFailures > this.MAX_EXECUTION_ATTEMPTS) {
       this.logger.info(`Order execution exceeded max attempts '${account}'`);
       delete this.orders[account];
       return;
     }
 
+    // TODO: Grab Pyth offchain data to sent with the executeOffchainDelayedOrder call.
+
     try {
-      this.logger.info(`Begin executeDelayedOrder(${account})`);
-      const tx = await this.market.executeDelayedOrder(account);
-      this.logger.info(`Submitted executeDelayedOrder(${account}) [nonce=${tx.nonce}]`);
+      this.logger.info(`Begin executeOffchainDelayedOrder(${account})`);
+      const tx = await this.market.executeOffchainDelayedOrder(account);
+      this.logger.info(`Submitted executeOffchainDelayedOrder(${account}) [nonce=${tx.nonce}]`);
 
       await this.waitAndLogTx(tx);
       delete this.orders[account];
@@ -112,18 +106,27 @@ export class DelayedOrdersKeeper extends Keeper {
     }
   }
 
-  async execute(): Promise<void> {
-    // Get the latest CL roundId.
-    const currentRoundId = await this.exchangeRates.getCurrentRoundId(
-      utils.formatBytes32String(this.baseAsset)
-    );
+  private async getOffchainMinMaxAge(): Promise<{
+    minAge: ethers.BigNumber;
+    maxAge: ethers.BigNumber;
+  }> {
+    const bytes32BaseAsset = utils.formatBytes32String(this.baseAsset);
 
+    const minAge = await this.marketSettings.offchainDelayedOrderMinAge(bytes32BaseAsset);
+    const maxAge = await this.marketSettings.offchainDelayedOrderMaxAge(bytes32BaseAsset);
+
+    return { minAge, maxAge };
+  }
+
+  async execute(): Promise<void> {
+    const { minAge } = await this.getOffchainMinMaxAge();
     const block = await this.provider.getBlock(await this.provider.getBlockNumber());
 
     // Filter out orders that may be ready to execute.
-    const executableOrders = Object.values(this.orders).filter(
-      ({ executableAtTime, targetRoundId }) =>
-        currentRoundId.gte(targetRoundId) || BigNumber.from(block.timestamp).gte(executableAtTime)
+    const executableOrders = Object.values(this.orders).filter(({ intentionTime }) =>
+      BigNumber.from(block.timestamp)
+        .sub(intentionTime)
+        .gt(minAge)
     );
 
     // No orders. Move on.
@@ -131,6 +134,7 @@ export class DelayedOrdersKeeper extends Keeper {
       return;
     }
 
+    // TODO: Convert into a generic batch execute method.
     this.logger.info(`Found '${executableOrders.length}' order(s) that can be executed`);
 
     for (const batch of chunk(executableOrders, this.MAX_BATCH_SIZE)) {

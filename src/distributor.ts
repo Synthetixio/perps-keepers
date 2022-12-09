@@ -40,12 +40,12 @@ export class Distributor {
     events: Event[],
     block: providers.Block,
     assetPrice: number
-  ): Promise<void> {
-    await Promise.all(this.keepers.map(keeper => keeper.updateIndex(events, block, assetPrice)));
+  ): Promise<void[]> {
+    return Promise.all(this.keepers.map(keeper => keeper.updateIndex(events, block, assetPrice)));
   }
 
-  private async executeKeepers(): Promise<void> {
-    await Promise.all(this.keepers.map(keeper => keeper.execute()));
+  private async executeKeepers(): Promise<void[]> {
+    return Promise.all(this.keepers.map(keeper => keeper.execute()));
   }
 
   private async disburseToKeepers(blockNumber: number): Promise<void> {
@@ -56,9 +56,6 @@ export class Distributor {
     const block = await this.provider.getBlock(blockNumber);
     const assetPrice = parseFloat(utils.formatUnits((await this.market.assetPrice()).price));
 
-    this.logger.info(
-      `New block (${blockNumber}); '${events.length}' event(s) to process (${assetPrice})`
-    );
     await this.updateKeeperIndexes(events, block, assetPrice);
     await this.executeKeepers();
   }

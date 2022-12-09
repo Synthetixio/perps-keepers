@@ -22,6 +22,7 @@ const getFuturesMarketManagerAddress = (network: string): string => {
 interface KeeperContracts {
   exchangeRates: Contract;
   marketManager: Contract;
+  marketSettings: Contract;
   markets: Record<string, Contract>;
 }
 
@@ -54,5 +55,10 @@ export const getSynthetixPerpsContracts = async (
   const exchangeRateAbi = synthetix.getSource({ network, contract: 'ExchangeRates' }).abi;
   const exchangeRates = new Contract(exchangeRatesAddress, exchangeRateAbi, provider);
 
-  return { exchangeRates, marketManager, markets };
+  const marketSettingsAddress = synthetix.getTarget({ network, contract: 'PerpsV2MarketSettings' })
+    .address;
+  const marketSettingsAbi = synthetix.getSource({ network, contract: 'PerpsV2MarketSettings' }).abi;
+  const marketSettings = new Contract(marketSettingsAddress, marketSettingsAbi, provider);
+
+  return { exchangeRates, marketManager, marketSettings, markets };
 };
