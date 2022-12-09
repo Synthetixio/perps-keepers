@@ -9,7 +9,7 @@ export class DelayedOrdersKeeper extends Keeper {
   // The index
   private orders: Record<string, DelayedOrder> = {};
 
-  private readonly MAX_EXECUTION_ATTEMPTS = 10;
+  private readonly MAX_EXECUTION_ATTEMPTS = 50;
 
   private readonly EVENTS_OF_INTEREST: PerpsEvent[] = [
     PerpsEvent.DelayedOrderSubmitted,
@@ -36,7 +36,6 @@ export class DelayedOrdersKeeper extends Keeper {
 
     const blockCache: Record<number, Block> = {};
 
-    const totalOrders = Object.keys(this.orders).length;
     for (const evt of events) {
       const { event, args, blockNumber } = evt;
       if (!args) {
@@ -46,7 +45,7 @@ export class DelayedOrdersKeeper extends Keeper {
       switch (event) {
         case PerpsEvent.DelayedOrderSubmitted: {
           const { account, targetRoundId, executableAtTime } = args;
-          this.logger.info(`New order submitted. Adding to index '${account}' (${totalOrders})`);
+          this.logger.info(`New order submitted. Adding to index '${account}'`);
 
           // TODO: Remove this after we add `intentionTime` to DelayedOrderXXX events.
           if (!blockCache[blockNumber]) {
@@ -65,9 +64,7 @@ export class DelayedOrdersKeeper extends Keeper {
         }
         case PerpsEvent.DelayedOrderRemoved: {
           const { account } = args;
-          this.logger.info(
-            `Order cancelled or executed. Removing from index '${account}' (${totalOrders})`
-          );
+          this.logger.info(`Order cancelled or executed. Removing from index '${account}'`);
           delete this.orders[account];
           break;
         }

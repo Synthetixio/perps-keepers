@@ -104,10 +104,15 @@ export class Distributor {
         await this.startProcessNewBlockConsumer();
       });
     } catch (err) {
+      const delayWaitTime = 60 * 1000;
+
       this.logger.error(err);
+      this.logger.error(
+        `Error has occurred listening for blocks. Waiting ${delayWaitTime} before trying again`
+      );
 
       // Wait a minute and retry (may just be Node issues).
-      await this.delay(60 * 1000);
+      await this.delay(delayWaitTime);
       await this.listen();
     }
   }
