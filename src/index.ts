@@ -13,7 +13,7 @@ import logProcessError from 'log-process-errors';
 import { createLogger } from './logging';
 import { getConfig, KeeperConfig } from './config';
 import { getDefaultProvider, utils, Wallet } from 'ethers';
-import { getSynthetixPerpsContracts } from './contracts';
+import { getPythDetails, getSynthetixPerpsContracts } from './utils';
 import { Distributor } from './distributor';
 import { LiquidationKeeper } from './keepers/liquidation';
 import { DelayedOrdersKeeper } from './keepers/delayedOrders';
@@ -26,7 +26,7 @@ logProcessError({
 });
 
 export async function run(config: KeeperConfig) {
-  const logger = createLogger('Run');
+  const logger = createLogger('Application');
 
   const provider = getDefaultProvider(config.providerUrl);
   logger.info(`Connected to Ethereum node at '${config.providerUrl}'`);
@@ -35,6 +35,7 @@ export async function run(config: KeeperConfig) {
   logger.info(`Keeper address '${signer.address}'`);
 
   const contracts = await getSynthetixPerpsContracts(config.network, signer, provider);
+  const pyth = getPythDetails(config.network);
 
   for (const market of Object.values(contracts.markets)) {
     const baseAsset = utils.parseBytes32String(await market.baseAsset());
@@ -45,26 +46,35 @@ export async function run(config: KeeperConfig) {
       config.fromBlock,
       config.runEveryXBlock
     );
-    distributor.registerKeeper([
-      // new LiquidationKeeper(market, baseAsset, signer, provider, config.network),
-      // new DelayedOrdersKeeper(
-      //   market,
-      //   contracts.exchangeRates,
-      //   baseAsset,
-      //   signer,
-      //   provider,
-      //   config.network
-      // ),
-      new DelayedOffchainOrdersKeeper(
+    distributor.registerKeepers([
+      new LiquidationKeeper(market, baseAsset, signer, provider, config.network),
+      new DelayedOrdersKeeper(
         market,
-        contracts.marketSettings,
-        '<INSERT_PRICE_FEED>',
+        contracts.exchangeRates,
         baseAsset,
         signer,
         provider,
         config.network
       ),
     ]);
+
+    if (pyth.priceFeedIds[baseAsset]) {
+      distributor.registerKeepers([
+        new DelayedOffchainOrdersKeeper(
+          market,
+          contracts.marketSettings,
+          pyth.endpoint,
+          pyth.priceFeedIds[baseAsset],
+          baseAsset,
+          signer,
+          provider,
+          config.network
+        ),
+      ]);
+    } else {
+      logger.info(`Skipping '${baseAsset}' as off-chain price feed does not exist`);
+    }
+
     distributor.listen();
   }
 }

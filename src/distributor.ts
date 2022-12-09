@@ -27,7 +27,7 @@ export class Distributor {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  registerKeeper(keepers: Keeper[]) {
+  registerKeepers(keepers: Keeper[]) {
     keepers.forEach(keeper => this.keepers.push(keeper));
     this.logger.info(`Registered keepers (${this.keepers.length})`);
   }

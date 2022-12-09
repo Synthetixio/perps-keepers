@@ -4,10 +4,12 @@ import { Keeper } from '.';
 import { getEvents } from './helpers';
 import { DelayedOrder, PerpsEvent } from '../typed';
 import { chunk } from 'lodash';
+import { EvmPriceServiceConnection } from '@pythnetwork/pyth-evm-js';
 
 export class DelayedOffchainOrdersKeeper extends Keeper {
   // The index
   private orders: Record<string, DelayedOrder> = {};
+  private pythConnection: EvmPriceServiceConnection;
 
   private readonly MAX_EXECUTION_ATTEMPTS = 50;
 
@@ -19,6 +21,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
   constructor(
     market: Contract,
     private readonly marketSettings: Contract,
+    offchainEndpoint: string,
     private readonly offchainPriceFeedId: string,
     baseAsset: string,
     signer: Wallet,
@@ -26,18 +29,22 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
     network: string
   ) {
     super('DelayedOffchainOrdersKeeper', market, baseAsset, signer, provider, network);
+
+    this.pythConnection = new EvmPriceServiceConnection(offchainEndpoint);
   }
 
-  async updateIndex(events: Event[], block?: providers.Block): Promise<void> {
+  async updateIndex(events: Event[]): Promise<void> {
     if (!events.length) {
       return;
     }
 
-    this.logger.info(`(${block?.number}) '${events.length}' event(s) available to index...`);
+    this.logger.info(`'${events.length}' event(s) available to index...`);
     const blockCache: Record<number, Block> = {};
     for (const evt of events) {
       const { event, args, blockNumber } = evt;
-      if (!args) {
+
+      // Event has no argument or is not an offchain event, ignore.
+      if (!args || !args.isOffchain) {
         break;
       }
 
@@ -91,11 +98,16 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       return;
     }
 
-    // TODO: Grab Pyth offchain data to sent with the executeOffchainDelayedOrder call.
+    // Grab Pyth offchain data to sent with the executeOffchainDelayedOrder call.
+    //
+    // TODO: This could possibly called from the parent.
+    const priceUpdateData = await this.pythConnection.getPriceFeedsUpdateData([
+      this.offchainPriceFeedId,
+    ]);
 
     try {
       this.logger.info(`Begin executeOffchainDelayedOrder(${account})`);
-      const tx = await this.market.executeOffchainDelayedOrder(account);
+      const tx = await this.market.executeOffchainDelayedOrder(account, priceUpdateData);
       this.logger.info(`Submitted executeOffchainDelayedOrder(${account}) [nonce=${tx.nonce}]`);
 
       await this.waitAndLogTx(tx);
