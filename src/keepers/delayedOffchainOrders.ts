@@ -143,6 +143,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
 
     // No orders. Move on.
     if (executableOrders.length === 0) {
+      this.logger.info(`No off-chain orders ready... skipping`);
       return;
     }
 

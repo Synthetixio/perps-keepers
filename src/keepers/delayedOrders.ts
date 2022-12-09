@@ -129,6 +129,7 @@ export class DelayedOrdersKeeper extends Keeper {
 
     // No orders. Move on.
     if (executableOrders.length === 0) {
+      this.logger.info(`No orders ready... skipping`);
       return;
     }
 

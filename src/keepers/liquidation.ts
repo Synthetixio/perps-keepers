@@ -180,6 +180,12 @@ export class LiquidationKeeper extends Keeper {
     const positionGroups = this.liquidationGroups(openPositions);
     const positionCount = flatten(positionGroups).length;
 
+    // No positions. Move on.
+    if (positionCount === 0) {
+      this.logger.info(`No positions ready... skipping`);
+      return;
+    }
+
     this.logger.info(`Found ${positionCount} position(s) to check`);
     for (let group of positionGroups) {
       if (!group.length) {
