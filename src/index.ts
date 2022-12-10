@@ -47,17 +47,17 @@ export async function run(config: KeeperConfig) {
       config.fromBlock,
       config.runEveryXBlock
     );
-    // distributor.registerKeepers([
-    //   new LiquidationKeeper(market, baseAsset, signer, provider, config.network),
-    //   new DelayedOrdersKeeper(
-    //     market,
-    //     contracts.exchangeRates,
-    //     baseAsset,
-    //     signer,
-    //     provider,
-    //     config.network
-    //   ),
-    // ]);
+    distributor.registerKeepers([
+      new LiquidationKeeper(market, baseAsset, signer, provider, config.network),
+      new DelayedOrdersKeeper(
+        market,
+        contracts.exchangeRates,
+        baseAsset,
+        signer,
+        provider,
+        config.network
+      ),
+    ]);
 
     if (pyth.priceFeedIds[baseAsset]) {
       distributor.registerKeepers([
