@@ -3,7 +3,7 @@ import synthetix from 'synthetix';
 import FuturesMarketManagerJson from '../contracts/FuturesMarketManager.json';
 import PerpsV2MarketConsolidatedJson from '../contracts/PerpsV2MarketConsolidated.json';
 import PythAbi from '../contracts/Pyth.json';
-import { Network } from './config';
+import { Network } from './typed';
 
 interface KeeperContracts {
   exchangeRates: Contract;

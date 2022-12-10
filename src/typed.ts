@@ -25,3 +25,8 @@ export interface DelayedOrder {
   intentionTime: number; // Timestamp of block at which this event was triggered (submission ts).
   executionFailures: number; // Number of times this has failed to execute
 }
+
+export enum Network {
+  GOERLI_OVM = 'goerli-ovm',
+  MAINNET_OVM = 'mainnet-ovm',
+}

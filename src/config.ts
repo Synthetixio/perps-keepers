@@ -1,9 +1,5 @@
 import Joi from 'joi';
-
-export enum Network {
-  GOERLI_OVM = 'goerli-ovm',
-  MAINNET_OVM = 'mainnet-ovm',
-}
+import { Network } from './typed';
 
 export interface KeeperConfig {
   // Keeper config

@@ -84,15 +84,15 @@ export async function run(config: KeeperConfig) {
 
 program
   .command('run')
-  .description('Run the keeper')
+  .description('Run the perps-keeper')
   .option(
     '-b, --from-block <value>',
-    'Rebuild the keeper index from a starting block, before initiating keeper actions.'
+    'rebuild the keeper index from a starting block, before initiating keeper actions.'
   )
-  .option('--network <value>', 'Ethereum network to connect to.')
+  .option('--network <value>', 'ethereum network to connect to.')
   .option(
     '-m, --markets <value>',
-    'Runs keeper operations for the specified markets, delimited by a comma. Default all live markets.'
+    'runs keeper operations for the specified markets, delimited by a comma. Default all live markets.'
   )
   .action(arg => {
     // NOTE: At this point we're in the realm of unknown/any because of user input and zero validation (yet).
