@@ -36,13 +36,15 @@ export class DelayedOrdersKeeper extends Keeper {
     const blockCache: Record<number, Block> = {};
     for (const evt of events) {
       const { event, args, blockNumber } = evt;
-      if (!args) {
-        break;
+      if (!args || args.isOffchain) {
+        this.logger.info(`No args present or is off-chain '${event}'. Skipping`);
+        continue;
       }
 
+      const { account } = args;
       switch (event) {
         case PerpsEvent.DelayedOrderSubmitted: {
-          const { account, targetRoundId, executableAtTime } = args;
+          const { targetRoundId, executableAtTime } = args;
           this.logger.info(`New order submitted. Adding to index '${account}'`);
 
           // TODO: Remove this after we add `intentionTime` to DelayedOrderXXX events.
@@ -61,7 +63,6 @@ export class DelayedOrdersKeeper extends Keeper {
           break;
         }
         case PerpsEvent.DelayedOrderRemoved: {
-          const { account } = args;
           this.logger.info(`Order cancelled or executed. Removing from index '${account}'`);
           delete this.orders[account];
           break;

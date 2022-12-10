@@ -11,7 +11,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
   private orders: Record<string, DelayedOrder> = {};
   private pythConnection: EvmPriceServiceConnection;
 
-  private readonly MAX_EXECUTION_ATTEMPTS = 50;
+  private readonly MAX_EXECUTION_ATTEMPTS = 10;
 
   private readonly EVENTS_OF_INTEREST: PerpsEvent[] = [
     PerpsEvent.DelayedOrderSubmitted,
@@ -23,6 +23,8 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
     private readonly marketSettings: Contract,
     offchainEndpoint: string,
     private readonly offchainPriceFeedId: string,
+    private readonly pythContract: Contract,
+    private readonly marketKey: string,
     baseAsset: string,
     signer: Wallet,
     provider: providers.BaseProvider,
@@ -44,13 +46,22 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       const { event, args, blockNumber } = evt;
 
       // Event has no argument or is not an offchain event, ignore.
-      if (!args || !args.isOffchain) {
-        break;
+      if (!args) {
+        this.logger.info(`No args are present in '${event}', skipping`);
+        continue;
       }
 
+      const { account } = args;
       switch (event) {
         case PerpsEvent.DelayedOrderSubmitted: {
-          const { account, targetRoundId, executableAtTime } = args;
+          const { account, targetRoundId, executableAtTime, isOffchain } = args;
+
+          // TODO: Move this to the top of the for loop after DelayedOrderRemoved has isOffchain.
+          if (!isOffchain) {
+            this.logger.info(`Order is not off-chain, skipping`);
+            break;
+          }
+
           this.logger.info(`New order submitted. Adding to index '${account}'`);
 
           // TODO: Remove this after we add `intentionTime` to DelayedOrderXXX events.
@@ -69,7 +80,6 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
           break;
         }
         case PerpsEvent.DelayedOrderRemoved: {
-          const { account } = args;
           this.logger.info(`Order cancelled or executed. Removing from index '${account}'`);
           delete this.orders[account];
           break;
@@ -99,15 +109,19 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
     }
 
     // Grab Pyth offchain data to sent with the executeOffchainDelayedOrder call.
-    //
-    // TODO: This could possibly called from the parent.
     const priceUpdateData = await this.pythConnection.getPriceFeedsUpdateData([
       this.offchainPriceFeedId,
     ]);
 
+    const updateFee = await this.pythContract.getUpdateFee(priceUpdateData);
+
     try {
-      this.logger.info(`Begin executeOffchainDelayedOrder(${account})`);
-      const tx = await this.market.executeOffchainDelayedOrder(account, priceUpdateData);
+      this.logger.info(
+        `Begin executeOffchainDelayedOrder(${account}) (fee: ${updateFee.toString()})`
+      );
+      const tx = await this.market.executeOffchainDelayedOrder(account, priceUpdateData, {
+        value: updateFee,
+      });
       this.logger.info(`Submitted executeOffchainDelayedOrder(${account}) [nonce=${tx.nonce}]`);
 
       await this.waitAndLogTx(tx);
@@ -122,20 +136,31 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
     minAge: ethers.BigNumber;
     maxAge: ethers.BigNumber;
   }> {
-    const bytes32BaseAsset = utils.formatBytes32String(this.baseAsset);
+    const bytes32BaseAsset = utils.formatBytes32String(this.marketKey);
 
     const minAge = await this.marketSettings.offchainDelayedOrderMinAge(bytes32BaseAsset);
     const maxAge = await this.marketSettings.offchainDelayedOrderMaxAge(bytes32BaseAsset);
+
+    this.logger.info(
+      `Fetched {min,max}Age={${minAge.toString()},${maxAge.toString()}} for '${this.marketKey}'`
+    );
 
     return { minAge, maxAge };
   }
 
   async execute(): Promise<void> {
+    const orders = Object.values(this.orders);
+
+    if (orders.length === 0) {
+      this.logger.info(`No off-chain orders available... skipping`);
+      return;
+    }
+
     const { minAge } = await this.getOffchainMinMaxAge();
     const block = await this.provider.getBlock(await this.provider.getBlockNumber());
 
     // Filter out orders that may be ready to execute.
-    const executableOrders = Object.values(this.orders).filter(({ intentionTime }) =>
+    const executableOrders = orders.filter(({ intentionTime }) =>
       BigNumber.from(block.timestamp)
         .sub(intentionTime)
         .gt(minAge)
@@ -147,7 +172,6 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       return;
     }
 
-    // TODO: Convert into a generic batch execute method.
     this.logger.info(`Found '${executableOrders.length}' order(s) that can be executed`);
 
     for (const batch of chunk(executableOrders, this.MAX_BATCH_SIZE)) {

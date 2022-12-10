@@ -35,10 +35,11 @@ export async function run(config: KeeperConfig) {
   logger.info(`Keeper address '${signer.address}'`);
 
   const contracts = await getSynthetixPerpsContracts(config.network, signer, provider);
-  const pyth = getPythDetails(config.network);
+  const pyth = getPythDetails(config.network, provider);
 
   for (const market of Object.values(contracts.markets)) {
     const baseAsset = utils.parseBytes32String(await market.baseAsset());
+    const marketKey = utils.parseBytes32String(await market.marketKey());
     const distributor = new Distributor(
       market,
       baseAsset,
@@ -46,17 +47,17 @@ export async function run(config: KeeperConfig) {
       config.fromBlock,
       config.runEveryXBlock
     );
-    distributor.registerKeepers([
-      new LiquidationKeeper(market, baseAsset, signer, provider, config.network),
-      new DelayedOrdersKeeper(
-        market,
-        contracts.exchangeRates,
-        baseAsset,
-        signer,
-        provider,
-        config.network
-      ),
-    ]);
+    // distributor.registerKeepers([
+    //   new LiquidationKeeper(market, baseAsset, signer, provider, config.network),
+    //   new DelayedOrdersKeeper(
+    //     market,
+    //     contracts.exchangeRates,
+    //     baseAsset,
+    //     signer,
+    //     provider,
+    //     config.network
+    //   ),
+    // ]);
 
     if (pyth.priceFeedIds[baseAsset]) {
       distributor.registerKeepers([
@@ -65,6 +66,8 @@ export async function run(config: KeeperConfig) {
           contracts.marketSettings,
           pyth.endpoint,
           pyth.priceFeedIds[baseAsset],
+          pyth.pyth,
+          marketKey,
           baseAsset,
           signer,
           provider,

@@ -2,6 +2,7 @@ import { Contract, providers, Signer } from 'ethers';
 import synthetix from 'synthetix';
 import FuturesMarketManagerJson from '../contracts/FuturesMarketManager.json';
 import PerpsV2MarketConsolidatedJson from '../contracts/PerpsV2MarketConsolidated.json';
+import PythAbi from '../contracts/Pyth.json';
 import { Network } from './config';
 
 interface KeeperContracts {
@@ -71,9 +72,17 @@ const PYTH_PRICE_FEED_IDS: Record<Network, Record<string, string>> = {
   },
 };
 
+// @see: https://docs.pyth.network/consume-data/evm
+const PYTH_CONTRACT_ADDRESSES: Record<Network, string> = {
+  [Network.GOERLI_OVM]: '0xff1a0f4744e8582DF1aE09D5611b887B6a12925C',
+  [Network.MAINNET_OVM]: '0xff1a0f4744e8582DF1aE09D5611b887B6a12925C',
+};
+
 export const getPythDetails = (
-  network: Network
-): { priceFeedIds: Record<string, string>; endpoint: string } => ({
+  network: Network,
+  provider: providers.BaseProvider
+): { priceFeedIds: Record<string, string>; endpoint: string; pyth: Contract } => ({
   endpoint: PYTH_NETWORK_ENDPOINTS[network],
   priceFeedIds: PYTH_PRICE_FEED_IDS[network],
+  pyth: new Contract(PYTH_CONTRACT_ADDRESSES[network], PythAbi, provider),
 });
