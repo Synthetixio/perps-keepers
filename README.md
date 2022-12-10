@@ -8,28 +8,13 @@ This repository houses Synthetix Perps keepers to maintain the health and provid
 1. Execution of delayed orders
 1. Execution of off-chain delayed orders
 
-This project is a [fork of futures-keepers](https://github.com/Synthetixio/futures-keepers). The internals around liquidations remain largely the same but has undergone significant restructure.
-
-## Development
-
-```bash
-# Clone the repository.
-git clone git@github.com:Synthetixio/perps-keepers.git
-
-# Install project dependencies.
-npm i
-
-# Execute keeper locally.
-npm run dev
-```
-
-_**NOTE:** See configuration section before attempting to run locally._
+This project is a [fork of futures-keepers](https://github.com/Synthetixio/futures-keepers). The internals around liquidations remain largely the same but has undergone significant code restructure and now supports delayed and off-chain orders in addition to just liquidations.
 
 ## Overview
 
 ![overview](./assets/perpsv2_overview.png)
 
-`perps-keepers` architecture is fairly simple. A block listener consumes events from the blockchain (Optimism) and inserts the block number into an in-memory first-in-first-out (FIFO) queue to be consumed by a block distributor. The block distributor queries for events and distributes relevant events each keeper. Keepers track
+`perps-keepers` architecture is fairly simple. A block listener consumes events from the blockchain (Optimism) and inserts the block number into an in-memory first-in-first-out (FIFO) queue to be consumed by a block distributor. The block distributor queries for events and distributes relevant events each keeper.
 
 ## Configuration
 
@@ -61,33 +46,50 @@ Options:
   -h, --help                display help for command
 ```
 
-## Deployment
+## Development
 
-TODO
+```bash
+# Clone the repository.
+git clone git@github.com:Synthetixio/perps-keepers.git
 
-### Setup for local node:
+# Install project dependencies.
+npm i
 
-1. Start a local node:
-   `hardhat node --fork https://optimism-goerli.infura.io/v3/<infura key>`
-2. Fund one of the test wallets.
+# Execute keeper locally.
+npm run dev
+```
 
-   - Checkout: https://github.com/synthetixio/synthetix
-   - `git checkout futures-implementation`
-   - npm install
-   - `npx hardhat fund-local-accounts --provider-url http://127.0.0.1:8545/ --target-network goerli-ovm --deployment-path ./publish/deployed/goerli-ovm/ --use-ovm --private-key $GOERLI_OVM_FUTURES_DEPLOYER_PRIVATE_KEY --account 0x8626f6940e2eb28930efb4cef49b2d1f2c9c1199`
-     `0x8626f6940e2eb28930efb4cef49b2d1f2c9c1199` is one of the default accounts from hardhat node --fork
+_**NOTE:** See configuration section before attempting to run locally._
 
-### Restarting on disconnect.
+### Local Node
 
-The keeper is a long-running process. The only time it will shutdown is if its websocket connection to the Ethereum node is disconnected.
+1. Start a local node
 
-To handle these restarts we rely on `pm2`
+   ```bash
+   hardhat node --fork https://optimism-goerli.infura.io/v3/<infura key>`
+   ```
 
-## Deployment notes
+1. Fund one of the test wallets.
 
-We use github actions for continuous deployments. See `/.github/workflows/deploy-keeper.yml`.
+   ```bash
+   git clone git@github.com:Synthetixio/synthetix.git
+   npm i
+   npx hardhat fund-local-accounts --provider-url http://127.0.0.1:8545/ --target-network goerli-ovm --deployment-path ./publish/deployed/goerli-ovm/ --use-ovm --private-key $GOERLI_OVM_FUTURES_DEPLOYER_PRIVATE_KEY --account 0x8626f6940e2eb28930efb4cef49b2d1f2c9c1199
+
+   # 0x8626f6940e2eb28930efb4cef49b2d1f2c9c1199` is one of the default accounts from hardhat node --fork
+   ```
+
+### Deployment
+
+Any host environment with NodeJS installed running a Unix based operating system can execute `perps-keepers`. It's recommended to use some external service tool to monitor the runtime health of your keeper instance for self-healing purposes.
+
+For example, spinning up a Kubernentes cluster and relying on k8's `deployment` group configuration, classical AWS AMIs in an ASG (auto-scaling) or even something as simple as `pm2`.
+
+### CI/CD
+
+This project's continuous integration/deployment process is managed via GitHub actions. They can be found under the `.github/` directory. In short,
 
 - Merge/Push to branch `develop` will trigger a staging release and start the keeper on `ovm-goerli`
 - Merge/Push to branch `master` will trigger a production release and start the keeper on `ovm-mainnet`
 
-To set this up as a fork we need to create github secrets for all required environment variables
+To set this up as a fork we need to create GitHub secrets for all required environment variables.
