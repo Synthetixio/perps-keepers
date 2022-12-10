@@ -2,60 +2,68 @@
 
 **Welcome to perps-keepers!**
 
-This repository houses keepers to maintain the Synthetix Perps v2 protocol. This is an example keeper that anyone can use or made modifications to. We encourage the community to implement and run their own keepe. This keeper includes the following:
+This repository houses Synthetix Perps keepers to maintain the health and provide a better UX for traders on frontends such as Kwenta and Decentrex. `perps-keepers` provides 3 main functions. These include:
 
-1. Liquidation
-1. Delayed orders
-1. Off-chain delayed orders
-1. Cancellation of delayed and off-chain orders
+1. Liquidation of underwater positions
+1. Execution of delayed orders
+1. Execution of off-chain delayed orders
 
-Features include:
+This project is a [fork of futures-keepers](https://github.com/Synthetixio/futures-keepers). The internals around liquidations remain largely the same but has undergone significant restructure.
 
-- **Backlog processing** - the keeper maintains an in-memory index from scanning blocks. If there is a backlog of unprocessed events, a keeper can be started to re-index from a specific block using `--from-block`, and then execute keeper actions based on the most recent state of the index.
+## Development
 
-- **Position processing** - position with higher leverage are checked first
+```bash
+# Clone the repository.
+git clone git@github.com:Synthetixio/perps-keepers.git
 
-- **Parallel tx submission** - on the OVM, we are competing on submitting transactions quickly to the node, as each transaction is mined as it is received. In a production scenario, there might be 10's of other transactions being delivered while we are submitting the keeper transactions. The bot includes a feature to submit transactions from multiple accounts (of a HD wallet) across multiple websocket connections in parallel. The multiple accounts ensures we can submit transactions in parallel without the node receiving tx's in different order and failing on a nonce error. The multiple websocket connections was an optimization implemented which marginally increased performance too.
+# Install project dependencies.
+npm i
 
-- **Metrics**. A variety of metrics ([documented here](src/metrics.js)) are collected and exposed on a [Prometheus](https://prometheus.io/) endpoint, which can be easily integrated with [Grafana](https://grafana.com/) for visualisation and alerts.
+# Execute keeper locally.
+npm run dev
+```
 
-## Configure.
+_**NOTE:** See configuration section before attempting to run locally._
 
-### Environment configuration.
+## Overview
 
-Any variables specified in `.env` at the project root will be loaded using [dotenv](https://www.npmjs.com/package/dotenv).
+![overview](./assets/perpsv2_overview.png)
 
-**Required variables:**
+`perps-keepers` architecture is fairly simple. A block listener consumes events from the blockchain (Optimism) and inserts the block number into an in-memory first-in-first-out (FIFO) queue to be consumed by a block distributor. The block distributor queries for events and distributes relevant events each keeper. Keepers track
 
-- **`ETH_HDWALLET_MNEMONIC`**: the HD wallet mnemonic used to unlock the bot's wallet. The bot does not support private keys.
-- **`PROVIDER_URL`**: Provider url, can be JSON RPC or Websocket
-  **Optional variables**
-- **`NETWORK`**: The default network to be used, if not specified from CLI.
-- **`FROM_BLOCK`**: The default block number to index from, if not specified from CLI.
-- **`METRIC_SERVER_PORT`**: The port to run the metric server, default 8084
+## Configuration
 
-**Optional variables used for testing on a local fork (see Futures interact CLI section):**
+Variables for configuration are defined as environment variables. During development they are stored in an `.env.staging` file at the project root then loaded via [dotenv](https://www.npmjs.com/package/dotenv). The contents are as follows:
 
-- **`INTERACT_WALLET_PRIVATE_KEY`**: Wallet used to open positions with
-- **`DEPLOYER_WALLET_PRIVATE_KEY`**: Owner of synthetix `ExchangeRates` contract, only needed if you want to fake/manipulate price feeds on a local fork.
+| Variable                | Required | Description                                       |
+| ----------------------- | -------- | ------------------------------------------------- |
+| `ETH_HDWALLET_MNEMONIC` | Yes      | Mnemonic used to unlock the keeper's wallet       |
+| `PROVIDER_URL`          | Yes      | RPC provider URL                                  |
+| `NETWORK`               | No       | Network to keep against (goerli-ovm, mainnet-ovm) |
+| `FROM_BLOCK`            | No       | Default block to index from                       |
+| `RUN_EVERY_X_BLOCK`     | No       | Used to skip blocks (`1` to not skip)             |
 
-## Usage.
+_For an example `.env` see `.env.example`. All input variables are validated (see `./src/config.ts` for more details)._
+
+## Usage
 
 ```
-Usage: npx ts-node --files src/index.ts run [options]
+> npx ts-node --files src/index.ts run --help
 
-Run the keeper
+Usage: index run [options]
+
+Run the perps-keeper
 
 Options:
-  -b, --from-block <value>    Rebuild the keeper index from a starting block, before initiating keeper actions. (default: "latest")
-  --network <value>           Ethereum network to connect to. (default: "goerli-ovm")
-  -n, --num-accounts <value>  Number of accounts from the HD wallet to use for parallel tx submission. Improves performance. (default: 10)
-  -m, --markets <value>       Runs keeper operations for the specified markets, delimited by a comma. Supported markets: sETH, sBTC, sLINK. (default:
-                              "sBTC,sETH,sLINK")
-  -h, --help                  display help for command
+  -b, --from-block <value>  rebuild the keeper index from a starting block, before initiating keeper actions.
+  --network <value>         Ethereum network to connect to.
+  -m, --markets <value>     runs keeper operations for the specified markets, delimited by a comma. Default all live markets.
+  -h, --help                display help for command
 ```
 
-## Futures interact CLI
+## Deployment
+
+TODO
 
 ### Setup for local node:
 
@@ -69,32 +77,11 @@ Options:
    - `npx hardhat fund-local-accounts --provider-url http://127.0.0.1:8545/ --target-network goerli-ovm --deployment-path ./publish/deployed/goerli-ovm/ --use-ovm --private-key $GOERLI_OVM_FUTURES_DEPLOYER_PRIVATE_KEY --account 0x8626f6940e2eb28930efb4cef49b2d1f2c9c1199`
      `0x8626f6940e2eb28930efb4cef49b2d1f2c9c1199` is one of the default accounts from hardhat node --fork
 
-### Usage
-
-`npx ts-node --files futures-interact-cli` commands and options documented in the CLI.
-
-**Current commands/features:**
-
-- fundAndOpenPosition
-- fundMargin
-- openPosition
-- closePosition
-- checkPosition
-- setPrice
-  To get help for a certain command:
-  `npx ts-node --files futures-interact-cli setPrice -h`
-
 ### Restarting on disconnect.
 
 The keeper is a long-running process. The only time it will shutdown is if its websocket connection to the Ethereum node is disconnected.
 
 To handle these restarts we rely on `pm2`
-
-## Instrumentation/metrics.
-
-You can optionally setup Prometheus and Grafana to get some metrics from the keeper.
-
-Prometheus is a pull-based instrumentation system. We must run a separate Prometheus server to scrape the metrics and upload them to a remote endpoint. See [`prometheus/`](prometheus/) for more.
 
 ## Deployment notes
 
@@ -104,7 +91,3 @@ We use github actions for continuous deployments. See `/.github/workflows/deploy
 - Merge/Push to branch `master` will trigger a production release and start the keeper on `ovm-mainnet`
 
 To set this up as a fork we need to create github secrets for all required environment variables
-
-## Future improvements
-
-- Currently we only have unit tests. Manual integrations tests can be run with the Futures interact CLI, but ideally we should add some proper integration tests.
