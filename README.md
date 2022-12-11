@@ -28,7 +28,7 @@ Variables for configuration are defined as environment variables. During develop
 | `FROM_BLOCK`            | No       | Default block to index from                       |
 | `RUN_EVERY_X_BLOCK`     | No       | Used to skip blocks (`1` to not skip)             |
 
-_For an example `.env` see `.env.example`. All input variables are validated (see `./src/config.ts` for more details)._
+_For an example `.env` see `.env.example`. All input variables are validated (see `./src/config.ts` for more details). Speak with another developer for `.env` values._ 
 
 ## Usage
 
@@ -59,7 +59,7 @@ npm i
 npm run dev
 ```
 
-_**NOTE:** See configuration section before attempting to run locally._
+_See configuration section above before attempting to run locally._
 
 ### Local Node
 
