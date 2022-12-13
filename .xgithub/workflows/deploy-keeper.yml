@@ -4,7 +4,7 @@ on:
     branches: [master, develop]
 jobs:
   deploy:
-    runs-on: ubuntu-latest  
+    runs-on: ubuntu-latest
     # Ensure it only runs on master and develop, the branches array above is using pattern matching
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop'
     steps:
@@ -14,19 +14,18 @@ jobs:
         with:
           key: ${{ secrets.SSH_KEY }}
           known_hosts: ${{ secrets.KNOWN_HOSTS }}
-      
+
       - name: Checkout
         uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846 # pin@v2
 
       - name: Targeting branch
         run: echo "$GITHUB_REF_NAME"
-     
+
       - name: Create .env file
         run: |
           touch .env
           echo ETH_HDWALLET_MNEMONIC=${{ secrets.ETH_HDWALLET_MNEMONIC }} >> .env
           echo PROVIDER_URL=https://optimism-mainnet.infura.io/v3/${{ secrets.INFURA_PROJECT_ID }} >> .env
-          echo METRIC_SERVER_PORT=8085 >> .env
           echo NETWORK=mainnet-ovm >> .env
           echo AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }} >> .env
           echo AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }} >> .env
@@ -34,27 +33,12 @@ jobs:
           echo FROM_BLOCK=4552552 >> .env  # mainnet deployment block
           echo RUN_EVERY_X_BLOCK=3 >> .env
         if: github.ref == 'refs/heads/master'
-      
-      - name: Create prometheus .env file
-        run: |
-          cd prometheus
-          touch .env
-          echo PROM_ENDPOINT_TO_SCRAPE=host.docker.internal:8085 >> .env
-          echo PROM_JOB_NAME=keeper-mainnet-ovm >> .env
-          echo PROM_PORT=9091 >> .env
-          echo PROM_HTTP_PASSWORD=${{ secrets.PROM_HTTP_PASSWORD }} >> .env
-          echo PROM_STAGING_PORT=9090 >> .env
-          echo PROM_STAGING_JOB_NAME=keeper-goerli-ovm >> .env
-          echo PROM_STAGING_ENDPOINT_TO_SCRAPE=host.docker.internal:8084 >> .env
-
-        if: github.ref == 'refs/heads/master'
 
       - name: Create .env.staging file
         run: |
           touch .env.staging
           echo ETH_HDWALLET_MNEMONIC=${{ secrets.ETH_HDWALLET_MNEMONIC }} >> .env.staging
           echo PROVIDER_URL=https://optimism-goerli.infura.io/v3/${{ secrets.INFURA_PROJECT_ID }} >> .env.staging
-          echo METRIC_SERVER_PORT=8084 >> .env.staging
           echo NETWORK=goerli-ovm >> .env.staging
           echo AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }} >> .env.staging
           echo AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }} >> .env.staging

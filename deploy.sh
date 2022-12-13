@@ -15,9 +15,9 @@ BRANCH=${3:-"develop"}
 
 if [ "$BRANCH" = "master" ]; then
     ENVIRONMENT="production"
-    FOLDER_NAME="futures-keepers"
+    FOLDER_NAME="perps-keepers"
 else
-    FOLDER_NAME="futures-keepers-staging"
+    FOLDER_NAME="perps-keepers-staging"
     ENVIRONMENT="staging"
 fi
 
@@ -42,13 +42,4 @@ if [ "$ENVIRONMENT" = "production" ]; then
 else
     echo "Starting goerli keeper"
     ssh "$USER_AT_IP" "cd $FOLDER_NAME;npm run start-goerli"
-fi
-
-if [ "$ENVIRONMENT" = "production" ]; then
-    echo "Starting prometheus scraper"
-    ssh "$USER_AT_IP" "cd $FOLDER_NAME/prometheus; docker-compose --env-file ./.env up -d"
-else
-    echo "ENVIRONMENT is $ENVIRONMENT, skipping prometheus and removing prometheus code"
-    ssh "$USER_AT_IP" "cd $FOLDER_NAME; rm -r prometheus"
-
 fi
