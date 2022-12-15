@@ -59,11 +59,11 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       const { account } = args;
       switch (event) {
         case PerpsEvent.DelayedOrderSubmitted: {
-          const { account, targetRoundId, executableAtTime, isOffchain } = args;
+          const { targetRoundId, executableAtTime, isOffchain } = args;
 
           // TODO: Move this to the top of the for loop after DelayedOrderRemoved has isOffchain.
           if (!isOffchain) {
-            this.logger.info(`Order is not off-chain, skipping`);
+            this.logger.info(`Order is not off-chain '${account}', skipping`);
             break;
           }
 
@@ -106,9 +106,19 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
     await this.updateIndex(events);
   }
 
-  private async executeOrder(account: string): Promise<void> {
-    if (this.orders[account].executionFailures > this.maxExecAttempts) {
+  private async executeOrder(
+    order: DelayedOrder,
+    isOrderStale: (order: DelayedOrder) => boolean
+  ): Promise<void> {
+    const { account } = order;
+    if (order.executionFailures > this.maxExecAttempts) {
       this.logger.info(`Order execution exceeded max attempts '${account}'`);
+      delete this.orders[account];
+      return;
+    }
+
+    if (isOrderStale(order)) {
+      this.logger.info(`Order is stale (past maxAge) can only be cancelled '${account}'`);
       delete this.orders[account];
       return;
     }
@@ -162,14 +172,13 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       return;
     }
 
-    const { minAge } = await this.getOffchainMinMaxAge();
+    const { minAge, maxAge } = await this.getOffchainMinMaxAge();
     const block = await this.provider.getBlock(await this.provider.getBlockNumber());
 
     // Filter out orders that may be ready to execute.
+    const now = BigNumber.from(block.timestamp);
     const executableOrders = orders.filter(({ intentionTime }) =>
-      BigNumber.from(block.timestamp)
-        .sub(intentionTime)
-        .gt(minAge)
+      now.sub(intentionTime).gt(minAge)
     );
 
     // No orders. Move on.
@@ -178,12 +187,14 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       return;
     }
 
-    this.logger.info(`Found '${executableOrders.length}' order(s) that can be executed`);
+    const isOrderStale = (order: DelayedOrder): boolean =>
+      now.gt(BigNumber.from(order.intentionTime).add(maxAge));
 
+    this.logger.info(`Found '${executableOrders.length}' order(s) that can be executed`);
     for (const batch of chunk(executableOrders, this.MAX_BATCH_SIZE)) {
       this.logger.info(`Running keeper batch with '${batch.length}' orders(s) to keep`);
-      const batches = batch.map(({ account }) =>
-        this.execAsyncKeeperCallback(account, () => this.executeOrder(account))
+      const batches = batch.map(order =>
+        this.execAsyncKeeperCallback(order.account, () => this.executeOrder(order, isOrderStale))
       );
       await Promise.all(batches);
       await this.delay(this.BATCH_WAIT_TIME);

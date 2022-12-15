@@ -159,7 +159,9 @@ export class LiquidationKeeper extends Keeper {
         utils.formatUnits((await this.market.liquidationPrice(account)).price)
       );
       this.positions[account].liqPriceUpdatedTimestamp = this.blockTipTimestamp;
-      this.logger.info(`Cannot liquidate. Updated liqPrice ${this.positions[account].liqPrice}`);
+      this.logger.info(
+        `Cannot liquidate '${account}' - liqPrice=${this.positions[account].liqPrice}`
+      );
       return;
     }
 

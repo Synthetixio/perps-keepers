@@ -100,6 +100,8 @@ export class DelayedOrdersKeeper extends Keeper {
       return;
     }
 
+    // TODO: Remove DelayedOrders that cannot be executed (and only be cancelled).
+
     try {
       this.logger.info(`Begin executeDelayedOrder(${account})`);
       const tx = await this.market.executeDelayedOrder(account);
@@ -129,7 +131,7 @@ export class DelayedOrdersKeeper extends Keeper {
 
     // No orders. Move on.
     if (executableOrders.length === 0) {
-      this.logger.info(`No orders ready... skipping`);
+      this.logger.info(`No delayed orders ready... skipping`);
       return;
     }
 
