@@ -57,7 +57,7 @@ export class Keeper {
     const receipt = await tx.wait(1);
     const { blockNumber, status, transactionHash, gasUsed } = receipt;
     this.logger.info(
-      `${transactionHash}.wait() completed on block=${blockNumber} status=${status} gas=${gasUsed}`
+      `tx.wait(${transactionHash}) completed on block=${blockNumber} status=${status} gas=${gasUsed}`
     );
   }
 

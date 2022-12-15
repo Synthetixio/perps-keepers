@@ -11,6 +11,9 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
   private orders: Record<string, DelayedOrder> = {};
   private pythConnection: EvmPriceServiceConnection;
 
+  private readonly PYTH_MAX_TIMEOUT = 3000;
+  private readonly PYTH_MAX_RETRIES = 5;
+
   private readonly EVENTS_OF_INTEREST: PerpsEvent[] = [
     PerpsEvent.DelayedOrderSubmitted,
     PerpsEvent.DelayedOrderRemoved,
@@ -31,7 +34,10 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
   ) {
     super('DelayedOffchainOrdersKeeper', market, baseAsset, signer, provider, network);
 
-    this.pythConnection = new EvmPriceServiceConnection(offchainEndpoint);
+    this.pythConnection = new EvmPriceServiceConnection(offchainEndpoint, {
+      httpRetries: this.PYTH_MAX_RETRIES,
+      timeout: this.PYTH_MAX_TIMEOUT,
+    });
   }
 
   async updateIndex(events: Event[]): Promise<void> {
@@ -107,14 +113,15 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       return;
     }
 
-    // Grab Pyth offchain data to sent with the executeOffchainDelayedOrder call.
-    const priceUpdateData = await this.pythConnection.getPriceFeedsUpdateData([
-      this.offchainPriceFeedId,
-    ]);
-
-    const updateFee = await this.pythContract.getUpdateFee(priceUpdateData);
-
     try {
+      this.logger.info(`Fetching Pyth off-chain price data for feed '${this.offchainPriceFeedId}'`);
+
+      // Grab Pyth offchain data to send with the `executeOffchainDelayedOrder` call.
+      const priceUpdateData = await this.pythConnection.getPriceFeedsUpdateData([
+        this.offchainPriceFeedId,
+      ]);
+      const updateFee = await this.pythContract.getUpdateFee(priceUpdateData);
+
       this.logger.info(
         `Begin executeOffchainDelayedOrder(${account}) (fee: ${updateFee.toString()})`
       );
