@@ -1,19 +1,5 @@
-import Joi from 'joi';
+import { z } from 'zod';
 import { Network } from './typed';
-
-export interface KeeperConfig {
-  // Keeper config
-  fromBlock: number | 'latest';
-  providerUrl: string;
-  network: Network;
-  runEveryXBlock: number;
-  ethHdwalletMnemonic: string;
-
-  // AWS config
-  awsRegion?: string;
-  awsAccessKeyId?: string;
-  awsSecretAccessKey?: string;
-}
 
 export const DEFAULT_CONFIG = {
   fromBlock: 1,
@@ -21,27 +7,25 @@ export const DEFAULT_CONFIG = {
   runEveryXBlock: 1,
 };
 
-export const KeeperConfigSchema = Joi.object({
-  // Keeper config
-  fromBlock: Joi.alternatives(Joi.string().valid('latest'), Joi.number().positive())
-    .default(DEFAULT_CONFIG.fromBlock)
-    .required(),
-  providerUrl: Joi.string().required(),
-  network: Joi.string()
-    .valid(...Object.values(Network))
-    .default(DEFAULT_CONFIG.network)
-    .required(),
-  runEveryXBlock: Joi.number()
+export const KeeperConfigSchema = z.object({
+  fromBlock: z.coerce
+    .number()
     .positive()
-    .default(DEFAULT_CONFIG.runEveryXBlock)
-    .required(),
-  ethHdwalletMnemonic: Joi.string().required(),
-
-  // AWS config
-  awsRegion: Joi.string(),
-  awsAccessKeyId: Joi.string(),
-  awsSecretAccessKey: Joi.string(),
+    .or(z.literal('latest'))
+    .default(DEFAULT_CONFIG.fromBlock),
+  providerUrl: z.string().min(1),
+  network: z.nativeEnum(Network).default(DEFAULT_CONFIG.network),
+  runEveryXBlock: z.coerce
+    .number()
+    .positive()
+    .default(DEFAULT_CONFIG.runEveryXBlock),
+  ethHdwalletMnemonic: z.string().min(1),
+  awsRegion: z.string().optional(),
+  awsAccessKeyId: z.string().optional(),
+  awsSecretAccessKey: z.string().optional(),
 });
+
+export type KeeperConfig = z.infer<typeof KeeperConfigSchema>;
 
 let _config: KeeperConfig | undefined;
 
@@ -50,7 +34,7 @@ export const getConfig = (force = false): KeeperConfig => {
     return _config;
   }
 
-  const { value, error } = KeeperConfigSchema.validate({
+  const result = KeeperConfigSchema.safeParse({
     fromBlock: process.env.FROM_BLOCK,
     providerUrl: process.env.PROVIDER_URL,
     network: process.env.NETWORK,
@@ -62,10 +46,11 @@ export const getConfig = (force = false): KeeperConfig => {
     awsAccessKeyId: process.env.AWS_ACCESS_KEY,
     awsSecretAccessKey: process.env.AWS_SECRET_KEY,
   });
-  if (error) {
-    throw error;
+
+  if (!result.success) {
+    throw result.error;
   }
 
-  _config = value;
-  return value;
+  _config = result.data;
+  return _config;
 };
