@@ -44,7 +44,7 @@ jobs:
           echo AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }} >> .env.staging
           echo AWS_REGION=${{ secrets.AWS_REGION }} >> .env.staging
           echo FROM_BLOCK=38123 >> .env.staging  # goerli deployment block
-          echo RUN_EVERY_X_BLOCK=10 >> .env.staging
+          echo RUN_EVERY_X_BLOCK=5 >> .env.staging
         if: github.ref == 'refs/heads/develop'
 
       - name: Deploy
