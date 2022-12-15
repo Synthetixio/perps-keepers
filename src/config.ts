@@ -5,6 +5,7 @@ export const DEFAULT_CONFIG = {
   fromBlock: 1,
   network: Network.GOERLI_OVM,
   runEveryXBlock: 1,
+  maxOrderExecAttempts: 10,
 };
 
 export const KeeperConfigSchema = z.object({
@@ -20,6 +21,11 @@ export const KeeperConfigSchema = z.object({
     .positive()
     .default(DEFAULT_CONFIG.runEveryXBlock),
   ethHdwalletMnemonic: z.string().min(1),
+  maxOrderExecAttempts: z.coerce
+    .number()
+    .min(1)
+    .max(1024)
+    .default(DEFAULT_CONFIG.maxOrderExecAttempts),
   awsRegion: z.string().optional(),
   awsAccessKeyId: z.string().optional(),
   awsSecretAccessKey: z.string().optional(),
@@ -40,6 +46,7 @@ export const getConfig = (force = false): KeeperConfig => {
     network: process.env.NETWORK,
     runEveryXBlock: process.env.RUN_EVERY_X_BLOCK,
     ethHdwalletMnemonic: process.env.ETH_HDWALLET_MNEMONIC,
+    maxOrderExecAttempts: process.env.MAX_ORDER_EXEC_ATTEMPTS,
 
     // This should really not exist? If deployed to AWS, VM should be IAM configured.
     awsRegion: process.env.AWS_REGION,
