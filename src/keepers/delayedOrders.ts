@@ -9,8 +9,6 @@ export class DelayedOrdersKeeper extends Keeper {
   // The index
   private orders: Record<string, DelayedOrder> = {};
 
-  private readonly MAX_EXECUTION_ATTEMPTS = 50;
-
   private readonly EVENTS_OF_INTEREST: PerpsEvent[] = [
     PerpsEvent.DelayedOrderSubmitted,
     PerpsEvent.DelayedOrderRemoved,
@@ -22,7 +20,8 @@ export class DelayedOrdersKeeper extends Keeper {
     baseAsset: string,
     signer: Wallet,
     provider: providers.BaseProvider,
-    network: string
+    network: string,
+    private readonly maxExecAttempts: number
   ) {
     super('DelayedOrdersKeeper', market, baseAsset, signer, provider, network);
   }
@@ -95,7 +94,7 @@ export class DelayedOrdersKeeper extends Keeper {
     //  - The order missed execution window. Cancellation is failing (e.g. paused)
     //  - We think the order can be executed/cancelled but the order does not exist
 
-    if (this.orders[account].executionFailures > this.MAX_EXECUTION_ATTEMPTS) {
+    if (this.orders[account].executionFailures > this.maxExecAttempts) {
       this.logger.info(`Order execution exceeded max attempts '${account}'`);
       delete this.orders[account];
       return;

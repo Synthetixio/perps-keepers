@@ -55,7 +55,8 @@ export async function run(config: KeeperConfig) {
         baseAsset,
         signer,
         provider,
-        config.network
+        config.network,
+        config.maxOrderExecAttempts
       ),
     ]);
 
@@ -71,7 +72,8 @@ export async function run(config: KeeperConfig) {
           baseAsset,
           signer,
           provider,
-          config.network
+          config.network,
+          config.maxOrderExecAttempts
         ),
       ]);
     } else {

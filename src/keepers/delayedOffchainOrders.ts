@@ -11,8 +11,6 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
   private orders: Record<string, DelayedOrder> = {};
   private pythConnection: EvmPriceServiceConnection;
 
-  private readonly MAX_EXECUTION_ATTEMPTS = 10;
-
   private readonly EVENTS_OF_INTEREST: PerpsEvent[] = [
     PerpsEvent.DelayedOrderSubmitted,
     PerpsEvent.DelayedOrderRemoved,
@@ -28,7 +26,8 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
     baseAsset: string,
     signer: Wallet,
     provider: providers.BaseProvider,
-    network: string
+    network: string,
+    private readonly maxExecAttempts: number
   ) {
     super('DelayedOffchainOrdersKeeper', market, baseAsset, signer, provider, network);
 
@@ -102,7 +101,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
   }
 
   private async executeOrder(account: string): Promise<void> {
-    if (this.orders[account].executionFailures > this.MAX_EXECUTION_ATTEMPTS) {
+    if (this.orders[account].executionFailures > this.maxExecAttempts) {
       this.logger.info(`Order execution exceeded max attempts '${account}'`);
       delete this.orders[account];
       return;
