@@ -190,7 +190,9 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
     const isOrderStale = (order: DelayedOrder): boolean =>
       now.gt(BigNumber.from(order.intentionTime).add(maxAge));
 
-    this.logger.info(`Found '${executableOrders.length}' order(s) that can be executed`);
+    this.logger.info(
+      `Found ${executableOrders.length}/${orders.length} off-chain order(s) that can be executed`
+    );
     for (const batch of chunk(executableOrders, this.MAX_BATCH_SIZE)) {
       this.logger.info(`Running keeper batch with '${batch.length}' orders(s) to keep`);
       const batches = batch.map(order =>

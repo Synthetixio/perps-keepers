@@ -124,7 +124,8 @@ export class DelayedOrdersKeeper extends Keeper {
     const block = await this.provider.getBlock(await this.provider.getBlockNumber());
 
     // Filter out orders that may be ready to execute.
-    const executableOrders = Object.values(this.orders).filter(
+    const orders = Object.values(this.orders);
+    const executableOrders = orders.filter(
       ({ executableAtTime, targetRoundId }) =>
         currentRoundId.gte(targetRoundId) || BigNumber.from(block.timestamp).gte(executableAtTime)
     );
@@ -135,7 +136,9 @@ export class DelayedOrdersKeeper extends Keeper {
       return;
     }
 
-    this.logger.info(`Found '${executableOrders.length}' order(s) that can be executed`);
+    this.logger.info(
+      `Found ${executableOrders.length}/${orders.length} order(s) that can be executed`
+    );
 
     for (const batch of chunk(executableOrders, this.MAX_BATCH_SIZE)) {
       this.logger.info(`Running keeper batch with '${batch.length}' orders(s) to keep`);

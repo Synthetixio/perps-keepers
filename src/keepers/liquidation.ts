@@ -188,7 +188,7 @@ export class LiquidationKeeper extends Keeper {
       return;
     }
 
-    this.logger.info(`Found ${positionCount} position(s) to check`);
+    this.logger.info(`Found ${positionCount}/${openPositions.length} open position(s) to check`);
     for (let group of positionGroups) {
       if (!group.length) {
         continue;
