@@ -23,14 +23,17 @@ export class Keeper {
     this.logger.info(`Market deployed at '${market.address}'`);
   }
 
+  /* In-place update the keeper's index based on block, event data and market asset price. */
   async updateIndex(events: Event[], block?: providers.Block, assetPrice?: number): Promise<void> {
     new Error('NotImplementedError');
   }
 
+  /* Rebuild the in-memory context (e.g. tracking positions) and is called once at startup. */
   async index(fromBlock: number | string): Promise<void> {
     new Error('NotImplementedError');
   }
 
+  /* Executes this keeper. It's up to the keeper to decide the context and how frequently to operate. */
   async execute(): Promise<void> {
     new Error('NotImplementedError');
   }
