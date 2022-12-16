@@ -19,7 +19,7 @@ export const getSynthetixPerpsContracts = async (
 ): Promise<KeeperContracts> => {
   // TODO: Use the Synthetix npm package to derive the ABI and address once merged and released.
   const futuresMarketManagerAddress = {
-    [Network.GOERLI_OVM]: '0xC8440d8e46D3C06beD106C6f2F918F30182bEb06',
+    [Network.GOERLI_OVM]: '0x1306e1F0eFdc84EDBE665cD9B5146C535B5B382A',
     [Network.MAINNET_OVM]: '',
   }[network];
   const marketManager = new Contract(
