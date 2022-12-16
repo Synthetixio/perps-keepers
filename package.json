@@ -12,7 +12,6 @@
     "build": "tsc && touch .env && cp .env build/ && cp .env.staging build/",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
-    "postinstall": "patch-package",
     "test": "jest",
     "check-types": "tsc --noEmit",
     "upgrade-synthetix": "npm i @synthetixio/contracts-interface@latest @synthetixio/wei@latest synthetix@latest"
@@ -65,7 +64,6 @@
     "eslint-plugin-standard": "4.0.0",
     "hardhat": "2.8.2",
     "jest": "27.4.3",
-    "patch-package": "6.4.7",
     "prettier": "1.19.1",
     "ts-jest": "27.1.1",
     "ts-node-dev": "1.1.8",
