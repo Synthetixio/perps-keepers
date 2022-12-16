@@ -1,7 +1,5 @@
 name: Update dependency
-
 on: workflow_dispatch
-
 jobs:
   update_version:
     name: Update contracts-interface version
