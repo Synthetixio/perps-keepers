@@ -14,6 +14,12 @@
         },
         {
           "indexed": false,
+          "internalType": "bool",
+          "name": "isOffchain",
+          "type": "bool"
+        },
+        {
+          "indexed": false,
           "internalType": "uint256",
           "name": "currentRoundId",
           "type": "uint256"
@@ -82,6 +88,12 @@
         {
           "indexed": false,
           "internalType": "uint256",
+          "name": "intentionTime",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
           "name": "executableAtTime",
           "type": "uint256"
         },
@@ -143,6 +155,25 @@
       "inputs": [
         {
           "indexed": true,
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "int256",
+          "name": "marginDelta",
+          "type": "int256"
+        }
+      ],
+      "name": "MarginTransferred",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
           "internalType": "bytes32",
           "name": "trackingCode",
           "type": "bytes32"
@@ -172,26 +203,7 @@
           "type": "uint256"
         }
       ],
-      "name": "FuturesTracking",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "account",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "int256",
-          "name": "marginDelta",
-          "type": "int256"
-        }
-      ],
-      "name": "MarginTransferred",
+      "name": "PerpsTracking",
       "type": "event"
     },
     {
@@ -487,7 +499,7 @@
       "outputs": [
         {
           "internalType": "int256",
-          "name": "fundingRateVelocity",
+          "name": "fundingVelocity",
           "type": "int256"
         }
       ],
@@ -874,6 +886,11 @@
           "internalType": "int256",
           "name": "sizeDelta",
           "type": "int256"
+        },
+        {
+          "internalType": "enum IPerpsV2MarketBaseTypes.OrderType",
+          "name": "orderType",
+          "type": "uint8"
         }
       ],
       "name": "orderFee",
@@ -953,6 +970,11 @@
           "internalType": "uint256",
           "name": "tradePrice",
           "type": "uint256"
+        },
+        {
+          "internalType": "enum IPerpsV2MarketBaseTypes.OrderType",
+          "name": "orderType",
+          "type": "uint8"
         },
         {
           "internalType": "address",
