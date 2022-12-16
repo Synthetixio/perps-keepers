@@ -20,15 +20,16 @@ This project is a [fork of futures-keepers](https://github.com/Synthetixio/futur
 
 Variables for configuration are defined as environment variables. During development they are stored in an `.env.staging` file at the project root then loaded via [dotenv](https://www.npmjs.com/package/dotenv). The contents are as follows:
 
-| Variable                | Required | Description                                       |
-| ----------------------- | -------- | ------------------------------------------------- |
-| `ETH_HDWALLET_MNEMONIC` | Yes      | Mnemonic used to unlock the keeper's wallet       |
-| `PROVIDER_URL`          | Yes      | RPC provider URL                                  |
-| `NETWORK`               | No       | Network to keep against (goerli-ovm, mainnet-ovm) |
-| `FROM_BLOCK`            | No       | Default block to index from                       |
-| `RUN_EVERY_X_BLOCK`     | No       | Used to skip blocks (`1` to not skip)             |
+| Variable                  | Required | Description                                                       | Default    |
+| ------------------------- | -------- | ----------------------------------------------------------------- | ---------- |
+| `ETH_HDWALLET_MNEMONIC`   | Yes      | Mnemonic used to unlock the keeper's wallet                       |            |
+| `PROVIDER_URL`            | Yes      | RPC provider URL                                                  |            |
+| `NETWORK`                 | No       | Network to keep against (goerli-ovm, mainnet-ovm)                 | goerli-ovm |
+| `FROM_BLOCK`              | No       | Default block to index from                                       | 1          |
+| `RUN_EVERY_X_BLOCK`       | No       | Used to skip blocks (`1` to not skip)                             | 1          |
+| `MAX_ORDER_EXEC_ATTEMPTS` | No       | Maximum number of order execution attempst to try before ignoring | 10         |
 
-_For an example `.env` see `.env.example`. All input variables are validated (see `./src/config.ts` for more details). Speak with another developer for `.env` values._ 
+_For an example `.env` see `.env.example`. All input variables are validated, see `./src/config.ts` for more details (including defaults). Speak with another developer for `.env` values._
 
 ## Usage
 
