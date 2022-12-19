@@ -65,21 +65,20 @@ _See configuration section above before attempting to run locally._
 
 ### Local Node
 
-1. Start a local node
+```bash
+# Start your local node
+hardhat node --fork https://optimism-goerli.infura.io/v3/<infura key>`
+```
 
-   ```bash
-   hardhat node --fork https://optimism-goerli.infura.io/v3/<infura key>`
-   ```
+```bash
+# Fund one of the test wallets.
+git clone git@github.com:Synthetixio/synthetix.git
 
-1. Fund one of the test wallets.
+npm i
+npx hardhat fund-local-accounts --provider-url http://127.0.0.1:8545/ --target-network goerli-ovm --deployment-path ./publish/deployed/goerli-ovm/ --use-ovm --private-key $GOERLI_OVM_PERPS_DEPLOYER_PRIVATE_KEY --account 0x8626f6940e2eb28930efb4cef49b2d1f2c9c1199
 
-   ```bash
-   git clone git@github.com:Synthetixio/synthetix.git
-   npm i
-   npx hardhat fund-local-accounts --provider-url http://127.0.0.1:8545/ --target-network goerli-ovm --deployment-path ./publish/deployed/goerli-ovm/ --use-ovm --private-key $GOERLI_OVM_FUTURES_DEPLOYER_PRIVATE_KEY --account 0x8626f6940e2eb28930efb4cef49b2d1f2c9c1199
-
-   # 0x8626f6940e2eb28930efb4cef49b2d1f2c9c1199` is one of the default accounts from hardhat node --fork
-   ```
+# 0x8626f6940e2eb28930efb4cef49b2d1f2c9c1199` is one of the default accounts from hardhat node --fork
+```
 
 ### Deployment
 
@@ -89,7 +88,11 @@ For example, spinning up a Kubernentes cluster and relying on k8's `deployment` 
 
 ### Metrics & Alerts
 
-TODO
+```
+METRICS_ENABLED=1
+```
+
+`perps-keepers` uses basic custom CloudWatch metrics throughout the application to track the health of the keeper. These metrics and then be used to configure alerts for notifications. Metrics are disabled by default. They require AWS credentials to be defined and `METRICS_ENABLED=1` to be set. You can find the list of all available custom metric in `./src/metrics.ts`.
 
 ### CI/CD
 
