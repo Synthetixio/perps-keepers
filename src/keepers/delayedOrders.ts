@@ -103,12 +103,14 @@ export class DelayedOrdersKeeper extends Keeper {
     //  - The order missed execution window. Cancellation is failing (e.g. paused)
     //  - We think the order can be executed/cancelled but the order does not exist
 
-    if (!this.orders[account]) {
+    const order = this.orders[account];
+
+    if (!order) {
       this.logger.info(`This account does not have any tracked orders '${account}'`);
       return;
     }
 
-    if (this.orders[account].executionFailures > this.maxExecAttempts) {
+    if (order.executionFailures > this.maxExecAttempts) {
       this.logger.info(`Order execution exceeded max attempts '${account}'`);
       delete this.orders[account];
       return;
@@ -124,8 +126,7 @@ export class DelayedOrdersKeeper extends Keeper {
       await this.waitAndLogTx(tx);
       delete this.orders[account];
     } catch (err) {
-      this.logger.error(`Error in executeOrder. Incr execFailures (${account})- err=${err}`);
-      this.orders[account].executionFailures += 1;
+      order.executionFailures += 1;
       throw err;
     }
   }

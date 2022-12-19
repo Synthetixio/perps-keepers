@@ -50,7 +50,6 @@ export class Keeper {
       await cb();
     } catch (err) {
       this.logger.error(`Error (${id})\n${err}`);
-      this.logger.error((err as any).stack);
     }
     this.logger.debug(`Keeper task complete (${id})`);
 

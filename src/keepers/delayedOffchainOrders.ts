@@ -119,10 +119,18 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
   }
 
   private async executeOrder(
-    order: DelayedOrder,
+    account: string,
     isOrderStale: (order: DelayedOrder) => boolean
   ): Promise<void> {
-    const { account } = order;
+    const order = this.orders[account];
+
+    // NOTE: We pass `account` instead of `order` so that each sequential order execution can
+    // check if said order still exists within `this.orders`. `delete a[b]` only removes the
+    // value of key `b` from object `a`, the value (in this case order) still exists.
+    if (!order) {
+      this.logger.info(`This account does not have any tracked orders '${account}'`);
+      return;
+    }
 
     if (order.executionFailures > this.maxExecAttempts) {
       this.logger.info(`Order execution exceeded max attempts '${account}'`);
@@ -156,10 +164,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       await this.waitAndLogTx(tx);
       delete this.orders[account];
     } catch (err) {
-      if (this.orders[account]) {
-        this.logger.error(`Incrementing order exec failures for '${account}'`);
-        this.orders[account].executionFailures += 1;
-      }
+      order.executionFailures += 1;
       throw err;
     }
   }
@@ -211,8 +216,8 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
     );
     for (const batch of chunk(executableOrders, this.MAX_BATCH_SIZE)) {
       this.logger.info(`Running keeper batch with '${batch.length}' orders(s) to keep`);
-      const batches = batch.map(order =>
-        this.execAsyncKeeperCallback(order.account, () => this.executeOrder(order, isOrderStale))
+      const batches = batch.map(({ account }) =>
+        this.execAsyncKeeperCallback(account, () => this.executeOrder(account, isOrderStale))
       );
       await Promise.all(batches);
       this.logger.info(`Batch processed with '${batch.length}' orders(s) to kept`);
