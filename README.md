@@ -26,7 +26,7 @@ Variables for configuration are defined as environment variables. During develop
 | `PROVIDER_URL`            | Yes      | RPC provider URL                                                  |            |
 | `NETWORK`                 | No       | Network to keep against (goerli-ovm, mainnet-ovm)                 | goerli-ovm |
 | `FROM_BLOCK`              | No       | Default block to index from                                       | 1          |
-| `RUN_EVERY_X_BLOCK`       | No       | Used to skip blocks (`1` to not skip)                             | 1          |
+| `RUN_EVERY_X_BLOCK`       | No       | Used to skip blocks (`1` to not skip)                             | 5          |
 | `MAX_ORDER_EXEC_ATTEMPTS` | No       | Maximum number of order execution attempst to try before ignoring | 10         |
 
 _For an example `.env` see `.env.example`. All input variables are validated, see `./src/config.ts` for more details (including defaults). Speak with another developer for `.env` values._

@@ -4,7 +4,7 @@ import { Network } from './typed';
 export const DEFAULT_CONFIG = {
   fromBlock: 1,
   network: Network.GOERLI_OVM,
-  runEveryXBlock: 1,
+  runEveryXBlock: 5,
   maxOrderExecAttempts: 10,
 };
 
