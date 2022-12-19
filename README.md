@@ -21,7 +21,7 @@ This project is a [fork of futures-keepers](https://github.com/Synthetixio/futur
 Variables for configuration are defined as environment variables. During development they are stored in an `.env.staging` file at the project root then loaded via [dotenv](https://www.npmjs.com/package/dotenv). The contents are as follows:
 
 | Variable                  | Required | Description                                                         | Default    |
-| ------------------------- | -------- | ------------------------------------------------------------------- | ---------- |
+| :------------------------ | :------- | :------------------------------------------------------------------ | :--------- |
 | `ETH_HDWALLET_MNEMONIC`   | Yes      | Mnemonic used to unlock the keeper's wallet                         |            |
 | `PROVIDER_URL`            | Yes      | RPC provider URL                                                    |            |
 | `NETWORK`                 | No       | Network to keep against (goerli-ovm, mainnet-ovm)                   | goerli-ovm |
