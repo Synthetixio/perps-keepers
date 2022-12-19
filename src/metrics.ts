@@ -48,7 +48,7 @@ export class Metrics {
   }
 
   /* A simple abstracted 'putMetric' call to push gauge/count style metrics to CW. */
-  async send(name: string, value: number): Promise<void> {
+  async send(name: Metric, value: number): Promise<void> {
     if (!this.cwClient || !this.isEnabled) {
       return;
     }
@@ -62,5 +62,10 @@ export class Metrics {
     };
     const command = new PutMetricDataCommand(input);
     await this.cwClient.send(command);
+  }
+
+  /* Adds 1 to the `name` metric. Also commonly known as `increment`. */
+  async count(name: Metric): Promise<void> {
+    return this.send(name, 1);
   }
 }
