@@ -43,14 +43,19 @@ export class DelayedOrdersKeeper extends Keeper {
       const { account } = args;
       switch (event) {
         case PerpsEvent.DelayedOrderSubmitted: {
-          const { targetRoundId, executableAtTime } = args;
+          const { targetRoundId, intentionTime, executableAtTime } = args;
           this.logger.info(`New order submitted. Adding to index '${account}'`);
 
-          // TODO: Remove this after we add `intentionTime` to DelayedOrderXXX events.
-          if (!blockCache[blockNumber]) {
-            blockCache[blockNumber] = await evt.getBlock();
+          // see: `delayedOffchainOrders`.
+          let timestamp: number;
+          if (!intentionTime) {
+            if (!blockCache[blockNumber]) {
+              blockCache[blockNumber] = await evt.getBlock();
+            }
+            timestamp = blockCache[blockNumber].timestamp;
+          } else {
+            timestamp = intentionTime.toNumber();
           }
-          const { timestamp } = blockCache[blockNumber];
 
           this.orders[account] = {
             targetRoundId: targetRoundId,

@@ -59,9 +59,8 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       const { account } = args;
       switch (event) {
         case PerpsEvent.DelayedOrderSubmitted: {
-          const { targetRoundId, executableAtTime, isOffchain } = args;
+          const { targetRoundId, executableAtTime, intentionTime, isOffchain } = args;
 
-          // TODO: Move this to the top of the for loop after DelayedOrderRemoved has isOffchain.
           if (!isOffchain) {
             this.logger.info(`Order is not off-chain '${account}', skipping`);
             break;
@@ -69,11 +68,20 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
 
           this.logger.info(`New order submitted. Adding to index '${account}'`);
 
-          // TODO: Remove this after we add `intentionTime` to DelayedOrderXXX events.
-          if (!blockCache[blockNumber]) {
-            blockCache[blockNumber] = await evt.getBlock();
+          // Note `intentionTime` may not exist depending on the FROM_BLOCK (particularly on testnet).
+          //
+          // The `intentionTime` property is always just `block.timestamp` so if `intentionTime` exists
+          // it will _always_ be the same as `evt.getBlock().timestamp`. Avoiding `getBlock` minimises
+          // startup time as it avoids one HTTP call out to the RPC provider.
+          let timestamp: number;
+          if (!intentionTime) {
+            if (!blockCache[blockNumber]) {
+              blockCache[blockNumber] = await evt.getBlock();
+            }
+            timestamp = blockCache[blockNumber].timestamp;
+          } else {
+            timestamp = intentionTime.toNumber();
           }
-          const { timestamp } = blockCache[blockNumber];
 
           this.orders[account] = {
             targetRoundId: targetRoundId,
