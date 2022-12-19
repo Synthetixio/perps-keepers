@@ -52,6 +52,7 @@ export class Distributor {
     const events = await getEvents(Object.values(PerpsEvent), this.market, {
       fromBlock: this.lastProcessedBlock ? this.lastProcessedBlock + 1 : blockNumber,
       toBlock: blockNumber,
+      logger: this.logger,
     });
     const block = await this.provider.getBlock(blockNumber);
     const assetPrice = parseFloat(utils.formatUnits((await this.market.assetPrice()).price));
@@ -85,7 +86,7 @@ export class Distributor {
       await this.indexKeepers();
       await this.executeKeepers();
 
-      this.logger.info('Listening for events...');
+      this.logger.info(`Listening for events (modBlocks=${this.runEveryXblock})...`);
 
       this.provider.on('block', async (blockNumber: number) => {
         if (blockNumber % this.runEveryXblock !== 0) {

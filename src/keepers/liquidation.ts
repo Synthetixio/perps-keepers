@@ -102,7 +102,11 @@ export class LiquidationKeeper extends Keeper {
     this.logger.info(`Rebuilding index from '${fromBlock}' to latest`);
 
     const toBlock = await this.provider.getBlockNumber();
-    const events = await getEvents(this.EVENTS_OF_INTEREST, this.market, { fromBlock, toBlock });
+    const events = await getEvents(this.EVENTS_OF_INTEREST, this.market, {
+      fromBlock,
+      toBlock,
+      logger: this.logger,
+    });
 
     await this.updateIndex(events);
   }

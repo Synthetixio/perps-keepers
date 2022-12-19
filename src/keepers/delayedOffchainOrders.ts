@@ -109,7 +109,11 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
     this.logger.info(`Rebuilding index from '${fromBlock}' to latest`);
 
     const toBlock = await this.provider.getBlockNumber();
-    const events = await getEvents(this.EVENTS_OF_INTEREST, this.market, { fromBlock, toBlock });
+    const events = await getEvents(this.EVENTS_OF_INTEREST, this.market, {
+      fromBlock,
+      toBlock,
+      logger: this.logger,
+    });
 
     await this.updateIndex(events);
   }
@@ -119,6 +123,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
     isOrderStale: (order: DelayedOrder) => boolean
   ): Promise<void> {
     const { account } = order;
+
     if (order.executionFailures > this.maxExecAttempts) {
       this.logger.info(`Order execution exceeded max attempts '${account}'`);
       delete this.orders[account];
@@ -151,7 +156,10 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       await this.waitAndLogTx(tx);
       delete this.orders[account];
     } catch (err) {
-      this.orders[account].executionFailures += 1;
+      if (this.orders[account]) {
+        this.logger.error(`Incrementing order exec failures for '${account}'`);
+        this.orders[account].executionFailures += 1;
+      }
       throw err;
     }
   }
@@ -207,6 +215,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
         this.execAsyncKeeperCallback(order.account, () => this.executeOrder(order, isOrderStale))
       );
       await Promise.all(batches);
+      this.logger.info(`Batch processed with '${batch.length}' orders(s) to kept`);
       await this.delay(this.BATCH_WAIT_TIME);
     }
   }
