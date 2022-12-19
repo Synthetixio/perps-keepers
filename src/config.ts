@@ -6,6 +6,7 @@ export const DEFAULT_CONFIG = {
   network: Network.GOERLI_OVM,
   runEveryXBlock: 5,
   maxOrderExecAttempts: 10,
+  isMetricsEnabled: false,
 };
 
 export const KeeperConfigSchema = z.object({
@@ -26,9 +27,12 @@ export const KeeperConfigSchema = z.object({
     .min(1)
     .max(1024)
     .default(DEFAULT_CONFIG.maxOrderExecAttempts),
-  awsRegion: z.string().optional(),
-  awsAccessKeyId: z.string().optional(),
-  awsSecretAccessKey: z.string().optional(),
+  isMetricsEnabled: z.coerce.boolean().default(DEFAULT_CONFIG.isMetricsEnabled),
+  aws: z.object({
+    region: z.string().optional(),
+    accessKeyId: z.string().optional(),
+    secretAccessKey: z.string().optional(),
+  }),
 });
 
 export type KeeperConfig = z.infer<typeof KeeperConfigSchema>;
@@ -47,11 +51,14 @@ export const getConfig = (force = false): KeeperConfig => {
     runEveryXBlock: process.env.RUN_EVERY_X_BLOCK,
     ethHdwalletMnemonic: process.env.ETH_HDWALLET_MNEMONIC,
     maxOrderExecAttempts: process.env.MAX_ORDER_EXEC_ATTEMPTS,
+    isMetricsEnabled: !!process.env.IS_METRICS_ENABLED,
 
     // This should really not exist? If deployed to AWS, VM should be IAM configured.
-    awsRegion: process.env.AWS_REGION,
-    awsAccessKeyId: process.env.AWS_ACCESS_KEY,
-    awsSecretAccessKey: process.env.AWS_SECRET_KEY,
+    aws: {
+      region: process.env.AWS_REGION,
+      accessKeyId: process.env.AWS_ACCESS_KEY,
+      secretAccessKey: process.env.AWS_SECRET_KEY,
+    },
   });
 
   if (!result.success) {

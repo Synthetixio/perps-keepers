@@ -20,11 +20,11 @@ export const createLogger = (label: string): winston.Logger => {
     transports: process.env.pm_id ? [] : [new transports.Console()],
   });
 
-  const { awsAccessKeyId, awsSecretAccessKey, awsRegion } = config;
+  const { accessKeyId, secretAccessKey, region } = config.aws;
 
   // Implicitly infer the environment and attach AWS CWL. This should really be in an environment
   // where we can log to stdout/err then have a log aggregator to push to some log service.
-  if (awsAccessKeyId && awsSecretAccessKey && awsRegion) {
+  if (accessKeyId && secretAccessKey && region) {
     const logGroupName =
       process.env.name === 'perps-keeper-goerli'
         ? 'perps-keeper-staging'
@@ -36,10 +36,10 @@ export const createLogger = (label: string): winston.Logger => {
         logStreamName,
         messageFormatter: ({ level, message }) => `${level.toUpperCase()} [${label}] ${message}`,
         awsOptions: {
-          region: awsRegion,
+          region,
           credentials: {
-            accessKeyId: awsAccessKeyId,
-            secretAccessKey: awsSecretAccessKey,
+            accessKeyId,
+            secretAccessKey,
           },
         },
       })

@@ -4,6 +4,7 @@ import { Keeper } from '.';
 import { getEvents } from './helpers';
 import { DelayedOrder, PerpsEvent } from '../typed';
 import { chunk } from 'lodash';
+import { Metrics } from '../metrics';
 
 export class DelayedOrdersKeeper extends Keeper {
   // The index
@@ -20,10 +21,11 @@ export class DelayedOrdersKeeper extends Keeper {
     baseAsset: string,
     signer: Wallet,
     provider: providers.BaseProvider,
+    metrics: Metrics,
     network: string,
     private readonly maxExecAttempts: number
   ) {
-    super('DelayedOrdersKeeper', market, baseAsset, signer, provider, network);
+    super('DelayedOrdersKeeper', market, baseAsset, signer, provider, metrics, network);
   }
 
   async updateIndex(events: Event[]): Promise<void> {

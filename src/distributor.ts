@@ -4,6 +4,7 @@ import { getEvents } from './keepers/helpers';
 import { Keeper } from './keepers';
 import { createLogger } from './logging';
 import { PerpsEvent } from './typed';
+import { Metrics } from './metrics';
 
 export class Distributor {
   private readonly logger: Logger;
@@ -17,6 +18,7 @@ export class Distributor {
     private readonly market: Contract,
     protected readonly baseAsset: string,
     private readonly provider: providers.BaseProvider,
+    private readonly metrics: Metrics,
     private readonly fromBlock: number | string,
     private readonly runEveryXblock: number
   ) {

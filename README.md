@@ -20,14 +20,15 @@ This project is a [fork of futures-keepers](https://github.com/Synthetixio/futur
 
 Variables for configuration are defined as environment variables. During development they are stored in an `.env.staging` file at the project root then loaded via [dotenv](https://www.npmjs.com/package/dotenv). The contents are as follows:
 
-| Variable                  | Required | Description                                                       | Default    |
-| ------------------------- | -------- | ----------------------------------------------------------------- | ---------- |
-| `ETH_HDWALLET_MNEMONIC`   | Yes      | Mnemonic used to unlock the keeper's wallet                       |            |
-| `PROVIDER_URL`            | Yes      | RPC provider URL                                                  |            |
-| `NETWORK`                 | No       | Network to keep against (goerli-ovm, mainnet-ovm)                 | goerli-ovm |
-| `FROM_BLOCK`              | No       | Default block to index from                                       | 1          |
-| `RUN_EVERY_X_BLOCK`       | No       | Used to skip blocks (`1` to not skip)                             | 5          |
-| `MAX_ORDER_EXEC_ATTEMPTS` | No       | Maximum number of order execution attempst to try before ignoring | 10         |
+| Variable                  | Required | Description                                                         | Default    |
+| ------------------------- | -------- | ------------------------------------------------------------------- | ---------- |
+| `ETH_HDWALLET_MNEMONIC`   | Yes      | Mnemonic used to unlock the keeper's wallet                         |            |
+| `PROVIDER_URL`            | Yes      | RPC provider URL                                                    |            |
+| `NETWORK`                 | No       | Network to keep against (goerli-ovm, mainnet-ovm)                   | goerli-ovm |
+| `FROM_BLOCK`              | No       | Default block to index from                                         | 1          |
+| `RUN_EVERY_X_BLOCK`       | No       | Used to skip blocks (`1` to not skip)                               | 5          |
+| `MAX_ORDER_EXEC_ATTEMPTS` | No       | Maximum number of order execution attempst to try before ignoring   | 10         |
+| `METRICS_ENABLED`         | No       | Whether metrics are enabled or disabled (1 = enabled, 0 = disabled) | 0          |
 
 _For an example `.env` see `.env.example`. All input variables are validated, see `./src/config.ts` for more details (including defaults). Speak with another developer for `.env` values._
 
@@ -85,6 +86,10 @@ _See configuration section above before attempting to run locally._
 Any host environment with NodeJS installed running a Unix based operating system can execute `perps-keepers`. It's recommended to use some external service tool to monitor the runtime health of your keeper instance for self-healing purposes.
 
 For example, spinning up a Kubernentes cluster and relying on k8's `deployment` group configuration, classical AWS AMIs in an ASG (auto-scaling) or even something as simple as `pm2`.
+
+### Metrics & Alerts
+
+TODO
 
 ### CI/CD
 

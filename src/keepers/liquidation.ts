@@ -5,6 +5,7 @@ import { chunk, flatten } from 'lodash';
 import { Keeper } from '.';
 import { getEvents, UNIT } from './helpers';
 import { PerpsEvent, Position } from '../typed';
+import { Metrics } from '../metrics';
 
 export class LiquidationKeeper extends Keeper {
   // Required for sorting position by proximity of liquidation price to current price
@@ -25,9 +26,10 @@ export class LiquidationKeeper extends Keeper {
     baseAsset: string,
     signer: Wallet,
     provider: providers.BaseProvider,
+    metrics: Metrics,
     network: string
   ) {
-    super('LiquidationKeeper', market, baseAsset, signer, provider, network);
+    super('LiquidationKeeper', market, baseAsset, signer, provider, metrics, network);
   }
 
   async updateIndex(events: Event[], block?: providers.Block, assetPrice?: number): Promise<void> {
@@ -169,13 +171,16 @@ export class LiquidationKeeper extends Keeper {
       return;
     }
 
-    this.logger.info(`Begin liquidatePosition(${account})`);
-    const tx: TransactionResponse = await this.market
-      .connect(this.signer)
-      .liquidatePosition(account);
-    this.logger.info(`Submitted liquidatePosition(${account}) [nonce=${tx.nonce}]`);
-
-    await this.waitAndLogTx(tx);
+    try {
+      this.logger.info(`Begin liquidatePosition(${account})`);
+      const tx: TransactionResponse = await this.market
+        .connect(this.signer)
+        .liquidatePosition(account);
+      this.logger.info(`Submitted liquidatePosition(${account}) [nonce=${tx.nonce}]`);
+      await this.waitAndLogTx(tx);
+    } catch (err) {
+      throw err;
+    }
   }
 
   async execute(): Promise<void> {

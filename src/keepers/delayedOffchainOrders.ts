@@ -5,7 +5,9 @@ import { getEvents } from './helpers';
 import { DelayedOrder, PerpsEvent } from '../typed';
 import { chunk } from 'lodash';
 import { EvmPriceServiceConnection } from '@pythnetwork/pyth-evm-js';
+import { Metrics } from '../metrics';
 
+// TODO: Consider refactoring DelayedOffchainOrders and DelayedOrders into a shared OrderKeeper.
 export class DelayedOffchainOrdersKeeper extends Keeper {
   // The index
   private orders: Record<string, DelayedOrder> = {};
@@ -29,10 +31,11 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
     baseAsset: string,
     signer: Wallet,
     provider: providers.BaseProvider,
+    metrics: Metrics,
     network: string,
     private readonly maxExecAttempts: number
   ) {
-    super('DelayedOffchainOrdersKeeper', market, baseAsset, signer, provider, network);
+    super('DelayedOffchainOrdersKeeper', market, baseAsset, signer, provider, metrics, network);
 
     this.pythConnection = new EvmPriceServiceConnection(offchainEndpoint, {
       httpRetries: this.PYTH_MAX_RETRIES,

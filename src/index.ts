@@ -18,6 +18,7 @@ import { Distributor } from './distributor';
 import { LiquidationKeeper } from './keepers/liquidation';
 import { DelayedOrdersKeeper } from './keepers/delayedOrders';
 import { DelayedOffchainOrdersKeeper } from './keepers/delayedOffchainOrders';
+import { Metrics } from './metrics';
 
 logProcessError({
   log(error, level) {
@@ -27,6 +28,8 @@ logProcessError({
 
 export async function run(config: KeeperConfig) {
   const logger = createLogger('Application');
+
+  const metrics = Metrics.create(config.isMetricsEnabled, config.aws);
 
   const provider = getDefaultProvider(config.providerUrl);
   logger.info(`Connected to Ethereum node at '${config.providerUrl}'`);
@@ -44,17 +47,19 @@ export async function run(config: KeeperConfig) {
       market,
       baseAsset,
       provider,
+      metrics,
       config.fromBlock,
       config.runEveryXBlock
     );
     distributor.registerKeepers([
-      new LiquidationKeeper(market, baseAsset, signer, provider, config.network),
+      new LiquidationKeeper(market, baseAsset, signer, provider, metrics, config.network),
       new DelayedOrdersKeeper(
         market,
         contracts.exchangeRates,
         baseAsset,
         signer,
         provider,
+        metrics,
         config.network,
         config.maxOrderExecAttempts
       ),
@@ -72,6 +77,7 @@ export async function run(config: KeeperConfig) {
           baseAsset,
           signer,
           provider,
+          metrics,
           config.network,
           config.maxOrderExecAttempts
         ),

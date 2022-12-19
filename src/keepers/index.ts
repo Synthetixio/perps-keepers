@@ -2,12 +2,14 @@ import { TransactionResponse } from '@ethersproject/providers';
 import { Contract, Event, providers, Wallet } from 'ethers';
 import { Logger } from 'winston';
 import { createLogger } from '../logging';
+import { Metrics } from '../metrics';
 
 export class Keeper {
   protected readonly logger: Logger;
 
   protected readonly MAX_BATCH_SIZE = 5;
   protected readonly BATCH_WAIT_TIME = 100;
+  protected readonly START_TIME = Date.now();
 
   protected activeKeeperTasks: Record<string, boolean> = {};
 
@@ -17,6 +19,7 @@ export class Keeper {
     protected readonly baseAsset: string,
     protected readonly signer: Wallet,
     protected readonly provider: providers.BaseProvider,
+    protected readonly metrics: Metrics,
     protected readonly network: string
   ) {
     this.logger = createLogger(`[${baseAsset}] ${name}`);
@@ -60,11 +63,15 @@ export class Keeper {
     const receipt = await tx.wait(1);
     const { blockNumber, status, transactionHash, gasUsed } = receipt;
     this.logger.info(
-      `tx.wait(${transactionHash}) completed on block=${blockNumber} status=${status} gas=${gasUsed}`
+      `tx.wait(${transactionHash}) completed on block=${blockNumber} (${status}) gas:${gasUsed}`
     );
   }
 
   delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  async healthcheck(): Promise<{ ts: number; eth: number; susd: number }> {
+    return undefined as any;
   }
 }
