@@ -93,7 +93,7 @@ export class Metrics {
 
   /* Adds 1 to the `name` metric. Also commonly known as `increment`. */
   async count(name: Metric): Promise<void> {
-    return this.send(name, 1);
+    return this.send(name, 1, StandardUnit.Count);
   }
 
   /* `endTime - startTime` assumed to be ms (* 1000 if not). */
