@@ -27,6 +27,7 @@ export enum Metric {
 
 export class Metrics {
   private readonly NAMESPACE = 'PERPSV2KEEPER/';
+  private readonly DEFAULT_RESOLUTION = 60; // 60s
 
   private constructor(readonly isEnabled: boolean, private readonly cwClient?: CloudWatchClient) {}
 
@@ -57,7 +58,7 @@ export class Metrics {
     //
     // @see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/clients/client-cloudwatch/interfaces/putmetricdatacommandinput.html
     const input: PutMetricDataCommandInput = {
-      MetricData: [{ MetricName: name, Value: value, StorageResolution: 60 }],
+      MetricData: [{ MetricName: name, Value: value, StorageResolution: this.DEFAULT_RESOLUTION }],
       Namespace: this.NAMESPACE,
     };
     const command = new PutMetricDataCommand(input);

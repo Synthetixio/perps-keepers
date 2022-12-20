@@ -3,7 +3,7 @@ import { range } from 'lodash';
 import { Logger } from 'winston';
 import { PerpsEvent } from '../typed';
 
-const MAX_BLOCKS = 200000;
+const MAX_BLOCKS = 200_000;
 
 export const getPaginatedFromAndTo = (fromBlock: number, toBlock: number) => {
   const numberOfBlocks = toBlock - fromBlock || 1;
