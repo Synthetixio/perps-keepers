@@ -28,8 +28,7 @@ logProcessError({
 
 export async function run(config: KeeperConfig) {
   const logger = createLogger('Application');
-
-  const metrics = Metrics.create(config.isMetricsEnabled, config.aws);
+  const metrics = Metrics.create(config.isMetricsEnabled, config.network, config.aws);
 
   const provider = getDefaultProvider(config.providerUrl);
   logger.info(`Connected to Ethereum node at '${config.providerUrl}'`);

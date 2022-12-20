@@ -3,7 +3,10 @@ import {
   PutMetricDataCommand,
   PutMetricDataCommandInput,
 } from '@aws-sdk/client-cloudwatch';
+import winston from 'winston';
 import { KeeperConfig } from './config';
+import { createLogger } from './logging';
+import { Network } from './typed';
 
 export enum Metric {
   // How long this keeper has been up and executing.
@@ -26,18 +29,33 @@ export enum Metric {
 }
 
 export class Metrics {
-  private readonly NAMESPACE = 'PERPSV2KEEPER/';
+  private readonly BASE_NAMESPACE = 'PERPSV2KEEPER/';
   private readonly DEFAULT_RESOLUTION = 60; // 60s
 
-  private constructor(readonly isEnabled: boolean, private readonly cwClient?: CloudWatchClient) {}
+  private readonly namespace: string;
 
-  static create(isEnabled: boolean, awsConfig: KeeperConfig['aws']): Metrics {
+  private constructor(
+    readonly isEnabled: boolean,
+    network: Network,
+    private readonly logger: winston.Logger,
+    private readonly cwClient?: CloudWatchClient
+  ) {
+    this.namespace = `${this.BASE_NAMESPACE}${network}`;
+  }
+
+  static create(isEnabled: boolean, network: Network, awsConfig: KeeperConfig['aws']): Metrics {
+    const logger = createLogger('Metrics');
+
+    logger.info(`Initialising metrics with enabled=${isEnabled}...`);
+
     const { accessKeyId, secretAccessKey, region } = awsConfig;
     if (!isEnabled || !accessKeyId || !secretAccessKey || !region) {
-      return new Metrics(isEnabled);
+      return new Metrics(isEnabled, network, logger);
     }
     return new Metrics(
       isEnabled,
+      network,
+      logger,
       new CloudWatchClient({
         credentials: {
           accessKeyId,
@@ -51,6 +69,9 @@ export class Metrics {
   /* A simple abstracted 'putMetric' call to push gauge/count style metrics to CW. */
   async send(name: Metric, value: number): Promise<void> {
     if (!this.cwClient || !this.isEnabled) {
+      this.logger.debug(
+        `NOOP. Missing CW client (isEnabled: ${this.isEnabled}, ${this.namespace})`
+      );
       return;
     }
 
@@ -59,7 +80,7 @@ export class Metrics {
     // @see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/clients/client-cloudwatch/interfaces/putmetricdatacommandinput.html
     const input: PutMetricDataCommandInput = {
       MetricData: [{ MetricName: name, Value: value, StorageResolution: this.DEFAULT_RESOLUTION }],
-      Namespace: this.NAMESPACE,
+      Namespace: this.namespace,
     };
     const command = new PutMetricDataCommand(input);
     await this.cwClient.send(command);
