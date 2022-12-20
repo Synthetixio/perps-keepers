@@ -48,8 +48,10 @@ export async function run(config: KeeperConfig) {
       baseAsset,
       provider,
       metrics,
+      signer,
       config.fromBlock,
-      config.runEveryXBlock
+      config.runEveryXBlock,
+      config.runHealthcheckEveryXBlock
     );
     distributor.registerKeepers([
       new LiquidationKeeper(market, baseAsset, signer, provider, metrics, config.network),

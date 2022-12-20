@@ -4,7 +4,7 @@ import { Keeper } from '.';
 import { getEvents } from './helpers';
 import { DelayedOrder, PerpsEvent } from '../typed';
 import { chunk } from 'lodash';
-import { Metrics } from '../metrics';
+import { Metric, Metrics } from '../metrics';
 
 export class DelayedOrdersKeeper extends Keeper {
   // The index
@@ -129,8 +129,10 @@ export class DelayedOrdersKeeper extends Keeper {
       delete this.orders[account];
     } catch (err) {
       order.executionFailures += 1;
+      this.metrics.count(Metric.KEEPER_EXECUTION_ERROR);
       throw err;
     }
+    this.metrics.count(Metric.DELAYED_ORDER_EXECUTED);
   }
 
   async execute(): Promise<void> {

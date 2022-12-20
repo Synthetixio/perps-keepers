@@ -5,7 +5,7 @@ import { getEvents } from './helpers';
 import { DelayedOrder, PerpsEvent } from '../typed';
 import { chunk } from 'lodash';
 import { EvmPriceServiceConnection } from '@pythnetwork/pyth-evm-js';
-import { Metrics } from '../metrics';
+import { Metric, Metrics } from '../metrics';
 
 // TODO: Consider refactoring DelayedOffchainOrders and DelayedOrders into a shared OrderKeeper.
 export class DelayedOffchainOrdersKeeper extends Keeper {
@@ -168,8 +168,10 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       delete this.orders[account];
     } catch (err) {
       order.executionFailures += 1;
+      this.metrics.count(Metric.KEEPER_EXECUTION_ERROR);
       throw err;
     }
+    this.metrics.count(Metric.OFFCHAIN_ORDER_EXECUTED);
   }
 
   private async getOffchainMinMaxAge(): Promise<{

@@ -5,7 +5,7 @@ import { chunk, flatten } from 'lodash';
 import { Keeper } from '.';
 import { getEvents, UNIT } from './helpers';
 import { PerpsEvent, Position } from '../typed';
-import { Metrics } from '../metrics';
+import { Metric, Metrics } from '../metrics';
 
 export class LiquidationKeeper extends Keeper {
   // Required for sorting position by proximity of liquidation price to current price
@@ -179,8 +179,10 @@ export class LiquidationKeeper extends Keeper {
       this.logger.info(`Submitted liquidatePosition(${account}) [nonce=${tx.nonce}]`);
       await this.waitAndLogTx(tx);
     } catch (err) {
+      this.metrics.count(Metric.KEEPER_EXECUTION_ERROR);
       throw err;
     }
+    this.metrics.count(Metric.POSITION_LIQUIDATED);
   }
 
   async execute(): Promise<void> {

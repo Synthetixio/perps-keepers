@@ -5,6 +5,7 @@ export const DEFAULT_CONFIG = {
   fromBlock: 1,
   network: Network.GOERLI_OVM,
   runEveryXBlock: 5,
+  runHealthcheckEveryXBlock: 10,
   maxOrderExecAttempts: 10,
   isMetricsEnabled: false,
 };
@@ -21,6 +22,10 @@ export const KeeperConfigSchema = z.object({
     .number()
     .positive()
     .default(DEFAULT_CONFIG.runEveryXBlock),
+  runHealthcheckEveryXBlock: z.coerce
+    .number()
+    .positive()
+    .default(DEFAULT_CONFIG.runHealthcheckEveryXBlock),
   ethHdwalletMnemonic: z.string().min(1),
   maxOrderExecAttempts: z.coerce
     .number()
@@ -49,6 +54,7 @@ export const getConfig = (force = false): KeeperConfig => {
     providerUrl: process.env.PROVIDER_URL,
     network: process.env.NETWORK,
     runEveryXBlock: process.env.RUN_EVERY_X_BLOCK,
+    runHealthcheckEveryXBlock: process.env.RUN_HEALTHCHECK_EVERY_X_BLOCK,
     ethHdwalletMnemonic: process.env.ETH_HDWALLET_MNEMONIC,
     maxOrderExecAttempts: process.env.MAX_ORDER_EXEC_ATTEMPTS,
     isMetricsEnabled: !!process.env.IS_METRICS_ENABLED,
