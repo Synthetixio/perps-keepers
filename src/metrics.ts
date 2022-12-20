@@ -3,6 +3,7 @@ import {
   PutMetricDataCommand,
   PutMetricDataCommandInput,
 } from '@aws-sdk/client-cloudwatch';
+import { camelCase, upperFirst } from 'lodash';
 import winston from 'winston';
 import { KeeperConfig } from './config';
 import { createLogger } from './logging';
@@ -29,7 +30,7 @@ export enum Metric {
 }
 
 export class Metrics {
-  private readonly BASE_NAMESPACE = 'PERPSV2KEEPER/';
+  private readonly BASE_NAMESPACE = 'PerpsV2Keeper/';
   private readonly DEFAULT_RESOLUTION = 60; // 60s
 
   private readonly namespace: string;
@@ -40,7 +41,8 @@ export class Metrics {
     private readonly logger: winston.Logger,
     private readonly cwClient?: CloudWatchClient
   ) {
-    this.namespace = `${this.BASE_NAMESPACE}${network}`;
+    // e.g. `mainnet-ovm` = PerpsV2Keeper/MainnetOvm
+    this.namespace = `${this.BASE_NAMESPACE}${upperFirst(camelCase(network))}`;
   }
 
   static create(isEnabled: boolean, network: Network, awsConfig: KeeperConfig['aws']): Metrics {

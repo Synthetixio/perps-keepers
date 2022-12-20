@@ -57,7 +57,7 @@ export const getConfig = (force = false): KeeperConfig => {
     runHealthcheckEveryXBlock: process.env.RUN_HEALTHCHECK_EVERY_X_BLOCK,
     ethHdwalletMnemonic: process.env.ETH_HDWALLET_MNEMONIC,
     maxOrderExecAttempts: process.env.MAX_ORDER_EXEC_ATTEMPTS,
-    isMetricsEnabled: !!process.env.IS_METRICS_ENABLED,
+    isMetricsEnabled: !!process.env.METRICS_ENABLED,
 
     // This should really not exist? If deployed to AWS, VM should be IAM configured.
     aws: {

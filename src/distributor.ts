@@ -5,6 +5,7 @@ import { Keeper } from './keepers';
 import { createLogger } from './logging';
 import { PerpsEvent } from './typed';
 import { Metric, Metrics } from './metrics';
+import { wei } from '@synthetixio/wei';
 
 export class Distributor {
   private readonly logger: Logger;
@@ -87,11 +88,12 @@ export class Distributor {
   }
 
   async healthcheck(): Promise<void> {
+    this.logger.info('Performing keeper healthcheck');
     await Promise.all([
       this.metrics.send(Metric.KEEPER_UPTIME, Date.now() - this.START_TIME),
       this.metrics.send(
         Metric.KEEPER_ETH_BALANCE,
-        (await this.provider.getBalance(this.signer.address)).toNumber()
+        wei(await this.provider.getBalance(this.signer.address)).toNumber()
       ),
     ]);
   }
