@@ -90,7 +90,7 @@ export class Distributor {
   async healthcheck(): Promise<void> {
     this.logger.info('Performing keeper healthcheck');
     await Promise.all([
-      this.metrics.send(Metric.KEEPER_UPTIME, Date.now() - this.START_TIME),
+      this.metrics.time(Metric.KEEPER_UPTIME, Date.now() - this.START_TIME),
       this.metrics.send(
         Metric.KEEPER_ETH_BALANCE,
         wei(await this.provider.getBalance(this.signer.address)).toNumber()

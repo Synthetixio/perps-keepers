@@ -2,6 +2,7 @@ import {
   CloudWatchClient,
   PutMetricDataCommand,
   PutMetricDataCommandInput,
+  StandardUnit,
 } from '@aws-sdk/client-cloudwatch';
 import { camelCase, upperFirst } from 'lodash';
 import winston from 'winston';
@@ -69,7 +70,7 @@ export class Metrics {
   }
 
   /* A simple abstracted 'putMetric' call to push gauge/count style metrics to CW. */
-  async send(name: Metric, value: number): Promise<void> {
+  async send(name: Metric, value: number, unit: StandardUnit = StandardUnit.None): Promise<void> {
     if (!this.cwClient || !this.isEnabled) {
       this.logger.debug(
         `NOOP. Missing CW client (isEnabled: ${this.isEnabled}, ${this.namespace})`
@@ -81,7 +82,9 @@ export class Metrics {
     //
     // @see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/clients/client-cloudwatch/interfaces/putmetricdatacommandinput.html
     const input: PutMetricDataCommandInput = {
-      MetricData: [{ MetricName: name, Value: value, StorageResolution: this.DEFAULT_RESOLUTION }],
+      MetricData: [
+        { MetricName: name, Value: value, StorageResolution: this.DEFAULT_RESOLUTION, Unit: unit },
+      ],
       Namespace: this.namespace,
     };
     const command = new PutMetricDataCommand(input);
@@ -91,5 +94,10 @@ export class Metrics {
   /* Adds 1 to the `name` metric. Also commonly known as `increment`. */
   async count(name: Metric): Promise<void> {
     return this.send(name, 1);
+  }
+
+  /* `endTime - startTime` assumed to be ms (* 1000 if not). */
+  async time(name: Metric, value: number): Promise<void> {
+    return this.send(name, value, StandardUnit.Milliseconds);
   }
 }
