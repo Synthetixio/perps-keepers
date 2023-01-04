@@ -52,22 +52,15 @@ export async function run(config: KeeperConfig) {
       config.runEveryXBlock,
       config.runHealthcheckEveryXBlock
     );
-    distributor.registerKeepers([
-      new LiquidationKeeper(market, baseAsset, signer, provider, metrics, config.network),
-      new DelayedOrdersKeeper(
-        market,
-        contracts.exchangeRates,
-        baseAsset,
-        signer,
-        provider,
-        metrics,
-        config.network,
-        config.maxOrderExecAttempts
-      ),
-    ]);
 
+    const keepers = [];
+    keepers.push(
+      new LiquidationKeeper(market, baseAsset, signer, provider, metrics, config.network)
+    );
+
+    // If we do not include a Pyth price feed, do not register an off-chain keeper.
     if (pyth.priceFeedIds[baseAsset]) {
-      distributor.registerKeepers([
+      keepers.push(
         new DelayedOffchainOrdersKeeper(
           market,
           contracts.marketSettings,
@@ -81,12 +74,31 @@ export async function run(config: KeeperConfig) {
           metrics,
           config.network,
           config.maxOrderExecAttempts
-        ),
-      ]);
+        )
+      );
     } else {
       logger.info(`Skipping '${baseAsset}' as off-chain price feed does not exist`);
     }
 
+    keepers.push(
+      new DelayedOrdersKeeper(
+        market,
+        contracts.exchangeRates,
+        baseAsset,
+        signer,
+        provider,
+        metrics,
+        config.network,
+        config.maxOrderExecAttempts
+      )
+    );
+
+    // Register all instantiated keepers. The order of importance is as follows:
+    //
+    // 1. Liquidations
+    // 2. Delayed off-chain orders (Pyth)
+    // 3. Delayed on-chain orders (CL)
+    distributor.registerKeepers(keepers);
     distributor.listen();
   }
 }
