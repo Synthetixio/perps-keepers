@@ -186,34 +186,38 @@ export class LiquidationKeeper extends Keeper {
   }
 
   async execute(): Promise<void> {
-    // Grab all open positions.
-    const openPositions = Object.values(this.positions).filter(p => Math.abs(p.size) > 0);
+    try {
+      // Grab all open positions.
+      const openPositions = Object.values(this.positions).filter(p => Math.abs(p.size) > 0);
 
-    // Order the position in groups of priority that shouldn't be mixed in same batches
-    const positionGroups = this.liquidationGroups(openPositions);
-    const positionCount = flatten(positionGroups).length;
+      // Order the position in groups of priority that shouldn't be mixed in same batches
+      const positionGroups = this.liquidationGroups(openPositions);
+      const positionCount = flatten(positionGroups).length;
 
-    // No positions. Move on.
-    if (positionCount === 0) {
-      this.logger.info(`No positions ready... skipping`);
-      return;
-    }
-
-    this.logger.info(`Found ${positionCount}/${openPositions.length} open position(s) to check`);
-    for (let group of positionGroups) {
-      if (!group.length) {
-        continue;
+      // No positions. Move on.
+      if (positionCount === 0) {
+        this.logger.info(`No positions ready... skipping`);
+        return;
       }
 
-      // Batch the groups to maintain internal order within groups
-      for (const batch of chunk(group, this.MAX_BATCH_SIZE)) {
-        this.logger.info(`Running keeper batch with '${batch.length}' position(s) to keep`);
-        const batches = batch.map(({ id, account }) =>
-          this.execAsyncKeeperCallback(id, () => this.liquidatePosition(account))
-        );
-        await Promise.all(batches);
-        await this.delay(this.BATCH_WAIT_TIME);
+      this.logger.info(`Found ${positionCount}/${openPositions.length} open position(s) to check`);
+      for (let group of positionGroups) {
+        if (!group.length) {
+          continue;
+        }
+
+        // Batch the groups to maintain internal order within groups
+        for (const batch of chunk(group, this.MAX_BATCH_SIZE)) {
+          this.logger.info(`Running keeper batch with '${batch.length}' position(s) to keep`);
+          const batches = batch.map(({ id, account }) =>
+            this.execAsyncKeeperCallback(id, () => this.liquidatePosition(account))
+          );
+          await Promise.all(batches);
+          await this.delay(this.BATCH_WAIT_TIME);
+        }
       }
+    } catch (err) {
+      this.logger.error('Failed to execute liquidations', err);
     }
   }
 }
