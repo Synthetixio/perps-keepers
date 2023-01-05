@@ -191,42 +191,46 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
   }
 
   async execute(): Promise<void> {
-    const orders = Object.values(this.orders);
+    try {
+      const orders = Object.values(this.orders);
 
-    if (orders.length === 0) {
-      this.logger.info(`No off-chain orders available... skipping`);
-      return;
-    }
+      if (orders.length === 0) {
+        this.logger.info(`No off-chain orders available... skipping`);
+        return;
+      }
 
-    const { minAge, maxAge } = await this.getOffchainMinMaxAge();
-    const block = await this.provider.getBlock(await this.provider.getBlockNumber());
+      const { minAge, maxAge } = await this.getOffchainMinMaxAge();
+      const block = await this.provider.getBlock(await this.provider.getBlockNumber());
 
-    // Filter out orders that may be ready to execute.
-    const now = BigNumber.from(block.timestamp);
-    const executableOrders = orders.filter(({ intentionTime }) =>
-      now.sub(intentionTime).gt(minAge)
-    );
-
-    // No orders. Move on.
-    if (executableOrders.length === 0) {
-      this.logger.info(`No off-chain orders ready... skipping`);
-      return;
-    }
-
-    const isOrderStale = (order: DelayedOrder): boolean =>
-      now.gt(BigNumber.from(order.intentionTime).add(maxAge));
-
-    this.logger.info(
-      `Found ${executableOrders.length}/${orders.length} off-chain order(s) that can be executed`
-    );
-    for (const batch of chunk(executableOrders, this.MAX_BATCH_SIZE)) {
-      this.logger.info(`Running keeper batch with '${batch.length}' orders(s) to keep`);
-      const batches = batch.map(({ account }) =>
-        this.execAsyncKeeperCallback(account, () => this.executeOrder(account, isOrderStale))
+      // Filter out orders that may be ready to execute.
+      const now = BigNumber.from(block.timestamp);
+      const executableOrders = orders.filter(({ intentionTime }) =>
+        now.sub(intentionTime).gt(minAge)
       );
-      await Promise.all(batches);
-      this.logger.info(`Batch processed with '${batch.length}' orders(s) to kept`);
-      await this.delay(this.BATCH_WAIT_TIME);
+
+      // No orders. Move on.
+      if (executableOrders.length === 0) {
+        this.logger.info(`No off-chain orders ready... skipping`);
+        return;
+      }
+
+      const isOrderStale = (order: DelayedOrder): boolean =>
+        now.gt(BigNumber.from(order.intentionTime).add(maxAge));
+
+      this.logger.info(
+        `Found ${executableOrders.length}/${orders.length} off-chain order(s) that can be executed`
+      );
+      for (const batch of chunk(executableOrders, this.MAX_BATCH_SIZE)) {
+        this.logger.info(`Running keeper batch with '${batch.length}' orders(s) to keep`);
+        const batches = batch.map(({ account }) =>
+          this.execAsyncKeeperCallback(account, () => this.executeOrder(account, isOrderStale))
+        );
+        await Promise.all(batches);
+        this.logger.info(`Batch processed with '${batch.length}' orders(s) to kept`);
+        await this.delay(this.BATCH_WAIT_TIME);
+      }
+    } catch (err) {
+      this.logger.error('Failed to execute off-chain order', err);
     }
   }
 }

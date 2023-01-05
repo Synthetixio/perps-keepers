@@ -136,37 +136,41 @@ export class DelayedOrdersKeeper extends Keeper {
   }
 
   async execute(): Promise<void> {
-    // Get the latest CL roundId.
-    const currentRoundId = await this.exchangeRates.getCurrentRoundId(
-      utils.formatBytes32String(this.baseAsset)
-    );
-
-    const block = await this.provider.getBlock(await this.provider.getBlockNumber());
-
-    // Filter out orders that may be ready to execute.
-    const orders = Object.values(this.orders);
-    const executableOrders = orders.filter(
-      ({ executableAtTime, targetRoundId }) =>
-        currentRoundId.gte(targetRoundId) || BigNumber.from(block.timestamp).gte(executableAtTime)
-    );
-
-    // No orders. Move on.
-    if (executableOrders.length === 0) {
-      this.logger.info(`No delayed orders ready... skipping`);
-      return;
-    }
-
-    this.logger.info(
-      `Found ${executableOrders.length}/${orders.length} order(s) that can be executed`
-    );
-
-    for (const batch of chunk(executableOrders, this.MAX_BATCH_SIZE)) {
-      this.logger.info(`Running keeper batch with '${batch.length}' orders(s) to keep`);
-      const batches = batch.map(({ account }) =>
-        this.execAsyncKeeperCallback(account, () => this.executeOrder(account))
+    try {
+      // Get the latest CL roundId.
+      const currentRoundId = await this.exchangeRates.getCurrentRoundId(
+        utils.formatBytes32String(this.baseAsset)
       );
-      await Promise.all(batches);
-      await this.delay(this.BATCH_WAIT_TIME);
+
+      const block = await this.provider.getBlock(await this.provider.getBlockNumber());
+
+      // Filter out orders that may be ready to execute.
+      const orders = Object.values(this.orders);
+      const executableOrders = orders.filter(
+        ({ executableAtTime, targetRoundId }) =>
+          currentRoundId.gte(targetRoundId) || BigNumber.from(block.timestamp).gte(executableAtTime)
+      );
+
+      // No orders. Move on.
+      if (executableOrders.length === 0) {
+        this.logger.info(`No delayed orders ready... skipping`);
+        return;
+      }
+
+      this.logger.info(
+        `Found ${executableOrders.length}/${orders.length} order(s) that can be executed`
+      );
+
+      for (const batch of chunk(executableOrders, this.MAX_BATCH_SIZE)) {
+        this.logger.info(`Running keeper batch with '${batch.length}' orders(s) to keep`);
+        const batches = batch.map(({ account }) =>
+          this.execAsyncKeeperCallback(account, () => this.executeOrder(account))
+        );
+        await Promise.all(batches);
+        await this.delay(this.BATCH_WAIT_TIME);
+      }
+    } catch (err) {
+      this.logger.error('Failed to execute delayed order', err);
     }
   }
 }
