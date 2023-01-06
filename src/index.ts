@@ -17,11 +17,13 @@ import { Distributor } from './distributor';
 import { LiquidationKeeper } from './keepers/liquidation';
 import { DelayedOrdersKeeper } from './keepers/delayedOrders';
 import { DelayedOffchainOrdersKeeper } from './keepers/delayedOffchainOrders';
-import { Metrics } from './metrics';
+import { Metric, Metrics } from './metrics';
 
 export async function run(config: KeeperConfig) {
   const logger = createLogger('Application');
   const metrics = Metrics.create(config.isMetricsEnabled, config.network, config.aws);
+
+  metrics.count(Metric.KEEPER_STARTUP);
 
   const provider = getDefaultProvider(config.providerUrl);
   logger.info('Connected to Ethereum node', { args: { providerUrl: config.providerUrl } });
