@@ -90,7 +90,7 @@ export class LiquidationKeeper extends Keeper {
           return;
         }
         default:
-          this.logger.error('No handler found for event', {
+          this.logger.debug('No handler found for event', {
             args: { event, blockNumber },
           });
       }

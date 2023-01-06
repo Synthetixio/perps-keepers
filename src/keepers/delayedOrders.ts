@@ -78,7 +78,7 @@ export class DelayedOrdersKeeper extends Keeper {
           break;
         }
         default:
-          this.logger.error('No handler found for event', {
+          this.logger.debug('No handler found for event', {
             args: { event, account, blockNumber },
           });
       }
