@@ -38,8 +38,8 @@ ssh "$USER_AT_IP" "cd $FOLDER_NAME;npm i;npm run build"
 
 if [ "$ENVIRONMENT" = "production" ]; then
     echo "Starting mainnet keeper"
-    ssh "$USER_AT_IP" "cd $FOLDER_NAME;npm run start-mainnet"
+    ssh "$USER_AT_IP" "cd $FOLDER_NAME;npm run start:mainnet"
 else
     echo "Starting goerli keeper"
-    ssh "$USER_AT_IP" "cd $FOLDER_NAME;npm run start-goerli"
+    ssh "$USER_AT_IP" "cd $FOLDER_NAME;npm run start:goerli"
 fi
