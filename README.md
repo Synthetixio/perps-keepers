@@ -33,22 +33,6 @@ Variables for configuration are defined as environment variables. During develop
 
 _For an example `.env` see `.env.example`. All input variables are validated, see `./src/config.ts` for more details (including defaults). Speak with another developer for `.env` values._
 
-## Usage
-
-```
-> npx ts-node --files src/index.ts run --help
-
-Usage: index run [options]
-
-Run the perps-keeper
-
-Options:
-  -b, --from-block <value>  rebuild the keeper index from a starting block, before initiating keeper actions.
-  --network <value>         Ethereum network to connect to.
-  -m, --markets <value>     runs keeper operations for the specified markets, delimited by a comma. Default all live markets.
-  -h, --help                display help for command
-```
-
 ## Development
 
 ```bash
@@ -58,8 +42,11 @@ git clone git@github.com:Synthetixio/perps-keepers.git
 # Install project dependencies.
 npm i
 
-# Execute keeper locally.
+# Execute keeper locally (testnet)
 npm run dev
+
+# Execute keeper (mainnet)
+npm run dev:mainnet
 ```
 
 _See configuration section above before attempting to run locally._
