@@ -101,7 +101,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
           break;
         }
         default:
-          this.logger.debug(`No handler for event ${event} (${blockNumber})`);
+          this.logger.info(`No handler for event ${event} (${blockNumber})`);
       }
     }
   }

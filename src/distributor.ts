@@ -33,12 +33,14 @@ export class Distributor {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
+  /* Given an array of keepers, track and include in bulk executions. */
   registerKeepers(keepers: Keeper[]) {
     keepers.forEach(keeper => this.keepers.push(keeper));
     this.logger.info(`Registered keepers (${this.keepers.length})`);
   }
 
   private async indexKeepers(): Promise<void> {
+    this.logger.info(`Performing index starting from ${this.fromBlock} (${this.keepers.length})`);
     await Promise.all(this.keepers.map(keeper => keeper.index(this.fromBlock)));
   }
 
@@ -47,10 +49,12 @@ export class Distributor {
     block: providers.Block,
     assetPrice: number
   ): Promise<void[]> {
+    this.logger.info(`Performing index update (${this.keepers.length})`);
     return Promise.all(this.keepers.map(keeper => keeper.updateIndex(events, block, assetPrice)));
   }
 
   private async executeKeepers(): Promise<void[]> {
+    this.logger.info(`Performing execution (${this.keepers.length})`);
     return Promise.all(this.keepers.map(keeper => keeper.execute()));
   }
 
@@ -67,7 +71,7 @@ export class Distributor {
     await this.executeKeepers();
   }
 
-  async startProcessNewBlockConsumer() {
+  private async startProcessNewBlockConsumer() {
     // The L2 node is constantly mining blocks, one block per transaction. When a new block is received, we queue it
     // for processing in a FIFO queue. `processNewBlock` will scan its events, rebuild the index, and then run any
     // keeper tasks that need running that aren't already active.
@@ -87,6 +91,9 @@ export class Distributor {
     }
   }
 
+  // TODO: Each keeper should have a .healthcheck call which in-essence does the same thing.
+  //
+  // The metric namespace can be further chunked by keeper type e.g. PerpsV2MainnetOvm/Liquidations/KeeperUpTime
   async healthcheck(): Promise<void> {
     this.logger.info('Performing keeper healthcheck');
     await Promise.all([
@@ -98,13 +105,13 @@ export class Distributor {
     ]);
   }
 
+  /* Listen on new blocks produced then subsequently bulk op. */
   async listen(): Promise<void> {
     try {
       await this.indexKeepers();
       await this.executeKeepers();
 
       this.logger.info(`Listening for events (modBlocks=${this.runEveryXblock})...`);
-
       this.provider.on('block', async (blockNumber: number) => {
         if (blockNumber % this.runEveryXblock !== 0) {
           return;
@@ -119,6 +126,9 @@ export class Distributor {
         }
 
         this.blockQueue.push(blockNumber);
+        this.logger.info(
+          `New block. Storing block in blockQueue (${this.blockQueue.length}, no:${blockNumber}) for consumption`
+        );
         await this.startProcessNewBlockConsumer();
       });
     } catch (err) {
@@ -128,6 +138,7 @@ export class Distributor {
       this.logger.error(
         `Error has occurred listening for blocks. Waiting ${delayWaitTime} before trying again`
       );
+      this.metrics.count(Metric.KEEPER_EXECUTION_ERROR);
 
       // Wait a minute and retry (may just be Node issues).
       await this.delay(delayWaitTime);

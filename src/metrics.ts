@@ -72,9 +72,7 @@ export class Metrics {
   /* A simple abstracted 'putMetric' call to push gauge/count style metrics to CW. */
   async send(name: Metric, value: number, unit: StandardUnit = StandardUnit.None): Promise<void> {
     if (!this.cwClient || !this.isEnabled) {
-      this.logger.debug(
-        `NOOP. Missing CW client (isEnabled: ${this.isEnabled}, ${this.namespace})`
-      );
+      this.logger.info(`NOOP. Missing CW client (isEnabled: ${this.isEnabled}, ${this.namespace})`);
       return;
     }
 

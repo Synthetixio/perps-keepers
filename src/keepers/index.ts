@@ -48,12 +48,12 @@ export class Keeper {
     this.activeKeeperTasks[id] = true;
 
     try {
-      this.logger.debug(`Keeper task running (${id})`);
+      this.logger.info(`Keeper task running (${id})`);
       await cb();
     } catch (err) {
       this.logger.error(`Error (${id})\n${err}`);
     }
-    this.logger.debug(`Keeper task complete (${id})`);
+    this.logger.info(`Keeper task complete (${id})`);
 
     delete this.activeKeeperTasks[id];
   }

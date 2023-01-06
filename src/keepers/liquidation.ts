@@ -90,7 +90,7 @@ export class LiquidationKeeper extends Keeper {
           return;
         }
         default:
-          this.logger.debug(`No handler for event ${event} (${blockNumber})`);
+          this.logger.info(`No handler for event ${event} (${blockNumber})`);
       }
     });
   }
