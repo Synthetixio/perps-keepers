@@ -20,6 +20,9 @@ export enum Metric {
   // When any error (liquidation or order execution) occurs.
   KEEPER_ERROR = 'KeeperError',
 
+  // Length of the FIFO queue for processing received blocks.
+  DISTRIBUTOR_QUEUE_SIZE = 'DistributorQueueSize',
+
   // Delayed order executed successfully.
   DELAYED_ORDER_EXECUTED = 'DelayedOrderExecuted',
 
@@ -94,6 +97,11 @@ export class Metrics {
   /* Adds 1 to the `name` metric. Also commonly known as `increment`. */
   async count(name: Metric): Promise<void> {
     return this.send(name, 1, StandardUnit.Count);
+  }
+
+  /* Adds `value` as a gauge metric. */
+  async gauge(name: Metric, value: number): Promise<void> {
+    return this.send(name, value, StandardUnit.Count);
   }
 
   /* `endTime - startTime` assumed to be ms (* 1000 if not). */

@@ -79,6 +79,8 @@ export class Distributor {
     // for processing in a FIFO queue. `processNewBlock` will scan its events, rebuild the index, and then run any
     // keeper tasks that need running that aren't already active.
     while (1) {
+      this.metrics.gauge(Metric.DISTRIBUTOR_QUEUE_SIZE, this.blockQueue.length);
+
       if (!this.blockQueue.length) {
         await this.delay(this.MAX_CONSUME_WAIT_TIME);
         continue;
@@ -88,6 +90,13 @@ export class Distributor {
       this.blockQueue.sort();
       const blockNumber = this.blockQueue.shift();
       if (blockNumber) {
+        this.logger.info('Found block in blockQueue!', {
+          args: {
+            blockNumber,
+            lastProcessedBlock: this.lastProcessedBlock,
+            remaining: this.blockQueue.length,
+          },
+        });
         await this.disburseToKeepers(blockNumber);
         this.lastProcessedBlock = blockNumber;
       }
