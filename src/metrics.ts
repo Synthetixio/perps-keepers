@@ -18,7 +18,7 @@ export enum Metric {
   KEEPER_ETH_BALANCE = 'KeeperEthBalance',
 
   // When any error (liquidation or order execution) occurs.
-  KEEPER_EXECUTION_ERROR = 'KeeperError',
+  KEEPER_ERROR = 'KeeperError',
 
   // Delayed order executed successfully.
   DELAYED_ORDER_EXECUTED = 'DelayedOrderExecuted',

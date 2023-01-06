@@ -138,7 +138,7 @@ export class Distributor {
       this.logger.error(
         `Error has occurred listening for blocks. Waiting ${delayWaitTime} before trying again`
       );
-      this.metrics.count(Metric.KEEPER_EXECUTION_ERROR);
+      this.metrics.count(Metric.KEEPER_ERROR);
 
       // Wait a minute and retry (may just be Node issues).
       await this.delay(delayWaitTime);

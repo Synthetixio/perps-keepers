@@ -179,7 +179,7 @@ export class LiquidationKeeper extends Keeper {
       this.logger.info(`Submitted liquidatePosition(${account}) [nonce=${tx.nonce}]`);
       await this.waitAndLogTx(tx);
     } catch (err) {
-      this.metrics.count(Metric.KEEPER_EXECUTION_ERROR);
+      this.metrics.count(Metric.KEEPER_ERROR);
       throw err;
     }
     this.metrics.count(Metric.POSITION_LIQUIDATED);

@@ -168,7 +168,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       delete this.orders[account];
     } catch (err) {
       order.executionFailures += 1;
-      this.metrics.count(Metric.KEEPER_EXECUTION_ERROR);
+      this.metrics.count(Metric.KEEPER_ERROR);
       throw err;
     }
     this.metrics.count(Metric.OFFCHAIN_ORDER_EXECUTED);
