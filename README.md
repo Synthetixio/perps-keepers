@@ -29,6 +29,7 @@ Variables for configuration are defined as environment variables. During develop
 | `RUN_EVERY_X_BLOCK`       | No       | Used to skip blocks (`1` to not skip)                               | 5          |
 | `MAX_ORDER_EXEC_ATTEMPTS` | No       | Maximum number of order execution attempst to try before ignoring   | 10         |
 | `METRICS_ENABLED`         | No       | Whether metrics are enabled or disabled (1 = enabled, 0 = disabled) | 0          |
+| `LOG_LEVEL`               | No       | Application log level                                               | info       |
 
 _For an example `.env` see `.env.example`. All input variables are validated, see `./src/config.ts` for more details (including defaults). Speak with another developer for `.env` values._
 

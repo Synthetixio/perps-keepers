@@ -8,7 +8,7 @@ const config = getConfig();
 
 export const createLogger = (label: string): winston.Logger => {
   const logger = winston.createLogger({
-    level: 'info',
+    level: process.env.LOG_LEVEL ?? 'info',
     format: format.combine(
       format.label({ label }),
       format.printf(info => {
@@ -17,6 +17,7 @@ export const createLogger = (label: string): winston.Logger => {
           .join(' ');
       })
     ),
+    // Implicit transport to exclude console when pm_id (pm2) is available (no log rotation).
     transports: process.env.pm_id ? [] : [new transports.Console()],
   });
 
