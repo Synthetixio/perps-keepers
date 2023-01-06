@@ -31,10 +31,10 @@ export async function run(config: KeeperConfig) {
   const metrics = Metrics.create(config.isMetricsEnabled, config.network, config.aws);
 
   const provider = getDefaultProvider(config.providerUrl);
-  logger.info(`Connected to Ethereum node at '${config.providerUrl}'`);
+  logger.info('Connected to Ethereum node', { args: { providerUrl: config.providerUrl } });
 
   const signer = Wallet.fromMnemonic(config.ethHdwalletMnemonic).connect(provider);
-  logger.info(`Keeper address '${signer.address}'`);
+  logger.info('Using keeper', { args: { address: signer.address } });
 
   const contracts = await getSynthetixPerpsContracts(config.network, signer, provider);
   const pyth = getPythDetails(config.network, provider);
@@ -92,6 +92,7 @@ export async function run(config: KeeperConfig) {
         config.maxOrderExecAttempts
       )
     );
+    logger.info('Registering keepers to distributor', { args: { n: keepers.length } });
 
     // Register all instantiated keepers. The order of importance is as follows:
     //

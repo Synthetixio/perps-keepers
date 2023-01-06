@@ -1,3 +1,4 @@
+import { map } from 'lodash';
 import winston, { format, transports } from 'winston';
 import WinstonCloudWatch from 'winston-cloudwatch';
 import { getConfig } from './config';
@@ -11,8 +12,10 @@ export const createLogger = (label: string): winston.Logger => {
     level: process.env.LOG_LEVEL ?? 'info',
     format: format.combine(
       format.label({ label }),
-      format.printf(info => {
-        return [info.timestamp, info.level, info.label, info.component, '-', info.message]
+      format.timestamp(),
+      format.printf(({ timestamp, level, label, component, message, args }) => {
+        const argsMessage = map(args, (value, key) => `${key}=${value}`).join(' ');
+        return [timestamp, level, label, component, '-', message, argsMessage]
           .filter(x => !!x)
           .join(' ');
       })
