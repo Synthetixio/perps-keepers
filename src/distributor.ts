@@ -37,11 +37,10 @@ export class Distributor {
   /* Given an array of keepers, track and include in bulk executions. */
   registerKeepers(keepers: Keeper[]) {
     keepers.forEach(keeper => this.keepers.push(keeper));
-    this.logger.info(`Registered keepers (${this.keepers.length})`);
+    this.logger.info('Registered keepers', { args: { n: this.keepers.length } });
   }
 
   private async indexKeepers(): Promise<void> {
-    this.logger.info(`Performing index starting from ${this.fromBlock} (${this.keepers.length})`);
     await Promise.all(this.keepers.map(keeper => keeper.index(this.fromBlock)));
   }
 
@@ -50,23 +49,26 @@ export class Distributor {
     block: providers.Block,
     assetPrice: number
   ): Promise<void[]> {
-    this.logger.info(`Performing index update (${this.keepers.length})`);
     return Promise.all(this.keepers.map(keeper => keeper.updateIndex(events, block, assetPrice)));
   }
 
   private async executeKeepers(): Promise<void[]> {
-    this.logger.info(`Performing execution (${this.keepers.length})`);
     return Promise.all(this.keepers.map(keeper => keeper.execute()));
   }
 
-  private async disburseToKeepers(blockNumber: number): Promise<void> {
+  private async disburseToKeepers(toBlock: number): Promise<void> {
+    const fromBlock = this.lastProcessedBlock ? this.lastProcessedBlock + 1 : toBlock;
     const events = await getEvents(Object.values(PerpsEvent), this.market, {
-      fromBlock: this.lastProcessedBlock ? this.lastProcessedBlock + 1 : blockNumber,
-      toBlock: blockNumber,
+      fromBlock,
+      toBlock,
       logger: this.logger,
     });
-    const block = await this.provider.getBlock(blockNumber);
+    const block = await this.provider.getBlock(toBlock);
     const assetPrice = parseFloat(utils.formatUnits((await this.market.assetPrice()).price));
+
+    this.logger.info('Distributing to keepers', {
+      args: { fromBlock, toBlock, eventsCount: events.length, assetPrice },
+    });
 
     await this.updateKeeperIndexes(events, block, assetPrice);
     await this.executeKeepers();
