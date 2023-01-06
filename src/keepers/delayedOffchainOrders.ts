@@ -7,7 +7,6 @@ import { chunk } from 'lodash';
 import { EvmPriceServiceConnection } from '@pythnetwork/pyth-evm-js';
 import { Metric, Metrics } from '../metrics';
 
-// TODO: Consider refactoring DelayedOffchainOrders and DelayedOrders into a shared OrderKeeper.
 export class DelayedOffchainOrdersKeeper extends Keeper {
   // The index
   private orders: Record<string, DelayedOrder> = {};
@@ -48,14 +47,14 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       return;
     }
 
-    this.logger.info(`'${events.length}' event(s) available to index...`);
+    this.logger.info('Events available for index', { args: { n: events.length } });
     const blockCache: Record<number, Block> = {};
     for (const evt of events) {
       const { event, args, blockNumber } = evt;
 
       // Event has no argument or is not an offchain event, ignore.
       if (!args) {
-        this.logger.info(`No args are present in '${event}', skipping`);
+        this.logger.debug('No args present in event, skipping', { args: { event } });
         continue;
       }
 
@@ -65,11 +64,15 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
           const { targetRoundId, executableAtTime, intentionTime, isOffchain } = args;
 
           if (!isOffchain) {
-            this.logger.info(`Order is not off-chain '${account}', skipping`);
+            this.logger.debug('Order is not off-chain, skipping', {
+              args: { account, blockNumber },
+            });
             break;
           }
 
-          this.logger.info(`New order submitted. Adding to index '${account}'`);
+          this.logger.info('New order submitted. Adding to index!', {
+            args: { account, blockNumber },
+          });
 
           // Note `intentionTime` may not exist depending on the FROM_BLOCK (particularly on testnet).
           //
@@ -96,20 +99,22 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
           break;
         }
         case PerpsEvent.DelayedOrderRemoved: {
-          this.logger.info(`Order cancelled or executed. Removing from index '${account}'`);
+          this.logger.info('Order cancelled or executed. Removing from index', {
+            args: { account, blockNumber },
+          });
           delete this.orders[account];
           break;
         }
         default:
-          this.logger.info(`No handler for event ${event} (${blockNumber})`);
+          this.logger.error('No handler found for event', {
+            args: { event, account, blockNumber },
+          });
       }
     }
   }
 
   async index(fromBlock: number | string): Promise<void> {
     this.orders = {};
-
-    this.logger.info(`Rebuilding index from '${fromBlock}' to latest`);
 
     const toBlock = await this.provider.getBlockNumber();
     const events = await getEvents(this.EVENTS_OF_INTEREST, this.market, {
@@ -118,6 +123,9 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       logger: this.logger,
     });
 
+    this.logger.info('Rebuilding index...', {
+      args: { fromBlock, toBlock, events: events.length },
+    });
     await this.updateIndex(events);
   }
 
@@ -131,24 +139,28 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
     // check if said order still exists within `this.orders`. `delete a[b]` only removes the
     // value of key `b` from object `a`, the value (in this case order) still exists.
     if (!order) {
-      this.logger.info(`This account does not have any tracked orders '${account}'`);
+      this.logger.info('Account does not have any tracked orders', { args: { account } });
       return;
     }
 
     if (order.executionFailures > this.maxExecAttempts) {
-      this.logger.info(`Order execution exceeded max attempts '${account}'`);
+      this.logger.info('Order execution exceeded max attempts', {
+        args: { account, attempts: order.executionFailures },
+      });
       delete this.orders[account];
       return;
     }
 
     if (isOrderStale(order)) {
-      this.logger.info(`Order is stale (past maxAge) can only be cancelled '${account}'`);
+      this.logger.info('Order is stale can only be cancelled', { args: { account } });
       delete this.orders[account];
       return;
     }
 
     try {
-      this.logger.info(`Fetching Pyth off-chain price data for feed '${this.offchainPriceFeedId}'`);
+      this.logger.info('Fetching Pyth off-chain price data', {
+        args: { feed: this.offchainPriceFeedId },
+      });
 
       // Grab Pyth offchain data to send with the `executeOffchainDelayedOrder` call.
       const priceUpdateData = await this.pythConnection.getPriceFeedsUpdateData([
@@ -156,16 +168,17 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       ]);
       const updateFee = await this.pythContract.getUpdateFee(priceUpdateData);
 
-      this.logger.info(
-        `Begin executeOffchainDelayedOrder(${account}) (fee: ${updateFee.toString()})`
-      );
+      this.logger.info('Executing off-chain order...', {
+        args: { account, fee: updateFee.toString() },
+      });
       const tx = await this.market.executeOffchainDelayedOrder(account, priceUpdateData, {
         value: updateFee,
       });
-      this.logger.info(`Submitted executeOffchainDelayedOrder(${account}) [nonce=${tx.nonce}]`);
-
-      await this.waitAndLogTx(tx);
+      this.logger.info('Successfully submitted execution transaction', {
+        args: { account, nonce: tx.nonce },
+      });
       delete this.orders[account];
+      await this.waitAndLogTx(tx);
     } catch (err) {
       order.executionFailures += 1;
       this.metrics.count(Metric.KEEPER_ERROR);
@@ -183,10 +196,9 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
     const minAge = await this.marketSettings.offchainDelayedOrderMinAge(bytes32BaseAsset);
     const maxAge = await this.marketSettings.offchainDelayedOrderMaxAge(bytes32BaseAsset);
 
-    this.logger.info(
-      `Fetched {min,max}Age={${minAge.toString()},${maxAge.toString()}} for '${this.marketKey}'`
-    );
-
+    this.logger.info('Found off-chain order min/max age', {
+      args: { minAge, maxAge, marketKey: this.marketKey },
+    });
     return { minAge, maxAge };
   }
 
@@ -195,7 +207,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       const orders = Object.values(this.orders);
 
       if (orders.length === 0) {
-        this.logger.info(`No off-chain orders available... skipping`);
+        this.logger.info('No off-chain orders available... skipping');
         return;
       }
 
@@ -210,7 +222,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
 
       // No orders. Move on.
       if (executableOrders.length === 0) {
-        this.logger.info(`No off-chain orders ready... skipping`);
+        this.logger.info('No off-chain orders ready... skipping');
         return;
       }
 
@@ -230,7 +242,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
         await this.delay(this.BATCH_WAIT_TIME);
       }
     } catch (err) {
-      this.logger.error('Failed to execute off-chain order', err);
+      this.logger.error('Failed to execute off-chain order', { args: { err } });
     }
   }
 }

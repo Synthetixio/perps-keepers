@@ -67,7 +67,7 @@ export class Distributor {
     const assetPrice = parseFloat(utils.formatUnits((await this.market.assetPrice()).price));
 
     this.logger.info('Distributing to keepers', {
-      args: { fromBlock, toBlock, eventsCount: events.length, assetPrice },
+      args: { fromBlock, toBlock, events: events.length, assetPrice },
     });
 
     await this.updateKeeperIndexes(events, block, assetPrice);

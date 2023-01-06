@@ -32,7 +32,7 @@ export const getEvents = async (
       const pagination = getPaginatedFromAndTo(Number(fromBlock), Number(toBlock));
       if (pagination.length > 1) {
         // Only log this for when we're doing pagination
-        logger.info(`Making ${pagination.length} requests to infura to index ${eventName}`);
+        logger.info(`Making ${pagination.length} requests to Infura to index ${eventName}`);
       }
 
       const events = await Promise.all(

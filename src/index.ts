@@ -70,7 +70,7 @@ export async function run(config: KeeperConfig) {
         )
       );
     } else {
-      logger.info(`Skipping '${baseAsset}' as off-chain price feed does not exist`);
+      logger.debug(`Skipping '${baseAsset}' as off-chain price feed does not exist`);
     }
 
     keepers.push(
