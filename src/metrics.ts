@@ -81,17 +81,27 @@ export class Metrics {
       return;
     }
 
-    // Construct the MetricData.
-    //
-    // @see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/clients/client-cloudwatch/interfaces/putmetricdatacommandinput.html
-    const input: PutMetricDataCommandInput = {
-      MetricData: [
-        { MetricName: name, Value: value, StorageResolution: this.DEFAULT_RESOLUTION, Unit: unit },
-      ],
-      Namespace: this.namespace,
-    };
-    const command = new PutMetricDataCommand(input);
-    await this.cwClient.send(command);
+    try {
+      // Construct the MetricData.
+      //
+      // @see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/clients/client-cloudwatch/interfaces/putmetricdatacommandinput.html
+      const input: PutMetricDataCommandInput = {
+        MetricData: [
+          {
+            MetricName: name,
+            Value: value,
+            StorageResolution: this.DEFAULT_RESOLUTION,
+            Unit: unit,
+          },
+        ],
+        Namespace: this.namespace,
+      };
+      const command = new PutMetricDataCommand(input);
+      await this.cwClient.send(command);
+    } catch (err) {
+      // no-op the metric failure. Monitoring should not impact the normal behaviour of the application.
+      this.logger.error('Failed to send metrics to CW', { args: { err } });
+    }
   }
 
   /* Adds 1 to the `name` metric. Also commonly known as `increment`. */
