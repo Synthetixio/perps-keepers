@@ -13,6 +13,7 @@ export class Distributor {
   private blockQueue: Array<number> = [];
   private lastProcessedBlock?: number;
 
+  private readonly LISTEN_ERROR_WAIT_TIME = 60 * 1000; // 1min
   private readonly MAX_CONSUME_WAIT_TIME = 100;
   protected readonly START_TIME = Date.now();
 
@@ -81,7 +82,7 @@ export class Distributor {
         continue;
       }
 
-      // sort in case it's unsorted for some reason
+      // Sort in case it's unsorted for some reason
       this.blockQueue.sort();
       const blockNumber = this.blockQueue.shift();
       if (blockNumber) {
@@ -95,14 +96,15 @@ export class Distributor {
   //
   // The metric namespace can be further chunked by keeper type e.g. PerpsV2MainnetOvm/Liquidations/KeeperUpTime
   async healthcheck(): Promise<void> {
-    this.logger.info('Performing keeper healthcheck');
-    await Promise.all([
-      this.metrics.time(Metric.KEEPER_UPTIME, Date.now() - this.START_TIME),
-      this.metrics.send(
-        Metric.KEEPER_ETH_BALANCE,
-        wei(await this.provider.getBalance(this.signer.address)).toNumber()
-      ),
-    ]);
+    const uptime = Date.now() - this.START_TIME;
+    const balance = wei(await this.provider.getBalance(this.signer.address)).toNumber();
+    this.logger.info('Performing keeper healthcheck', { args: { uptime, balance } });
+
+    // A failure to submit metric should not cause application to halt. Instead, alerts will pick this up if it happens
+    // for a long enough duration. Essentially, do _not_ force keeper to slowdown operation just to track metrics
+    // for offline usage/monitoring.
+    this.metrics.time(Metric.KEEPER_UPTIME, uptime);
+    this.metrics.send(Metric.KEEPER_ETH_BALANCE, balance);
   }
 
   /* Listen on new blocks produced then subsequently bulk op. */
@@ -111,9 +113,13 @@ export class Distributor {
       await this.indexKeepers();
       await this.executeKeepers();
 
-      this.logger.info(`Listening for events (modBlocks=${this.runEveryXblock})...`);
+      const blockMod = this.runEveryXblock;
+      const healthcheckMod = this.runHealthcheckEveryXBlock;
+
+      this.logger.info('Begin listening for blocks 🚀...', { args: { blockMod, healthcheckMod } });
       this.provider.on('block', async (blockNumber: number) => {
-        if (blockNumber % this.runEveryXblock !== 0) {
+        if (blockNumber % blockMod !== 0) {
+          this.logger.debug('Skipping block', { args: { blockMod, blockNumber } });
           return;
         }
         if (!this.lastProcessedBlock) {
@@ -121,27 +127,29 @@ export class Distributor {
           this.lastProcessedBlock = blockNumber;
           return;
         }
-        if (blockNumber % this.runHealthcheckEveryXBlock === 0) {
+        if (blockNumber % healthcheckMod === 0) {
           await this.healthcheck();
         }
 
         this.blockQueue.push(blockNumber);
-        this.logger.info(
-          `New block. Storing block in blockQueue (${this.blockQueue.length}, no:${blockNumber}) for consumption`
-        );
-        await this.startProcessNewBlockConsumer();
+        this.logger.info('Storing new blockMod block...', {
+          args: { blockQueueN: this.blockQueue.length, blockNumber },
+        });
       });
-    } catch (err) {
-      const delayWaitTime = 60 * 1000;
 
+      this.logger.info('Begin consuming blocks 🚀...', {
+        args: { blockMod, healthcheckMod, waitTime: this.MAX_CONSUME_WAIT_TIME },
+      });
+      this.startProcessNewBlockConsumer();
+    } catch (err) {
       this.logger.error(err);
-      this.logger.error(
-        `Error has occurred listening for blocks. Waiting ${delayWaitTime} before trying again`
-      );
+      this.logger.error('Failed on listen or block consumption', {
+        args: { waitTime: this.LISTEN_ERROR_WAIT_TIME },
+      });
       this.metrics.count(Metric.KEEPER_ERROR);
 
       // Wait a minute and retry (may just be Node issues).
-      await this.delay(delayWaitTime);
+      await this.delay(this.LISTEN_ERROR_WAIT_TIME);
       await this.listen();
     }
   }

@@ -49,7 +49,7 @@ export class Metrics {
   static create(isEnabled: boolean, network: Network, awsConfig: KeeperConfig['aws']): Metrics {
     const logger = createLogger('Metrics');
 
-    logger.info(`Initialising metrics with enabled=${isEnabled}...`);
+    logger.info('Initialising metrics', { args: { enabled: isEnabled } });
 
     const { accessKeyId, secretAccessKey, region } = awsConfig;
     if (!isEnabled || !accessKeyId || !secretAccessKey || !region) {
@@ -72,7 +72,9 @@ export class Metrics {
   /* A simple abstracted 'putMetric' call to push gauge/count style metrics to CW. */
   async send(name: Metric, value: number, unit: StandardUnit = StandardUnit.None): Promise<void> {
     if (!this.cwClient || !this.isEnabled) {
-      this.logger.info(`NOOP. Missing CW client (isEnabled: ${this.isEnabled}, ${this.namespace})`);
+      this.logger.debug('Send no-op due to missing CW client', {
+        args: { enabled: this.isEnabled, namespace: this.namespace },
+      });
       return;
     }
 
