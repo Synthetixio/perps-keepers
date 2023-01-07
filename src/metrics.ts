@@ -23,6 +23,8 @@ export enum Metric {
   // When any error (liquidation or order execution) occurs.
   KEEPER_ERROR = 'KeeperError',
 
+  // TODO: Consider tracking open promises
+
   // Length of the FIFO queue for processing received blocks.
   DISTRIBUTOR_QUEUE_SIZE = 'DistributorQueueSize',
 
