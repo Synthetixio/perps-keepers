@@ -33,12 +33,12 @@ export class DelayedOrdersKeeper extends Keeper {
       return;
     }
 
-    this.logger.info(`'${events.length}' event(s) available to index...`);
+    this.logger.info('Events available for index', { args: { n: events.length } });
     const blockCache: Record<number, Block> = {};
     for (const evt of events) {
       const { event, args, blockNumber } = evt;
       if (!args || args.isOffchain) {
-        this.logger.info(`No args present or is off-chain '${event}'. Skipping`);
+        this.logger.debug('No args present or is off-chain, skipping', { args: { event } });
         continue;
       }
 
@@ -46,7 +46,9 @@ export class DelayedOrdersKeeper extends Keeper {
       switch (event) {
         case PerpsEvent.DelayedOrderSubmitted: {
           const { targetRoundId, intentionTime, executableAtTime } = args;
-          this.logger.info(`New order submitted. Adding to index '${account}'`);
+          this.logger.info('New order submitted. Adding to index!', {
+            args: { account, blockNumber },
+          });
 
           // see: `delayedOffchainOrders`.
           let timestamp: number;
@@ -69,20 +71,22 @@ export class DelayedOrdersKeeper extends Keeper {
           break;
         }
         case PerpsEvent.DelayedOrderRemoved: {
-          this.logger.info(`Order cancelled or executed. Removing from index '${account}'`);
+          this.logger.info('Order cancelled or executed. Removing from index', {
+            args: { account, blockNumber },
+          });
           delete this.orders[account];
           break;
         }
         default:
-          this.logger.debug(`No handler for event ${event} (${blockNumber})`);
+          this.logger.debug('No handler found for event', {
+            args: { event, account, blockNumber },
+          });
       }
     }
   }
 
   async index(fromBlock: number | string): Promise<void> {
     this.orders = {};
-
-    this.logger.info(`Rebuilding index from '${fromBlock}' to latest`);
 
     const toBlock = await this.provider.getBlockNumber();
     const events = await getEvents(this.EVENTS_OF_INTEREST, this.market, {
@@ -91,6 +95,9 @@ export class DelayedOrdersKeeper extends Keeper {
       logger: this.logger,
     });
 
+    this.logger.info('Rebuilding index...', {
+      args: { fromBlock, toBlock, events: events.length },
+    });
     await this.updateIndex(events);
   }
 
@@ -108,12 +115,14 @@ export class DelayedOrdersKeeper extends Keeper {
     const order = this.orders[account];
 
     if (!order) {
-      this.logger.info(`This account does not have any tracked orders '${account}'`);
+      this.logger.info('Account does not have any tracked orders', { args: { account } });
       return;
     }
 
     if (order.executionFailures > this.maxExecAttempts) {
-      this.logger.info(`Order execution exceeded max attempts '${account}'`);
+      this.logger.info('Order execution exceeded max attempts', {
+        args: { account, attempts: order.executionFailures },
+      });
       delete this.orders[account];
       return;
     }
@@ -121,15 +130,17 @@ export class DelayedOrdersKeeper extends Keeper {
     // TODO: Remove DelayedOrders that cannot be executed (and only be cancelled).
 
     try {
-      this.logger.info(`Begin executeDelayedOrder(${account})`);
+      this.logger.info('Executing delayed order...', { args: { account } });
       const tx = await this.market.executeDelayedOrder(account);
-      this.logger.info(`Submitted executeDelayedOrder(${account}) [nonce=${tx.nonce}]`);
 
-      await this.waitAndLogTx(tx);
+      this.logger.info('Successfully submitted execution transaction', {
+        args: { account, nonce: tx.nonce },
+      });
       delete this.orders[account];
+      await this.waitAndLogTx(tx);
     } catch (err) {
       order.executionFailures += 1;
-      this.metrics.count(Metric.KEEPER_EXECUTION_ERROR);
+      this.metrics.count(Metric.KEEPER_ERROR);
       throw err;
     }
     this.metrics.count(Metric.DELAYED_ORDER_EXECUTED);
@@ -153,7 +164,7 @@ export class DelayedOrdersKeeper extends Keeper {
 
       // No orders. Move on.
       if (executableOrders.length === 0) {
-        this.logger.info(`No delayed orders ready... skipping`);
+        this.logger.info('No delayed orders ready... skipping');
         return;
       }
 
@@ -170,7 +181,7 @@ export class DelayedOrdersKeeper extends Keeper {
         await this.delay(this.BATCH_WAIT_TIME);
       }
     } catch (err) {
-      this.logger.error('Failed to execute delayed order', err);
+      this.logger.error('Failed to execute delayed order', { args: { err } });
     }
   }
 }

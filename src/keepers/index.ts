@@ -45,25 +45,22 @@ export class Keeper {
       // Skip task as its already running.
       return;
     }
-    this.activeKeeperTasks[id] = true;
 
+    this.activeKeeperTasks[id] = true;
     try {
-      this.logger.debug(`Keeper task running (${id})`);
       await cb();
     } catch (err) {
       this.logger.error(`Error (${id})\n${err}`);
     }
-    this.logger.debug(`Keeper task complete (${id})`);
-
     delete this.activeKeeperTasks[id];
   }
 
   protected async waitAndLogTx(tx: TransactionResponse): Promise<void> {
     const receipt = await tx.wait(1);
     const { blockNumber, status, transactionHash, gasUsed } = receipt;
-    this.logger.info(
-      `tx.wait(${transactionHash}) completed on block=${blockNumber} (${status}) gas:${gasUsed}`
-    );
+    this.logger.info('Waiting for transaction to complete...', {
+      args: { transactionHash, blockNumber, status, gasUsed },
+    });
   }
 
   delay(ms: number): Promise<void> {

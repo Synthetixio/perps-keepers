@@ -47,7 +47,7 @@ export class LiquidationKeeper extends Keeper {
       return;
     }
 
-    this.logger.info(`'${events.length}' event(s) available to index...`);
+    this.logger.info('Events available for index', { args: { n: events.length } });
     events.forEach(({ event, args, blockNumber }) => {
       if (!args) {
         return;
@@ -90,7 +90,9 @@ export class LiquidationKeeper extends Keeper {
           return;
         }
         default:
-          this.logger.debug(`No handler for event ${event} (${blockNumber})`);
+          this.logger.debug('No handler found for event', {
+            args: { event, blockNumber },
+          });
       }
     });
   }
@@ -101,8 +103,6 @@ export class LiquidationKeeper extends Keeper {
     this.blockTipTimestamp = 0;
     this.assetPrice = 0;
 
-    this.logger.info(`Rebuilding index from '${fromBlock}' to latest`);
-
     const toBlock = await this.provider.getBlockNumber();
     const events = await getEvents(this.EVENTS_OF_INTEREST, this.market, {
       fromBlock,
@@ -110,6 +110,9 @@ export class LiquidationKeeper extends Keeper {
       logger: this.logger,
     });
 
+    this.logger.info('Rebuilding index...', {
+      args: { fromBlock, toBlock, events: events.length },
+    });
     await this.updateIndex(events);
   }
 
@@ -165,21 +168,23 @@ export class LiquidationKeeper extends Keeper {
         utils.formatUnits((await this.market.liquidationPrice(account)).price)
       );
       this.positions[account].liqPriceUpdatedTimestamp = this.blockTipTimestamp;
-      this.logger.info(
-        `Cannot liquidate '${account}' - liqPrice=${this.positions[account].liqPrice}`
-      );
+      this.logger.info('Cannot liquidate position', {
+        args: { account, liqPrice: this.positions[account].liqPrice },
+      });
       return;
     }
 
     try {
-      this.logger.info(`Begin liquidatePosition(${account})`);
+      this.logger.info('Liquidating position...', { args: { account } });
       const tx: TransactionResponse = await this.market
         .connect(this.signer)
         .liquidatePosition(account);
-      this.logger.info(`Submitted liquidatePosition(${account}) [nonce=${tx.nonce}]`);
+      this.logger.info('Successfully submitted execution transaction', {
+        args: { account, nonce: tx.nonce },
+      });
       await this.waitAndLogTx(tx);
     } catch (err) {
-      this.metrics.count(Metric.KEEPER_EXECUTION_ERROR);
+      this.metrics.count(Metric.KEEPER_ERROR);
       throw err;
     }
     this.metrics.count(Metric.POSITION_LIQUIDATED);
@@ -196,7 +201,7 @@ export class LiquidationKeeper extends Keeper {
 
       // No positions. Move on.
       if (positionCount === 0) {
-        this.logger.info(`No positions ready... skipping`);
+        this.logger.info('No positions ready... skipping');
         return;
       }
 
@@ -217,7 +222,7 @@ export class LiquidationKeeper extends Keeper {
         }
       }
     } catch (err) {
-      this.logger.error('Failed to execute liquidations', err);
+      this.logger.error('Failed to execute liquidations', { args: { err } });
     }
   }
 }

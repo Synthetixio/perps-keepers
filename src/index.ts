@@ -8,7 +8,6 @@ require('dotenv').config({
       : require('path').resolve(__dirname, '../.env'),
 });
 
-import { program } from 'commander';
 import logProcessError from 'log-process-errors';
 import { createLogger } from './logging';
 import { getConfig, KeeperConfig } from './config';
@@ -18,23 +17,19 @@ import { Distributor } from './distributor';
 import { LiquidationKeeper } from './keepers/liquidation';
 import { DelayedOrdersKeeper } from './keepers/delayedOrders';
 import { DelayedOffchainOrdersKeeper } from './keepers/delayedOffchainOrders';
-import { Metrics } from './metrics';
-
-logProcessError({
-  log(error, level) {
-    createLogger('Errors').log(level, error.stack);
-  },
-});
+import { Metric, Metrics } from './metrics';
 
 export async function run(config: KeeperConfig) {
   const logger = createLogger('Application');
   const metrics = Metrics.create(config.isMetricsEnabled, config.network, config.aws);
 
+  metrics.count(Metric.KEEPER_STARTUP);
+
   const provider = getDefaultProvider(config.providerUrl);
-  logger.info(`Connected to Ethereum node at '${config.providerUrl}'`);
+  logger.info('Connected to Ethereum node', { args: { providerUrl: config.providerUrl } });
 
   const signer = Wallet.fromMnemonic(config.ethHdwalletMnemonic).connect(provider);
-  logger.info(`Keeper address '${signer.address}'`);
+  logger.info('Using keeper', { args: { address: signer.address } });
 
   const contracts = await getSynthetixPerpsContracts(config.network, signer, provider);
   const pyth = getPythDetails(config.network, provider);
@@ -77,7 +72,7 @@ export async function run(config: KeeperConfig) {
         )
       );
     } else {
-      logger.info(`Skipping '${baseAsset}' as off-chain price feed does not exist`);
+      logger.debug('Not registering off-chain keeper as feed not defined', { args: { baseAsset } });
     }
 
     keepers.push(
@@ -92,6 +87,7 @@ export async function run(config: KeeperConfig) {
         config.maxOrderExecAttempts
       )
     );
+    logger.info('Registering keepers to distributor', { args: { n: keepers.length } });
 
     // Register all instantiated keepers. The order of importance is as follows:
     //
@@ -103,28 +99,11 @@ export async function run(config: KeeperConfig) {
   }
 }
 
-program
-  .command('run')
-  .description('Run the perps-keeper')
-  .option(
-    '-b, --from-block <value>',
-    'rebuild the keeper index from a starting block, before initiating keeper actions.'
-  )
-  .option('--network <value>', 'ethereum network to connect to.')
-  .option(
-    '-m, --markets <value>',
-    'runs keeper operations for the specified markets, delimited by a comma. Default all live markets.'
-  )
-  .action(arg => {
-    // NOTE: At this point we're in the realm of unknown/any because of user input and zero validation (yet).
-    process.env.FROM_BLOCK = arg.fromBlock ?? process.env.FROM_BLOCK;
-    process.env.NETWORK = arg.network ?? process.env.NETWORK;
-
-    // Combine all available input (env vars and user define args), validate then only use this downstream.
-    const config = getConfig();
-    run(config);
-  });
-
-program.parseAsync(process.argv).catch(err => {
-  throw err;
+logProcessError({
+  log(error, level) {
+    createLogger('Errors').log(level, error.stack);
+  },
 });
+
+const config = getConfig();
+run(config);

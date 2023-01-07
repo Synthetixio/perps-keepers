@@ -32,7 +32,9 @@ export const getEvents = async (
       const pagination = getPaginatedFromAndTo(Number(fromBlock), Number(toBlock));
       if (pagination.length > 1) {
         // Only log this for when we're doing pagination
-        logger.info(`Making ${pagination.length} requests to infura to index ${eventName}`);
+        logger.info('Querying Infura for indexing', {
+          args: { pagination: pagination.length, eventName },
+        });
       }
 
       const events = await Promise.all(
@@ -45,11 +47,10 @@ export const getEvents = async (
   );
   nestedEvents.forEach((singleFilterEvents, index) => {
     if (singleFilterEvents.length > 4000) {
-      // at some point we'll issues getting enough events
-      logger.warn(
-        `Got ${singleFilterEvents.length} ${eventNames[index]} events, will run into RPC limits at 10000`,
-        { component: 'Indexer' }
-      );
+      // At some point we'll have issues getting enough events.
+      logger.warn('Received events but will run into RPC limits at 10k', {
+        args: { n: singleFilterEvents.length, eventName: eventNames[index] },
+      });
     }
   });
   const events = nestedEvents.flat(1);

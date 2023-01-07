@@ -1,3 +1,4 @@
+import { map } from 'lodash';
 import winston, { format, transports } from 'winston';
 import WinstonCloudWatch from 'winston-cloudwatch';
 import { getConfig } from './config';
@@ -8,15 +9,18 @@ const config = getConfig();
 
 export const createLogger = (label: string): winston.Logger => {
   const logger = winston.createLogger({
-    level: 'info',
+    level: process.env.LOG_LEVEL ?? 'info',
     format: format.combine(
       format.label({ label }),
-      format.printf(info => {
-        return [info.timestamp, info.level, info.label, info.component, '-', info.message]
+      format.timestamp(),
+      format.printf(({ timestamp, level, label, component, message, args }) => {
+        const argsMessage = map(args, (value, key) => `${key}=${value}`).join(' ');
+        return [timestamp, level, label, component, '-', message, argsMessage]
           .filter(x => !!x)
           .join(' ');
       })
     ),
+    // Implicit transport to exclude console when pm_id (pm2) is available (no log rotation).
     transports: process.env.pm_id ? [] : [new transports.Console()],
   });
 
