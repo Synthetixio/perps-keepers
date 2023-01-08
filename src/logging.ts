@@ -39,7 +39,6 @@ export const createLogger = (label: string): winston.Logger => {
       new WinstonCloudWatch({
         logGroupName,
         logStreamName,
-        messageFormatter: ({ level, message }) => `${level.toUpperCase()} [${label}] ${message}`,
         awsOptions: {
           region,
           credentials: {
