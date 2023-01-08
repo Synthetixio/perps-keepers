@@ -47,6 +47,7 @@ jobs:
           echo FROM_BLOCK=38123 >> .env.staging  # goerli deployment block
           echo RUN_EVERY_X_BLOCK=3 >> .env.staging
           echo METRICS_ENABLED=1 >> .env.staging
+          echo LOG_LEVEL=info >> .env.staging
         if: github.ref == 'refs/heads/develop'
 
       - name: Deploy

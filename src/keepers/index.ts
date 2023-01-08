@@ -60,7 +60,7 @@ export class Keeper {
     const receipt = await tx.wait(1);
     const { blockNumber, status, transactionHash, gasUsed } = receipt;
     this.logger.info('Waiting for transaction to complete...', {
-      args: { transactionHash, blockNumber, status, gasUsed },
+      args: { tx: transactionHash, blockNumber, status, gasUsed },
     });
   }
 
