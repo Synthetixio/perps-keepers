@@ -39,6 +39,10 @@ export const createLogger = (label: string): winston.Logger => {
       new WinstonCloudWatch({
         logGroupName,
         logStreamName,
+        messageFormatter: ({ level, message, component, args }) => {
+          const argsMessage = map(args, (value, key) => `${key}=${value}`).join(' ');
+          return [level, label, component, '-', message, argsMessage].filter(x => !!x).join(' ');
+        },
         awsOptions: {
           region,
           credentials: {
