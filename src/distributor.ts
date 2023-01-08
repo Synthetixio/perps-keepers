@@ -90,7 +90,7 @@ export class Distributor {
       this.blockQueue.sort();
       const blockNumber = this.blockQueue.shift();
       if (blockNumber) {
-        this.logger.info('Found block in blockQueue!', {
+        this.logger.debug('Found block in blockQueue!', {
           args: {
             blockNumber,
             lastProcessedBlock: this.lastProcessedBlock,
@@ -143,7 +143,7 @@ export class Distributor {
         }
 
         this.blockQueue.push(blockNumber);
-        this.logger.info('Storing new blockMod block...', {
+        this.logger.debug('Storing new blockMod block...', {
           args: { blockQueueN: this.blockQueue.length, blockNumber },
         });
       });

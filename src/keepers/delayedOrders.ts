@@ -136,8 +136,8 @@ export class DelayedOrdersKeeper extends Keeper {
       this.logger.info('Successfully submitted execution transaction', {
         args: { account, nonce: tx.nonce },
       });
-      delete this.orders[account];
       await this.waitAndLogTx(tx);
+      delete this.orders[account];
     } catch (err) {
       order.executionFailures += 1;
       this.metrics.count(Metric.KEEPER_ERROR);

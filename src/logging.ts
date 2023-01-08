@@ -34,6 +34,7 @@ export const createLogger = (label: string): winston.Logger => {
         ? 'perps-keeper-staging'
         : 'perps-keeper-production';
 
+    // @see: https://github.com/lazywithclass/winston-cloudwatch#options
     logger.add(
       new WinstonCloudWatch({
         logGroupName,

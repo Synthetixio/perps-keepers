@@ -177,8 +177,8 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       this.logger.info('Successfully submitted execution transaction', {
         args: { account, nonce: tx.nonce },
       });
-      delete this.orders[account];
       await this.waitAndLogTx(tx);
+      delete this.orders[account];
     } catch (err) {
       order.executionFailures += 1;
       this.metrics.count(Metric.KEEPER_ERROR);
@@ -233,12 +233,12 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
         `Found ${executableOrders.length}/${orders.length} off-chain order(s) that can be executed`
       );
       for (const batch of chunk(executableOrders, this.MAX_BATCH_SIZE)) {
-        this.logger.info(`Running keeper batch with '${batch.length}' orders(s) to keep`);
+        this.logger.info('Running keeper batch orders', { args: { n: batch.length } });
         const batches = batch.map(({ account }) =>
           this.execAsyncKeeperCallback(account, () => this.executeOrder(account, isOrderStale))
         );
         await Promise.all(batches);
-        this.logger.info(`Batch processed with '${batch.length}' orders(s) to kept`);
+        this.logger.info(`Processed processed with '${batch.length}' orders(s) to kept`);
         await this.delay(this.BATCH_WAIT_TIME);
       }
     } catch (err) {
