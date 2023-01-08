@@ -51,6 +51,7 @@ export class Keeper {
       await cb();
     } catch (err) {
       this.logger.error(`Error (${id})\n${err}`);
+      this.logger.error((err as Error).stack);
     }
     delete this.activeKeeperTasks[id];
   }
