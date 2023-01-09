@@ -173,6 +173,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       });
       const tx = await this.market.executeOffchainDelayedOrder(account, priceUpdateData, {
         value: updateFee,
+        gasLimit: 15000,
       });
       this.logger.info('Successfully submitted execution transaction', {
         args: { account, nonce: tx.nonce },
