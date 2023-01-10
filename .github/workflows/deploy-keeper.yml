@@ -31,8 +31,9 @@ jobs:
           echo AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }} >> .env
           echo AWS_REGION=${{ secrets.AWS_REGION }} >> .env
           echo FROM_BLOCK=4552552 >> .env  # mainnet deployment block
-          echo RUN_EVERY_X_BLOCK=5 >> .env
+          echo RUN_EVERY_X_BLOCK=3 >> .env
           echo METRICS_ENABLED=1 >> .env
+          echo LOG_LEVEL=info >> .env
         if: github.ref == 'refs/heads/master'
 
       - name: Create .env.staging file
@@ -45,7 +46,7 @@ jobs:
           echo AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }} >> .env.staging
           echo AWS_REGION=${{ secrets.AWS_REGION }} >> .env.staging
           echo FROM_BLOCK=38123 >> .env.staging  # goerli deployment block
-          echo RUN_EVERY_X_BLOCK=3 >> .env.staging
+          echo RUN_EVERY_X_BLOCK=5 >> .env.staging
           echo METRICS_ENABLED=1 >> .env.staging
           echo LOG_LEVEL=info >> .env.staging
         if: github.ref == 'refs/heads/develop'
