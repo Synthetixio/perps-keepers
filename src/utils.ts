@@ -12,6 +12,17 @@ interface KeeperContracts {
   markets: Record<string, Contract>;
 }
 
+export const networkToSynthetixNetworkName = (network: Network): string => {
+  switch (network) {
+    case Network.OPT:
+      return 'mainnet-ovm';
+    case Network.OPT_GOERLI:
+      return 'goerli-ovm';
+    default:
+      throw new Error(`Unsupported Synthetix Network Name Mapping '${network}'`);
+  }
+};
+
 export const getSynthetixPerpsContracts = async (
   network: Network,
   signer: Signer,
@@ -19,8 +30,8 @@ export const getSynthetixPerpsContracts = async (
 ): Promise<KeeperContracts> => {
   // TODO: Use the Synthetix npm package to derive the ABI and address once merged and released.
   const futuresMarketManagerAddress = {
-    [Network.GOERLI_OVM]: '0x1306e1F0eFdc84EDBE665cD9B5146C535B5B382A',
-    [Network.MAINNET_OVM]: '0xdb89f3fc45A707Dd49781495f77f8ae69bF5cA6e',
+    [Network.OPT_GOERLI]: '0x1306e1F0eFdc84EDBE665cD9B5146C535B5B382A',
+    [Network.OPT]: '0xdb89f3fc45A707Dd49781495f77f8ae69bF5cA6e',
   }[network];
   const marketManager = new Contract(
     futuresMarketManagerAddress,
@@ -41,13 +52,23 @@ export const getSynthetixPerpsContracts = async (
     },
     {}
   );
-  const exchangeRatesAddress = synthetix.getTarget({ network, contract: 'ExchangeRates' }).address;
-  const exchangeRateAbi = synthetix.getSource({ network, contract: 'ExchangeRates' }).abi;
-  const exchangeRates = new Contract(exchangeRatesAddress, exchangeRateAbi, provider);
 
-  const marketSettingsAddress = synthetix.getTarget({ network, contract: 'PerpsV2MarketSettings' })
-    .address;
-  const marketSettingsAbi = synthetix.getSource({ network, contract: 'PerpsV2MarketSettings' }).abi;
+  const snxNetwork = networkToSynthetixNetworkName(network);
+  const exchangeRatesAddress = synthetix.getTarget({
+    network: snxNetwork,
+    contract: 'ExchangeRates',
+  }).address;
+  const exchangeRateAbi = synthetix.getSource({ network: snxNetwork, contract: 'ExchangeRates' })
+    .abi;
+  const exchangeRates = new Contract(exchangeRatesAddress, exchangeRateAbi, provider);
+  const marketSettingsAddress = synthetix.getTarget({
+    network: snxNetwork,
+    contract: 'PerpsV2MarketSettings',
+  }).address;
+  const marketSettingsAbi = synthetix.getSource({
+    network: snxNetwork,
+    contract: 'PerpsV2MarketSettings',
+  }).abi;
   const marketSettings = new Contract(marketSettingsAddress, marketSettingsAbi, provider);
 
   return { exchangeRates, marketManager, marketSettings, markets };
@@ -57,25 +78,25 @@ export const getSynthetixPerpsContracts = async (
 
 // @see: https://github.com/pyth-network/pyth-js/tree/main/pyth-evm-js
 const PYTH_NETWORK_ENDPOINTS: Record<Network, string> = {
-  [Network.GOERLI_OVM]: 'https://xc-testnet.pyth.network',
-  [Network.MAINNET_OVM]: 'https://xc-mainnet.pyth.network',
+  [Network.OPT_GOERLI]: 'https://xc-testnet.pyth.network',
+  [Network.OPT]: 'https://xc-mainnet.pyth.network',
 };
 
 const PYTH_PRICE_FEED_IDS: Record<Network, Record<string, string>> = {
   // @see: https://pyth.network/developers/price-feed-ids#pyth-evm-testnet
-  [Network.GOERLI_OVM]: {
+  [Network.OPT_GOERLI]: {
     sETH: '0xca80ba6dc32e08d06f1aa886011eed1d77c77be9eb761cc10d72b7d0a2fd57a6',
   },
   // @see: https://pyth.network/developers/price-feed-ids#pyth-evm-mainnet
-  [Network.MAINNET_OVM]: {
+  [Network.OPT]: {
     sETH: '0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace',
   },
 };
 
 // @see: https://docs.pyth.network/consume-data/evm
 const PYTH_CONTRACT_ADDRESSES: Record<Network, string> = {
-  [Network.GOERLI_OVM]: '0xff1a0f4744e8582DF1aE09D5611b887B6a12925C',
-  [Network.MAINNET_OVM]: '0xff1a0f4744e8582DF1aE09D5611b887B6a12925C',
+  [Network.OPT_GOERLI]: '0xff1a0f4744e8582DF1aE09D5611b887B6a12925C',
+  [Network.OPT]: '0xff1a0f4744e8582DF1aE09D5611b887B6a12925C',
 };
 
 export const getPythDetails = (

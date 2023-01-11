@@ -11,22 +11,58 @@ require('dotenv').config({
 import logProcessError from 'log-process-errors';
 import { createLogger } from './logging';
 import { getConfig, KeeperConfig } from './config';
-import { getDefaultProvider, utils, Wallet } from 'ethers';
+import { utils, Wallet, providers } from 'ethers';
 import { getPythDetails, getSynthetixPerpsContracts } from './utils';
 import { Distributor } from './distributor';
 import { LiquidationKeeper } from './keepers/liquidation';
 import { DelayedOrdersKeeper } from './keepers/delayedOrders';
 import { DelayedOffchainOrdersKeeper } from './keepers/delayedOffchainOrders';
 import { Metric, Metrics } from './metrics';
+import { Network } from './typed';
 
-export async function run(config: KeeperConfig) {
-  const logger = createLogger('Application');
+const logger = createLogger('Application');
+
+// 400ms.
+//
+// Waits `n` ms before executing the same request to the next provider ordered by priority.
+export const PROVIDER_STALL_TIMEOUT = 400;
+export const PROVIDER_DEFAULT_WEIGHT = 1;
+
+export const getProvider = async (
+  config: KeeperConfig['providerApiKeys'],
+  network: Network
+): Promise<providers.BaseProvider> => {
+  // Infura has the highest priority (indicated by the lowest priority number).
+  const providersConfig: providers.FallbackProviderConfig[] = [
+    {
+      provider: new providers.InfuraProvider(network, config.infura),
+      priority: 10,
+      stallTimeout: PROVIDER_STALL_TIMEOUT,
+      weight: PROVIDER_DEFAULT_WEIGHT,
+    },
+  ];
+  if (config.alchemy) {
+    logger.info('Alchemy API key provided. Adding as fallback provider');
+    providersConfig.push({
+      provider: new providers.AlchemyProvider(network, config.alchemy),
+      priority: 20,
+      stallTimeout: PROVIDER_STALL_TIMEOUT,
+      weight: PROVIDER_DEFAULT_WEIGHT,
+    });
+  }
+  return new providers.FallbackProvider(providersConfig, 1);
+};
+
+export const run = async (config: KeeperConfig) => {
   const metrics = Metrics.create(config.isMetricsEnabled, config.network, config.aws);
-
   metrics.count(Metric.KEEPER_STARTUP);
 
-  const provider = getDefaultProvider(config.providerUrl);
-  logger.info('Connected to Ethereum node', { args: { providerUrl: config.providerUrl } });
+  const provider = await getProvider(config.providerApiKeys, config.network);
+  const latestBlock = await provider.getBlock('latest');
+
+  logger.info('Connected to Ethereum node', {
+    args: { network: config.network, latestBlockNumber: latestBlock.number },
+  });
 
   const signer = Wallet.fromMnemonic(config.ethHdwalletMnemonic).connect(provider);
   logger.info('Using keeper', { args: { address: signer.address } });
@@ -97,11 +133,11 @@ export async function run(config: KeeperConfig) {
     distributor.registerKeepers(keepers);
     distributor.listen();
   }
-}
+};
 
 logProcessError({
-  log(error, level) {
-    createLogger('Errors').log(level, error.stack);
+  log(err, level) {
+    logger.log(level, `${err}, ${err.stack}`);
   },
 });
 
