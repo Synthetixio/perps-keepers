@@ -22,10 +22,10 @@ import { Network } from './typed';
 
 const logger = createLogger('Application');
 
-// 400ms.
+// 750ms.
 //
 // Waits `n` ms before executing the same request to the next provider ordered by priority.
-export const PROVIDER_STALL_TIMEOUT = 400;
+export const PROVIDER_STALL_TIMEOUT = 750;
 export const PROVIDER_DEFAULT_WEIGHT = 1;
 
 export const getProvider = async (
