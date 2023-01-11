@@ -50,7 +50,7 @@ export const getProvider = async (
       weight: PROVIDER_DEFAULT_WEIGHT,
     });
   }
-  return new providers.FallbackProvider(providersConfig, 1);
+  return new providers.FallbackProvider(providersConfig);
 };
 
 export const run = async (config: KeeperConfig) => {
