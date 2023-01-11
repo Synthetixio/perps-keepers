@@ -28,7 +28,7 @@
     "@synthetixio/contracts-interface": "^2.76.5",
     "@synthetixio/wei": "^2.74.4",
     "dotenv": "^16.0.3",
-    "ethers": "5.5.4",
+    "ethers": "5.7.2",
     "lodash": "4.17.21",
     "log-process-errors": "6.3.0",
     "pm2": "5.1.2",

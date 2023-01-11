@@ -3,7 +3,7 @@ import { Network } from './typed';
 
 export const DEFAULT_CONFIG = {
   fromBlock: 1,
-  network: Network.GOERLI_OVM,
+  network: Network.OPT_GOERLI,
   runEveryXBlock: 5,
   runHealthcheckEveryXBlock: 10,
   maxOrderExecAttempts: 10,
@@ -16,7 +16,10 @@ export const KeeperConfigSchema = z.object({
     .positive()
     .or(z.literal('latest'))
     .default(DEFAULT_CONFIG.fromBlock),
-  providerUrl: z.string().min(1),
+  providerApiKeys: z.object({
+    infura: z.string().min(1),
+    alchemy: z.string().optional(),
+  }),
   network: z.nativeEnum(Network).default(DEFAULT_CONFIG.network),
   runEveryXBlock: z.coerce
     .number()
@@ -51,7 +54,10 @@ export const getConfig = (force = false): KeeperConfig => {
 
   const result = KeeperConfigSchema.safeParse({
     fromBlock: process.env.FROM_BLOCK,
-    providerUrl: process.env.PROVIDER_URL,
+    providerApiKeys: {
+      infura: process.env.PROVIDER_API_KEY_INFURA,
+      alchemy: process.env.PROVIDER_API_KEY_ALCHEMY,
+    },
     network: process.env.NETWORK,
     runEveryXBlock: process.env.RUN_EVERY_X_BLOCK,
     runHealthcheckEveryXBlock: process.env.RUN_HEALTHCHECK_EVERY_X_BLOCK,
