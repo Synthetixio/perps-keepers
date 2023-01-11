@@ -20,16 +20,17 @@ This project is a [fork of futures-keepers](https://github.com/Synthetixio/futur
 
 Variables for configuration are defined as environment variables. During development they are stored in an `.env.staging` file at the project root then loaded via [dotenv](https://www.npmjs.com/package/dotenv). The contents are as follows:
 
-| Variable                  | Required | Description                                                         | Default    |
-| :------------------------ | :------- | :------------------------------------------------------------------ | :--------- |
-| `ETH_HDWALLET_MNEMONIC`   | Yes      | Mnemonic used to unlock the keeper's wallet                         |            |
-| `PROVIDER_URL`            | Yes      | RPC provider URL                                                    |            |
-| `NETWORK`                 | No       | Network to keep against (goerli-ovm, mainnet-ovm)                   | goerli-ovm |
-| `FROM_BLOCK`              | No       | Default block to index from                                         | 1          |
-| `RUN_EVERY_X_BLOCK`       | No       | Used to skip blocks (`1` to not skip)                               | 5          |
-| `MAX_ORDER_EXEC_ATTEMPTS` | No       | Maximum number of order execution attempst to try before ignoring   | 10         |
-| `METRICS_ENABLED`         | No       | Whether metrics are enabled or disabled (1 = enabled, 0 = disabled) | 0          |
-| `LOG_LEVEL`               | No       | Application log level                                               | info       |
+| Variable                   | Required | Description                                                         | Default         |
+| :------------------------- | :------- | :------------------------------------------------------------------ | :-------------- |
+| `ETH_HDWALLET_MNEMONIC`    | Yes      | Mnemonic used to unlock the keeper's wallet                         |                 |
+| `PROVIDER_API_KEY_INFURA`  | Yes      | Infura RPC provider API key                                         |                 |
+| `PROVIDER_API_KEY_ALCHEMY` | No       | An optional Alchemy RPC API key to fallback if Infura falls key     |                 |
+| `NETWORK`                  | No       | Network to keep against (goerli-ovm, mainnet-ovm)                   | optimism-goerli |
+| `FROM_BLOCK`               | No       | Default block to index from                                         | 1               |
+| `RUN_EVERY_X_BLOCK`        | No       | Used to skip blocks (`1` to not skip)                               | 5               |
+| `MAX_ORDER_EXEC_ATTEMPTS`  | No       | Maximum number of order execution attempst to try before ignoring   | 10              |
+| `METRICS_ENABLED`          | No       | Whether metrics are enabled or disabled (1 = enabled, 0 = disabled) | 0               |
+| `LOG_LEVEL`                | No       | Application log level                                               | info            |
 
 _For an example `.env` see `.env.example`. All input variables are validated, see `./src/config.ts` for more details (including defaults). Speak with another developer for `.env` values._
 
