@@ -42,6 +42,7 @@ jobs:
           touch .env.staging
           echo ETH_HDWALLET_MNEMONIC=${{ secrets.ETH_HDWALLET_MNEMONIC }} >> .env.staging
           echo PROVIDER_API_KEY_INFURA=${{ secrets.INFURA_PROJECT_ID }} >> .env.staging
+          echo PROVIDER_API_KEY_ALCHEMY=${{ secrets.ALCHEMY_PROJECT_ID }} >> .env.staging
           echo NETWORK=optimism-goerli >> .env.staging
           echo AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }} >> .env.staging
           echo AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }} >> .env.staging
