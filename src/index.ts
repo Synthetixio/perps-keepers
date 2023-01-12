@@ -60,7 +60,7 @@ export const run = async (config: KeeperConfig) => {
   const provider = await getProvider(config.providerApiKeys, config.network);
   const latestBlock = await provider.getBlock('latest');
 
-  logger.info('Connected to Ethereum node', {
+  logger.info('Connected to OVM/EVM node', {
     args: { network: config.network, latestBlockNumber: latestBlock.number },
   });
 
@@ -80,8 +80,7 @@ export const run = async (config: KeeperConfig) => {
       metrics,
       signer,
       config.fromBlock,
-      config.runEveryXBlock,
-      config.runHealthcheckEveryXBlock
+      config.distributorProcessInterval
     );
 
     const keepers = [];

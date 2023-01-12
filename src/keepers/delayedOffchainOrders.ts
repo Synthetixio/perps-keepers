@@ -1,7 +1,6 @@
 import { Block } from '@ethersproject/abstract-provider';
 import { BigNumber, Contract, ethers, Event, providers, utils, Wallet } from 'ethers';
 import { Keeper } from '.';
-import { getEvents } from './helpers';
 import { DelayedOrder, PerpsEvent } from '../typed';
 import { chunk } from 'lodash';
 import { EvmPriceServiceConnection } from '@pythnetwork/pyth-evm-js';
@@ -15,7 +14,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
   private readonly PYTH_MAX_TIMEOUT = 3000;
   private readonly PYTH_MAX_RETRIES = 5;
 
-  private readonly EVENTS_OF_INTEREST: PerpsEvent[] = [
+  readonly EVENTS_OF_INTEREST: PerpsEvent[] = [
     PerpsEvent.DelayedOrderSubmitted,
     PerpsEvent.DelayedOrderRemoved,
   ];
@@ -113,22 +112,6 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
     }
   }
 
-  async index(fromBlock: number | string): Promise<void> {
-    this.orders = {};
-
-    const toBlock = await this.provider.getBlockNumber();
-    const events = await getEvents(this.EVENTS_OF_INTEREST, this.market, {
-      fromBlock,
-      toBlock,
-      logger: this.logger,
-    });
-
-    this.logger.info('Rebuilding index...', {
-      args: { fromBlock, toBlock, events: events.length },
-    });
-    await this.updateIndex(events);
-  }
-
   private async executeOrder(
     account: string,
     isOrderStale: (order: DelayedOrder) => boolean
@@ -143,7 +126,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       return;
     }
 
-    if (order.executionFailures > this.maxExecAttempts) {
+    if (order.executionFailures >= this.maxExecAttempts) {
       this.logger.info('Order execution exceeded max attempts', {
         args: { account, attempts: order.executionFailures },
       });
@@ -179,10 +162,10 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       delete this.orders[account];
     } catch (err) {
       order.executionFailures += 1;
-      this.metrics.count(Metric.KEEPER_ERROR);
+      this.metrics.count(Metric.KEEPER_ERROR, this.metricDimensions);
       throw err;
     }
-    this.metrics.count(Metric.OFFCHAIN_ORDER_EXECUTED);
+    this.metrics.count(Metric.OFFCHAIN_ORDER_EXECUTED, this.metricDimensions);
   }
 
   private async getOffchainMinMaxAge(): Promise<{

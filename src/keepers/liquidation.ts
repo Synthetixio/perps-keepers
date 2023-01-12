@@ -15,7 +15,7 @@ export class LiquidationKeeper extends Keeper {
   private positions: Record<string, Position> = {};
   private blockTipTimestamp: number = 0;
 
-  private readonly EVENTS_OF_INTEREST: PerpsEvent[] = [
+  readonly EVENTS_OF_INTEREST: PerpsEvent[] = [
     PerpsEvent.FundingRecomputed,
     PerpsEvent.PositionLiquidated,
     PerpsEvent.PositionModified,
@@ -97,25 +97,6 @@ export class LiquidationKeeper extends Keeper {
     });
   }
 
-  async index(fromBlock: number | string): Promise<void> {
-    this.positions = {};
-    this.activeKeeperTasks = {};
-    this.blockTipTimestamp = 0;
-    this.assetPrice = 0;
-
-    const toBlock = await this.provider.getBlockNumber();
-    const events = await getEvents(this.EVENTS_OF_INTEREST, this.market, {
-      fromBlock,
-      toBlock,
-      logger: this.logger,
-    });
-
-    this.logger.info('Rebuilding index...', {
-      args: { fromBlock, toBlock, events: events.length },
-    });
-    await this.updateIndex(events);
-  }
-
   private liquidationGroups(
     posArr: Position[],
     priceProximityThreshold = 0.05,
@@ -184,10 +165,10 @@ export class LiquidationKeeper extends Keeper {
       });
       await this.waitAndLogTx(tx);
     } catch (err) {
-      this.metrics.count(Metric.KEEPER_ERROR);
+      this.metrics.count(Metric.KEEPER_ERROR, this.metricDimensions);
       throw err;
     }
-    this.metrics.count(Metric.POSITION_LIQUIDATED);
+    this.metrics.count(Metric.POSITION_LIQUIDATED, this.metricDimensions);
   }
 
   async execute(): Promise<void> {

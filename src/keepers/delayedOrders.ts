@@ -1,7 +1,6 @@
 import { Block } from '@ethersproject/abstract-provider';
 import { BigNumber, Contract, Event, providers, utils, Wallet } from 'ethers';
 import { Keeper } from '.';
-import { getEvents } from './helpers';
 import { DelayedOrder, PerpsEvent } from '../typed';
 import { chunk } from 'lodash';
 import { Metric, Metrics } from '../metrics';
@@ -10,7 +9,7 @@ export class DelayedOrdersKeeper extends Keeper {
   // The index
   private orders: Record<string, DelayedOrder> = {};
 
-  private readonly EVENTS_OF_INTEREST: PerpsEvent[] = [
+  readonly EVENTS_OF_INTEREST: PerpsEvent[] = [
     PerpsEvent.DelayedOrderSubmitted,
     PerpsEvent.DelayedOrderRemoved,
   ];
@@ -85,22 +84,6 @@ export class DelayedOrdersKeeper extends Keeper {
     }
   }
 
-  async index(fromBlock: number | string): Promise<void> {
-    this.orders = {};
-
-    const toBlock = await this.provider.getBlockNumber();
-    const events = await getEvents(this.EVENTS_OF_INTEREST, this.market, {
-      fromBlock,
-      toBlock,
-      logger: this.logger,
-    });
-
-    this.logger.info('Rebuilding index...', {
-      args: { fromBlock, toBlock, events: events.length },
-    });
-    await this.updateIndex(events);
-  }
-
   private async executeOrder(account: string): Promise<void> {
     // Cases:
     //
@@ -140,10 +123,10 @@ export class DelayedOrdersKeeper extends Keeper {
       delete this.orders[account];
     } catch (err) {
       order.executionFailures += 1;
-      this.metrics.count(Metric.KEEPER_ERROR);
+      this.metrics.count(Metric.KEEPER_ERROR, this.metricDimensions);
       throw err;
     }
-    this.metrics.count(Metric.DELAYED_ORDER_EXECUTED);
+    this.metrics.count(Metric.DELAYED_ORDER_EXECUTED, this.metricDimensions);
   }
 
   async execute(): Promise<void> {

@@ -3,6 +3,7 @@ import { Contract, Event, providers, Wallet } from 'ethers';
 import { Logger } from 'winston';
 import { createLogger } from '../logging';
 import { Metrics } from '../metrics';
+import { PerpsEvent } from '../typed';
 
 export class Keeper {
   protected readonly logger: Logger;
@@ -11,6 +12,9 @@ export class Keeper {
   protected readonly BATCH_WAIT_TIME = 100;
 
   protected activeKeeperTasks: Record<string, boolean> = {};
+  protected metricDimensions: Record<string, string> = {};
+
+  readonly EVENTS_OF_INTEREST: PerpsEvent[] = [];
 
   constructor(
     protected readonly name: string,
@@ -21,17 +25,14 @@ export class Keeper {
     protected readonly metrics: Metrics,
     protected readonly network: string
   ) {
+    this.metricDimensions.KeeperName = name;
+
     this.logger = createLogger(`[${baseAsset}] ${name}`);
     this.logger.info(`Market deployed at '${market.address}'`);
   }
 
   /* In-place update the keeper's index based on block, event data and market asset price. */
   async updateIndex(events: Event[], block?: providers.Block, assetPrice?: number): Promise<void> {
-    new Error('NotImplementedError');
-  }
-
-  /* Rebuild the in-memory context (e.g. tracking positions) and is called once at startup. */
-  async index(fromBlock: number | string): Promise<void> {
     new Error('NotImplementedError');
   }
 
