@@ -162,10 +162,10 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       delete this.orders[account];
     } catch (err) {
       order.executionFailures += 1;
-      this.metrics.count(Metric.KEEPER_ERROR);
+      this.metrics.count(Metric.KEEPER_ERROR, this.metricDimensions);
       throw err;
     }
-    this.metrics.count(Metric.OFFCHAIN_ORDER_EXECUTED);
+    this.metrics.count(Metric.OFFCHAIN_ORDER_EXECUTED, this.metricDimensions);
   }
 
   private async getOffchainMinMaxAge(): Promise<{

@@ -165,10 +165,10 @@ export class LiquidationKeeper extends Keeper {
       });
       await this.waitAndLogTx(tx);
     } catch (err) {
-      this.metrics.count(Metric.KEEPER_ERROR);
+      this.metrics.count(Metric.KEEPER_ERROR, this.metricDimensions);
       throw err;
     }
-    this.metrics.count(Metric.POSITION_LIQUIDATED);
+    this.metrics.count(Metric.POSITION_LIQUIDATED, this.metricDimensions);
   }
 
   async execute(): Promise<void> {

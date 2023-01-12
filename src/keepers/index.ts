@@ -12,6 +12,7 @@ export class Keeper {
   protected readonly BATCH_WAIT_TIME = 100;
 
   protected activeKeeperTasks: Record<string, boolean> = {};
+  protected metricDimensions: Record<string, string> = {};
 
   readonly EVENTS_OF_INTEREST: PerpsEvent[] = [];
 
@@ -24,6 +25,8 @@ export class Keeper {
     protected readonly metrics: Metrics,
     protected readonly network: string
   ) {
+    this.metricDimensions.KeeperName = name;
+
     this.logger = createLogger(`[${baseAsset}] ${name}`);
     this.logger.info(`Market deployed at '${market.address}'`);
   }

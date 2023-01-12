@@ -83,7 +83,12 @@ export class Metrics {
   }
 
   /* A simple abstracted 'putMetric' call to push gauge/count style metrics to CW. */
-  async send(name: Metric, value: number, unit: StandardUnit = StandardUnit.None): Promise<void> {
+  async send(
+    name: Metric,
+    value: number,
+    unit: StandardUnit = StandardUnit.None,
+    dimensions?: Record<string, string>
+  ): Promise<void> {
     if (!this.cwClient || !this.isEnabled) {
       this.logger.debug('Send no-op due to missing CW client', {
         args: { enabled: this.isEnabled, namespace: this.namespace },
@@ -99,6 +104,7 @@ export class Metrics {
         MetricData: [
           {
             MetricName: name,
+            Dimensions: Object.entries(dimensions ?? {}).map(([Name, Value]) => ({ Name, Value })),
             Value: value,
             StorageResolution: this.DEFAULT_RESOLUTION,
             Unit: unit,
@@ -115,17 +121,17 @@ export class Metrics {
   }
 
   /* Adds 1 to the `name` metric. Also commonly known as `increment`. */
-  async count(name: Metric): Promise<void> {
-    return this.send(name, 1, StandardUnit.Count);
+  async count(name: Metric, dimensions?: Record<string, string>): Promise<void> {
+    return this.send(name, 1, StandardUnit.Count, dimensions);
   }
 
   /* Adds `value` as a gauge metric. */
-  async gauge(name: Metric, value: number): Promise<void> {
-    return this.send(name, value, StandardUnit.Count);
+  async gauge(name: Metric, value: number, dimensions?: Record<string, string>): Promise<void> {
+    return this.send(name, value, StandardUnit.Count, dimensions);
   }
 
   /* `endTime - startTime` assumed to be ms (* 1000 if not). */
-  async time(name: Metric, value: number): Promise<void> {
-    return this.send(name, value, StandardUnit.Milliseconds);
+  async time(name: Metric, value: number, dimensions?: Record<string, string>): Promise<void> {
+    return this.send(name, value, StandardUnit.Milliseconds, dimensions);
   }
 }
