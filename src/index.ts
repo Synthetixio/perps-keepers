@@ -8,6 +8,7 @@ require('dotenv').config({
       : require('path').resolve(__dirname, '../.env'),
 });
 
+import logProcessError from 'log-process-errors';
 import { createLogger } from './logging';
 import { getConfig, KeeperConfig } from './config';
 import { utils, Wallet, providers } from 'ethers';
@@ -132,6 +133,12 @@ export const run = async (config: KeeperConfig) => {
     distributor.listen();
   }
 };
+
+logProcessError({
+  log(err, level) {
+    logger.log(level, `${err}, ${err.stack}`);
+  },
+});
 
 const config = getConfig();
 run(config);
