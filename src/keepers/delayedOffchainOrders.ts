@@ -152,9 +152,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
     }
 
     if (isOrderStale(order)) {
-      this.logger.info('Order is stale can only be cancelled', { args: { account } });
-      delete this.orders[account];
-      return;
+      this.logger.warn('Order might be stale can only be cancelled', { args: { account } });
     }
 
     try {
