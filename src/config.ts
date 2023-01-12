@@ -57,7 +57,7 @@ export const getConfig = (force = false): KeeperConfig => {
     network: process.env.NETWORK,
     ethHdwalletMnemonic: process.env.ETH_HDWALLET_MNEMONIC,
     maxOrderExecAttempts: process.env.MAX_ORDER_EXEC_ATTEMPTS,
-    isMetricsEnabled: process.env.METRICS_ENABLED,
+    isMetricsEnabled: process.env.METRICS_ENABLED === '1',
 
     // This should really not exist? If deployed to AWS, VM should be IAM configured.
     aws: {
