@@ -25,8 +25,11 @@ export enum Metric {
 
   // TODO: Consider tracking open promises
 
-  // Length of the FIFO queue for processing received blocks.
-  DISTRIBUTOR_QUEUE_SIZE = 'DistributorQueueSize',
+  // Number of blocks since the last time the distributor has index/processed blocks.
+  DISTRIBUTOR_BLOCK_DELTA = 'DistributorBlockDelta',
+
+  // Time in ms it takes to process blocks per iteration at the distributor.
+  DISTRIBUTOR_BLOCK_PROCESS_TIME = 'DistributorBlockProcessTime',
 
   // Delayed order executed successfully.
   DELAYED_ORDER_EXECUTED = 'DelayedOrderExecuted',
@@ -36,6 +39,8 @@ export enum Metric {
 
   // Open position liquidated successfully.
   POSITION_LIQUIDATED = 'PositionLiquidated',
+
+  // TODO: Add metrics for time taken per keeper type.
 }
 
 export class Metrics {

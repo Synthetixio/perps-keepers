@@ -10,7 +10,7 @@ export class DelayedOrdersKeeper extends Keeper {
   // The index
   private orders: Record<string, DelayedOrder> = {};
 
-  private readonly EVENTS_OF_INTEREST: PerpsEvent[] = [
+  readonly EVENTS_OF_INTEREST: PerpsEvent[] = [
     PerpsEvent.DelayedOrderSubmitted,
     PerpsEvent.DelayedOrderRemoved,
   ];
@@ -83,22 +83,6 @@ export class DelayedOrdersKeeper extends Keeper {
           });
       }
     }
-  }
-
-  async index(fromBlock: number | string): Promise<void> {
-    this.orders = {};
-
-    const toBlock = await this.provider.getBlockNumber();
-    const events = await getEvents(this.EVENTS_OF_INTEREST, this.market, {
-      fromBlock,
-      toBlock,
-      logger: this.logger,
-    });
-
-    this.logger.info('Rebuilding index...', {
-      args: { fromBlock, toBlock, events: events.length },
-    });
-    await this.updateIndex(events);
   }
 
   private async executeOrder(account: string): Promise<void> {

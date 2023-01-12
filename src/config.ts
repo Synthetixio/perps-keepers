@@ -4,10 +4,9 @@ import { Network } from './typed';
 export const DEFAULT_CONFIG = {
   fromBlock: 1,
   network: Network.OPT_GOERLI,
-  runEveryXBlock: 5,
-  runHealthcheckEveryXBlock: 10,
   maxOrderExecAttempts: 10,
   isMetricsEnabled: false,
+  distributorProcessInterval: 3000,
 };
 
 export const KeeperConfigSchema = z.object({
@@ -16,19 +15,15 @@ export const KeeperConfigSchema = z.object({
     .positive()
     .or(z.literal('latest'))
     .default(DEFAULT_CONFIG.fromBlock),
+  distributorProcessInterval: z.coerce
+    .number()
+    .positive()
+    .default(DEFAULT_CONFIG.distributorProcessInterval),
   providerApiKeys: z.object({
     infura: z.string().min(1),
     alchemy: z.string().optional(),
   }),
   network: z.nativeEnum(Network).default(DEFAULT_CONFIG.network),
-  runEveryXBlock: z.coerce
-    .number()
-    .positive()
-    .default(DEFAULT_CONFIG.runEveryXBlock),
-  runHealthcheckEveryXBlock: z.coerce
-    .number()
-    .positive()
-    .default(DEFAULT_CONFIG.runHealthcheckEveryXBlock),
   ethHdwalletMnemonic: z.string().min(1),
   maxOrderExecAttempts: z.coerce
     .number()
@@ -58,12 +53,11 @@ export const getConfig = (force = false): KeeperConfig => {
       infura: process.env.PROVIDER_API_KEY_INFURA,
       alchemy: process.env.PROVIDER_API_KEY_ALCHEMY,
     },
+    distributorProcessInterval: process.env.DISTRIBUTOR_PROCESS_INTERVAL,
     network: process.env.NETWORK,
-    runEveryXBlock: process.env.RUN_EVERY_X_BLOCK,
-    runHealthcheckEveryXBlock: process.env.RUN_HEALTHCHECK_EVERY_X_BLOCK,
     ethHdwalletMnemonic: process.env.ETH_HDWALLET_MNEMONIC,
     maxOrderExecAttempts: process.env.MAX_ORDER_EXEC_ATTEMPTS,
-    isMetricsEnabled: !!process.env.METRICS_ENABLED,
+    isMetricsEnabled: process.env.METRICS_ENABLED,
 
     // This should really not exist? If deployed to AWS, VM should be IAM configured.
     aws: {
