@@ -165,6 +165,7 @@ export class DelayedOrdersKeeper extends Keeper {
       }
     } catch (err) {
       this.logger.error('Failed to execute delayed order', { args: { err } });
+      this.logger.error((err as Error).stack);
     }
   }
 }

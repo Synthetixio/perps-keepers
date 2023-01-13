@@ -204,6 +204,7 @@ export class LiquidationKeeper extends Keeper {
       }
     } catch (err) {
       this.logger.error('Failed to execute liquidations', { args: { err } });
+      this.logger.error((err as Error).stack);
     }
   }
 }
