@@ -33,7 +33,7 @@ jobs:
           echo AWS_REGION=${{ secrets.AWS_REGION }} >> .env
           echo FROM_BLOCK=4552552 >> .env  # mainnet deployment block
           echo METRICS_ENABLED=1 >> .env
-          echo DISTRIBUTOR_PROCESS_INTERVAL=2000 >> .env
+          echo DISTRIBUTOR_PROCESS_INTERVAL=500 >> .env
           echo LOG_LEVEL=info >> .env
         if: github.ref == 'refs/heads/master'
 
