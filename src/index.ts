@@ -74,10 +74,11 @@ export const run = async (config: KeeperConfig) => {
   const contracts = await getSynthetixPerpsContracts(config.network, signer, provider);
   const pyth = getPythDetails(config.network, provider);
 
+  const markets = Object.values(contracts.markets);
   logger.info('Creating XXX_Keeper per available market', {
-    args: { n: contracts.markets.length },
+    args: { n: markets.length },
   });
-  for (const market of Object.values(contracts.markets)) {
+  for (const market of markets) {
     const baseAsset = utils.parseBytes32String(await market.baseAsset());
     const marketKey = utils.parseBytes32String(await market.marketKey());
 

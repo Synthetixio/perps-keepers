@@ -140,7 +140,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
 
     try {
       this.logger.info('Fetching Pyth off-chain price data', {
-        args: { feed: this.offchainPriceFeedId },
+        args: { feed: this.offchainPriceFeedId, account },
       });
 
       // Grab Pyth offchain data to send with the `executeOffchainDelayedOrder` call.
