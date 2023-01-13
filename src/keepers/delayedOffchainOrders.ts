@@ -193,10 +193,13 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       }
 
       const { minAge, maxAge } = await this.getOffchainMinMaxAge();
-      const block = await this.provider.getBlock(await this.provider.getBlockNumber());
 
       // Filter out orders that may be ready to execute.
-      const now = BigNumber.from(block.timestamp);
+      //
+      // Use `Date.now` rather than fetching the latest block. Sometimes it could fail and we
+      // get `block.timestamp == undefined`. Instead, try execute anyway in the event timestamp
+      // is updated on the next block.
+      const now = BigNumber.from(Math.round(Date.now() / 1000));
       const executableOrders = orders.filter(({ intentionTime }) =>
         now.sub(intentionTime).gt(minAge)
       );
@@ -211,7 +214,8 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
         now.gt(BigNumber.from(order.intentionTime).add(maxAge));
 
       this.logger.info(
-        `Found ${executableOrders.length}/${orders.length} off-chain order(s) that can be executed`
+        `Found ${executableOrders.length}/${orders.length} off-chain order(s) that can be executed`,
+        { args: { ts: now } }
       );
       for (const batch of chunk(executableOrders, this.MAX_BATCH_SIZE)) {
         this.logger.info('Running keeper batch orders', { args: { n: batch.length } });

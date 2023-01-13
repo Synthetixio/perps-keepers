@@ -61,7 +61,11 @@ export const run = async (config: KeeperConfig) => {
   const latestBlock = await provider.getBlock('latest');
 
   logger.info('Connected to OVM/EVM node', {
-    args: { network: config.network, latestBlockNumber: latestBlock.number },
+    args: {
+      network: config.network,
+      latestBlockNumber: latestBlock.number,
+      ts: latestBlock.timestamp,
+    },
   });
 
   const signer = Wallet.fromMnemonic(config.ethHdwalletMnemonic).connect(provider);
