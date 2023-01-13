@@ -3,7 +3,7 @@ import { wei } from '@synthetixio/wei';
 import { BigNumber, Contract, Event, providers, utils, Wallet } from 'ethers';
 import { chunk, flatten } from 'lodash';
 import { Keeper } from '.';
-import { getEvents, UNIT } from './helpers';
+import { UNIT } from './helpers';
 import { PerpsEvent, Position } from '../typed';
 import { Metric, Metrics } from '../metrics';
 
