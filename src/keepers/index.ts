@@ -60,7 +60,7 @@ export class Keeper {
   protected async waitAndLogTx(tx: TransactionResponse): Promise<void> {
     const receipt = await tx.wait(1);
     const { blockNumber, status, transactionHash, gasUsed } = receipt;
-    this.logger.info('Waiting for transaction to complete...', {
+    this.logger.info('Transaction completed!', {
       args: { tx: transactionHash, blockNumber, status, gasUsed },
     });
   }

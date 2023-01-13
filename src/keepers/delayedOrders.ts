@@ -116,7 +116,7 @@ export class DelayedOrdersKeeper extends Keeper {
       this.logger.info('Executing delayed order...', { args: { account } });
       const tx = await this.market.executeDelayedOrder(account);
 
-      this.logger.info('Successfully submitted execution transaction', {
+      this.logger.info('Successfully submitted transaction, waiting for completion...', {
         args: { account, nonce: tx.nonce },
       });
       await this.waitAndLogTx(tx);

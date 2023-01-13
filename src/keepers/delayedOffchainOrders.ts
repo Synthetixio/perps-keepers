@@ -155,7 +155,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       const tx = await this.market.executeOffchainDelayedOrder(account, priceUpdateData, {
         value: updateFee,
       });
-      this.logger.info('Successfully submitted execution transaction', {
+      this.logger.info('Successfully submitted transaction, waiting for completion...', {
         args: { account, nonce: tx.nonce },
       });
       await this.waitAndLogTx(tx);
@@ -206,7 +206,9 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
 
       // No orders. Move on.
       if (executableOrders.length === 0) {
-        this.logger.info('No off-chain orders ready... skipping');
+        this.logger.info('No off-chain orders ready... skipping', {
+          args: { pendingOrders: orders.length },
+        });
         return;
       }
 
