@@ -163,6 +163,9 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
     } catch (err) {
       order.executionFailures += 1;
       this.metrics.count(Metric.KEEPER_ERROR, this.metricDimensions);
+      this.logger.error('Off-chain order execution failed', {
+        args: { executionFailures: order.executionFailures, account: order.account },
+      });
       throw err;
     }
     this.metrics.count(Metric.OFFCHAIN_ORDER_EXECUTED, this.metricDimensions);
@@ -174,6 +177,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
   }> {
     const bytes32BaseAsset = utils.formatBytes32String(this.marketKey);
 
+    this.logger.debug('Fetching min/max ages', { args: { marketKey: this.marketKey } });
     const minAge = await this.marketSettings.offchainDelayedOrderMinAge(bytes32BaseAsset);
     const maxAge = await this.marketSettings.offchainDelayedOrderMaxAge(bytes32BaseAsset);
 
