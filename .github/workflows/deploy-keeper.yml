@@ -50,7 +50,7 @@ jobs:
           echo FROM_BLOCK=38123 >> .env.staging  # goerli deployment block
           echo METRICS_ENABLED=1 >> .env.staging
           echo DISTRIBUTOR_PROCESS_INTERVAL=3000 >> .env.staging
-          echo MAX_ORDER_EXEC_ATTEMPTS=10 >> .env.staging
+          echo MAX_ORDER_EXEC_ATTEMPTS=20 >> .env.staging
           echo LOG_LEVEL=info >> .env.staging
         if: github.ref == 'refs/heads/develop'
 
