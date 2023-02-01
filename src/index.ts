@@ -12,7 +12,7 @@ import logProcessError from 'log-process-errors';
 import { createLogger } from './logging';
 import { getConfig, KeeperConfig } from './config';
 import { utils, Wallet, providers } from 'ethers';
-import { getPythDetails, getSynthetixPerpsContracts } from './utils';
+import { getSynthetixPerpsContracts } from './utils';
 import { Distributor } from './distributor';
 import { LiquidationKeeper } from './keepers/liquidation';
 import { DelayedOrdersKeeper } from './keepers/delayedOrders';
@@ -71,20 +71,23 @@ export const run = async (config: KeeperConfig) => {
   const signer = Wallet.fromMnemonic(config.ethHdwalletMnemonic).connect(provider);
   logger.info('Using keeper', { args: { address: signer.address } });
 
-  const contracts = await getSynthetixPerpsContracts(config.network, signer, provider);
-  const pyth = getPythDetails(config.network, provider);
+  const { markets, pyth, marketSettings, exchangeRates } = await getSynthetixPerpsContracts(
+    config.network,
+    signer,
+    provider
+  );
 
-  const markets = Object.values(contracts.markets);
+  const marketKeys = Object.keys(markets);
   logger.info('Creating XXX_Keeper per available market', {
-    args: { n: markets.length },
+    args: { n: marketKeys.length },
   });
-  for (const market of markets) {
-    const baseAsset = utils.parseBytes32String(await market.baseAsset());
-    const marketKey = utils.parseBytes32String(await market.marketKey());
+  for (const marketKey of marketKeys) {
+    const market = markets[marketKey];
+    const baseAsset = market.asset;
 
     logger.info('Configuring distributor/keepers for market', { args: { marketKey, baseAsset } });
     const distributor = new Distributor(
-      market,
+      market.contract,
       baseAsset,
       provider,
       metrics,
@@ -95,18 +98,18 @@ export const run = async (config: KeeperConfig) => {
 
     const keepers = [];
     keepers.push(
-      new LiquidationKeeper(market, baseAsset, signer, provider, metrics, config.network)
+      new LiquidationKeeper(market.contract, baseAsset, signer, provider, metrics, config.network)
     );
 
     // If we do not include a Pyth price feed, do not register an off-chain keeper.
     if (pyth.priceFeedIds[baseAsset]) {
       keepers.push(
         new DelayedOffchainOrdersKeeper(
-          market,
-          contracts.marketSettings,
+          market.contract,
+          marketSettings,
           pyth.endpoint,
           pyth.priceFeedIds[baseAsset],
-          pyth.pyth,
+          pyth.contract,
           marketKey,
           baseAsset,
           signer,
@@ -122,8 +125,8 @@ export const run = async (config: KeeperConfig) => {
 
     keepers.push(
       new DelayedOrdersKeeper(
-        market,
-        contracts.exchangeRates,
+        market.contract,
+        exchangeRates,
         baseAsset,
         signer,
         provider,

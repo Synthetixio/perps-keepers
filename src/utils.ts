@@ -1,4 +1,5 @@
-import { Contract, providers, Signer } from 'ethers';
+import { Contract, providers, Signer, utils } from 'ethers';
+import { zipObject } from 'lodash';
 import synthetix from 'synthetix';
 import PerpsV2MarketConsolidatedJson from '../contracts/PerpsV2MarketConsolidated.json';
 import PythAbi from '../contracts/Pyth.json';
@@ -11,8 +12,21 @@ interface KeeperContracts {
   exchangeRates: Contract;
   marketManager: Contract;
   marketSettings: Contract;
-  markets: Record<string, Contract>;
+  markets: Record<string, { contract: Contract; asset: string }>;
+  pyth: { priceFeedIds: Record<string, string>; endpoint: string; contract: Contract };
 }
+
+// @see: https://github.com/pyth-network/pyth-js/tree/main/pyth-evm-js
+const PYTH_NETWORK_ENDPOINTS: Record<Network, string> = {
+  [Network.OPT_GOERLI]: 'https://xc-testnet.pyth.network',
+  [Network.OPT]: 'https://xc-mainnet.pyth.network',
+};
+
+// @see: https://docs.pyth.network/consume-data/evm
+const PYTH_CONTRACT_ADDRESSES: Record<Network, string> = {
+  [Network.OPT_GOERLI]: '0xff1a0f4744e8582DF1aE09D5611b887B6a12925C',
+  [Network.OPT]: '0xff1a0f4744e8582DF1aE09D5611b887B6a12925C',
+};
 
 export const networkToSynthetixNetworkName = (network: Network): string => {
   switch (network) {
@@ -46,56 +60,54 @@ export const getSynthetixPerpsContracts = async (
   const marketManager = getSynthetixContractByName('FuturesMarketManager', network, provider);
   const exchangeRates = getSynthetixContractByName('ExchangeRates', network, provider);
   const marketSettings = getSynthetixContractByName('PerpsV2MarketSettings', network, provider);
+  const perpsV2ExchangeRates = getSynthetixContractByName('PerpsV2ExchangeRate', network, provider);
 
+  logger.info('Fetching available perps markets...');
   const marketSummaries = await marketManager.allMarketSummaries();
-  const markets = marketSummaries.reduce(
+  const markets: KeeperContracts['markets'] = marketSummaries.reduce(
     (
-      acc: Record<string, Contract>,
-      { proxied, market, marketKey }: { proxied: boolean; market: string; marketKey: string }
+      acc: KeeperContracts['markets'],
+      {
+        proxied,
+        market,
+        marketKey,
+        asset,
+      }: { proxied: boolean; market: string; marketKey: string; asset: string }
     ) => {
+      marketKey = utils.parseBytes32String(marketKey);
       if (proxied) {
         logger.info(`Found market: '${marketKey}' @ '${market}'`);
-        acc[marketKey] = new Contract(market, PerpsV2MarketConsolidatedJson.abi, signer);
+        acc[marketKey] = {
+          contract: new Contract(market, PerpsV2MarketConsolidatedJson.abi, signer),
+          asset: utils.parseBytes32String(asset),
+        };
+      } else {
+        logger.info(`Skipping market (not proxied): '${marketKey} @ '${market}`);
       }
       return acc;
     },
     {}
   );
+
+  logger.info('Fetching Pyth price feeds for tracking markets...');
+  const marketValues = Object.values(markets);
+  const marketAssets = marketValues.map(({ asset }) => asset);
+  const marketPriceFeedIds = await Promise.all(
+    marketAssets.map(
+      (asset): Promise<string> =>
+        perpsV2ExchangeRates.offchainPriceFeedId(utils.formatBytes32String(asset))
+    )
+  );
+  const priceFeedIds = zipObject(marketAssets, marketPriceFeedIds);
+  Object.keys(priceFeedIds).forEach(asset => {
+    logger.info(`Pyth price feedId: ${asset} @ '${priceFeedIds[asset]}'`);
+  });
+
   logger.info(`Keeping ${Object.values(markets).length}/${marketSummaries.length} markets`);
-
-  return { exchangeRates, marketManager, marketSettings, markets };
+  const pyth = {
+    endpoint: PYTH_NETWORK_ENDPOINTS[network],
+    priceFeedIds,
+    contract: new Contract(PYTH_CONTRACT_ADDRESSES[network], PythAbi, provider),
+  };
+  return { exchangeRates, marketManager, marketSettings, markets, pyth };
 };
-
-// Pyth (off-chain).
-
-// @see: https://github.com/pyth-network/pyth-js/tree/main/pyth-evm-js
-const PYTH_NETWORK_ENDPOINTS: Record<Network, string> = {
-  [Network.OPT_GOERLI]: 'https://xc-testnet.pyth.network',
-  [Network.OPT]: 'https://xc-mainnet.pyth.network',
-};
-
-const PYTH_PRICE_FEED_IDS: Record<Network, Record<string, string>> = {
-  // @see: https://pyth.network/developers/price-feed-ids#pyth-evm-testnet
-  [Network.OPT_GOERLI]: {
-    sETH: '0xca80ba6dc32e08d06f1aa886011eed1d77c77be9eb761cc10d72b7d0a2fd57a6',
-  },
-  // @see: https://pyth.network/developers/price-feed-ids#pyth-evm-mainnet
-  [Network.OPT]: {
-    sETH: '0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace',
-  },
-};
-
-// @see: https://docs.pyth.network/consume-data/evm
-const PYTH_CONTRACT_ADDRESSES: Record<Network, string> = {
-  [Network.OPT_GOERLI]: '0xff1a0f4744e8582DF1aE09D5611b887B6a12925C',
-  [Network.OPT]: '0xff1a0f4744e8582DF1aE09D5611b887B6a12925C',
-};
-
-export const getPythDetails = (
-  network: Network,
-  provider: providers.BaseProvider
-): { priceFeedIds: Record<string, string>; endpoint: string; pyth: Contract } => ({
-  endpoint: PYTH_NETWORK_ENDPOINTS[network],
-  priceFeedIds: PYTH_PRICE_FEED_IDS[network],
-  pyth: new Contract(PYTH_CONTRACT_ADDRESSES[network], PythAbi, provider),
-});
