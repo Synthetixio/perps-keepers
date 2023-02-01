@@ -6,7 +6,7 @@ import PythAbi from '../contracts/Pyth.json';
 import { createLogger } from './logging';
 import { Network } from './typed';
 
-const logger = createLogger('Application');
+const logger = createLogger('Utils');
 
 interface KeeperContracts {
   exchangeRates: Contract;
@@ -89,7 +89,7 @@ export const getSynthetixPerpsContracts = async (
     {}
   );
 
-  logger.info('Fetching Pyth price feeds for tracking markets...');
+  logger.info('Fetching Pyth price feeds for kept markets...');
   const marketValues = Object.values(markets);
   const marketAssets = marketValues.map(({ asset }) => asset);
   const marketPriceFeedIds = await Promise.all(
@@ -103,7 +103,7 @@ export const getSynthetixPerpsContracts = async (
     logger.info(`Pyth price feedId: ${asset} @ '${priceFeedIds[asset]}'`);
   });
 
-  logger.info(`Keeping ${Object.values(markets).length}/${marketSummaries.length} markets`);
+  logger.info(`Keeping ${marketValues.length}/${marketSummaries.length} markets`);
   const pyth = {
     endpoint: PYTH_NETWORK_ENDPOINTS[network],
     priceFeedIds,
