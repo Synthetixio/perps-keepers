@@ -1,9 +1,11 @@
 import { Contract, providers, Signer } from 'ethers';
 import synthetix from 'synthetix';
-import FuturesMarketManagerJson from '../contracts/FuturesMarketManager.json';
 import PerpsV2MarketConsolidatedJson from '../contracts/PerpsV2MarketConsolidated.json';
 import PythAbi from '../contracts/Pyth.json';
+import { createLogger } from './logging';
 import { Network } from './typed';
+
+const logger = createLogger('Application');
 
 interface KeeperContracts {
   exchangeRates: Contract;
@@ -23,21 +25,27 @@ export const networkToSynthetixNetworkName = (network: Network): string => {
   }
 };
 
+const getSynthetixContractByName = (
+  name: string,
+  network: Network,
+  provider: providers.BaseProvider
+): Contract => {
+  const snxNetwork = networkToSynthetixNetworkName(network);
+  const abi = synthetix.getSource({ network: snxNetwork, contract: name }).abi;
+  const address = synthetix.getTarget({ network: snxNetwork, contract: name }).address;
+
+  logger.info(`Found ${name} contract at '${address}'`);
+  return new Contract(address, abi, provider);
+};
+
 export const getSynthetixPerpsContracts = async (
   network: Network,
   signer: Signer,
   provider: providers.BaseProvider
 ): Promise<KeeperContracts> => {
-  // TODO: Use the Synthetix npm package to derive the ABI and address once merged and released.
-  const futuresMarketManagerAddress = {
-    [Network.OPT_GOERLI]: '0xc429dd84c9a9a7c786764c7dcaF31e30bd35BcdF',
-    [Network.OPT]: '0xdb89f3fc45A707Dd49781495f77f8ae69bF5cA6e',
-  }[network];
-  const marketManager = new Contract(
-    futuresMarketManagerAddress,
-    FuturesMarketManagerJson.abi,
-    provider
-  );
+  const marketManager = getSynthetixContractByName('FuturesMarketManager', network, provider);
+  const exchangeRates = getSynthetixContractByName('ExchangeRates', network, provider);
+  const marketSettings = getSynthetixContractByName('PerpsV2MarketSettings', network, provider);
 
   const marketSummaries = await marketManager.allMarketSummaries();
   const markets = marketSummaries.reduce(
@@ -46,30 +54,14 @@ export const getSynthetixPerpsContracts = async (
       { proxied, market, marketKey }: { proxied: boolean; market: string; marketKey: string }
     ) => {
       if (proxied) {
+        logger.info(`Found market: '${marketKey}' @ '${market}'`);
         acc[marketKey] = new Contract(market, PerpsV2MarketConsolidatedJson.abi, signer);
       }
       return acc;
     },
     {}
   );
-
-  const snxNetwork = networkToSynthetixNetworkName(network);
-  const exchangeRatesAddress = synthetix.getTarget({
-    network: snxNetwork,
-    contract: 'ExchangeRates',
-  }).address;
-  const exchangeRateAbi = synthetix.getSource({ network: snxNetwork, contract: 'ExchangeRates' })
-    .abi;
-  const exchangeRates = new Contract(exchangeRatesAddress, exchangeRateAbi, provider);
-  const marketSettingsAddress = synthetix.getTarget({
-    network: snxNetwork,
-    contract: 'PerpsV2MarketSettings',
-  }).address;
-  const marketSettingsAbi = synthetix.getSource({
-    network: snxNetwork,
-    contract: 'PerpsV2MarketSettings',
-  }).abi;
-  const marketSettings = new Contract(marketSettingsAddress, marketSettingsAbi, provider);
+  logger.info(`Keeping ${Object.values(markets).length}/${marketSummaries.length} markets`);
 
   return { exchangeRates, marketManager, marketSettings, markets };
 };
