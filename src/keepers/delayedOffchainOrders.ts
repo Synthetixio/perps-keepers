@@ -11,6 +11,9 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
   private orders: Record<string, DelayedOrder> = {};
   private pythConnection: EvmPriceServiceConnection;
 
+  // An additional buffer added to maxAge to determine if an order is stale.
+  private readonly MAX_AGE_BUFFER = 60 * 5; // 5mins (in seconds).
+
   private readonly PYTH_MAX_TIMEOUT = 3000;
   private readonly PYTH_MAX_RETRIES = 5;
 
@@ -136,6 +139,8 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
 
     if (isOrderStale(order)) {
       this.logger.warn('Order might be stale can only be cancelled', { args: { account } });
+      delete this.orders[account];
+      return;
     }
 
     try {
@@ -152,8 +157,10 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       this.logger.info('Executing off-chain order...', {
         args: { account, fee: updateFee.toString() },
       });
+
       const tx = await this.market.executeOffchainDelayedOrder(account, priceUpdateData, {
         value: updateFee,
+        gasLimit: 1_500_000,
       });
       this.logger.info('Successfully submitted transaction, waiting for completion...', {
         args: { account, nonce: tx.nonce },
@@ -217,7 +224,11 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       }
 
       const isOrderStale = (order: DelayedOrder): boolean =>
-        now.gt(BigNumber.from(order.intentionTime).add(maxAge));
+        now.gt(
+          BigNumber.from(order.intentionTime)
+            .add(maxAge)
+            .add(this.MAX_AGE_BUFFER)
+        );
 
       this.logger.info(
         `Found ${executableOrders.length}/${orders.length} off-chain order(s) that can be executed`,
