@@ -11,6 +11,12 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
   private orders: Record<string, DelayedOrder> = {};
   private pythConnection: EvmPriceServiceConnection;
 
+  // An additional buffer added to minAge to avoid calling too early.
+  //
+  // Note: Since we don't use block.timestamp but rather Date.now, timestamps on-chain
+  // may not be up to date as a result, executing a tiny bit too early.
+  private readonly MIN_AGE_BUFFER = 3;
+
   // An additional buffer added to maxAge to determine if an order is stale.
   private readonly MAX_AGE_BUFFER = 60 * 5; // 5mins (in seconds).
 
@@ -212,7 +218,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       // is updated on the next block.
       const now = BigNumber.from(Math.round(Date.now() / 1000));
       const executableOrders = orders.filter(({ intentionTime }) =>
-        now.sub(intentionTime).gt(minAge)
+        now.sub(intentionTime).gt(minAge.add(this.MIN_AGE_BUFFER))
       );
 
       // No orders. Move on.
