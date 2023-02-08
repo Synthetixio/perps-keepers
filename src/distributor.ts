@@ -30,10 +30,6 @@ export class Distributor {
     this.logger = createLogger(`[${baseAsset}] Distributor`);
   }
 
-  delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
   /* Given an array of keepers, track and include in bulk executions. */
   registerKeepers(keepers: Keeper[]) {
     keepers.forEach(keeper => this.keepers.push(keeper));

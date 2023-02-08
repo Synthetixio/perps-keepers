@@ -15,6 +15,8 @@ export interface WithSignerContext {
 }
 
 export class SignerPool {
+  private readonly ACQUIRE_SIGNER_DELAY = 10;
+
   private readonly signers: NonceManager[];
   private readonly pool: number[];
   private readonly logger: Logger;
@@ -30,7 +32,7 @@ export class SignerPool {
     let i = this.pool.pop();
 
     while (i === undefined) {
-      delay(10);
+      await delay(this.ACQUIRE_SIGNER_DELAY);
       i = this.pool.pop();
     }
 
@@ -65,6 +67,7 @@ export class SignerPool {
           signer.setTransactionCount(nonce);
         }
       }
+      throw err;
     } finally {
       this.release(i, ctx);
     }
