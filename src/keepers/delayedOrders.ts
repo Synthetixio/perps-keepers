@@ -115,16 +115,19 @@ export class DelayedOrdersKeeper extends Keeper {
     // TODO: Remove DelayedOrders that cannot be executed (and only be cancelled).
 
     try {
-      await this.signerPool.withSigner(async signer => {
-        this.logger.info('Executing delayed order...', { args: { account } });
-        const tx = await this.market.connect(signer).executeDelayedOrder(account);
+      await this.signerPool.withSigner(
+        async signer => {
+          this.logger.info('Executing delayed order...', { args: { account } });
+          const tx = await this.market.connect(signer).executeDelayedOrder(account);
 
-        this.logger.info('Successfully submitted transaction, waiting for completion...', {
-          args: { account, nonce: tx.nonce },
-        });
-        await this.waitAndLogTx(tx);
-        delete this.orders[account];
-      });
+          this.logger.info('Successfully submitted transaction, waiting for completion...', {
+            args: { account, nonce: tx.nonce },
+          });
+          await this.waitAndLogTx(tx);
+          delete this.orders[account];
+        },
+        { asset: this.baseAsset }
+      );
     } catch (err) {
       order.executionFailures += 1;
       this.metrics.count(Metric.KEEPER_ERROR, this.metricDimensions);
