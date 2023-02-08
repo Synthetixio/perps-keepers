@@ -36,7 +36,7 @@ export interface WithSignerContext {
 }
 
 export class SignerPool {
-  private readonly ACQUIRE_SIGNER_DELAY = 10;
+  private readonly ACQUIRE_SIGNER_DELAY = 100;
 
   private readonly signers: NonceManager[];
   private readonly pool: number[];
