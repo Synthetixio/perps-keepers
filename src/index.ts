@@ -11,8 +11,7 @@ require('dotenv').config({
 import logProcessError from 'log-process-errors';
 import { createLogger } from './logging';
 import { getConfig, KeeperConfig } from './config';
-import { Wallet, providers } from 'ethers';
-import { NonceManager } from '@ethersproject/experimental';
+import { providers } from 'ethers';
 import { getSynthetixPerpsContracts } from './utils';
 import { Distributor } from './distributor';
 import { LiquidationKeeper } from './keepers/liquidation';
@@ -20,7 +19,7 @@ import { DelayedOrdersKeeper } from './keepers/delayedOrders';
 import { DelayedOffchainOrdersKeeper } from './keepers/delayedOffchainOrders';
 import { Metric, Metrics } from './metrics';
 import { Network } from './typed';
-import { SignerPool } from './signerpool';
+import { createSigners, SignerPool } from './signerpool';
 
 const logger = createLogger('Application');
 
@@ -29,6 +28,9 @@ const logger = createLogger('Application');
 // Waits `n` ms before executing the same request to the next provider ordered by priority.
 export const PROVIDER_STALL_TIMEOUT = 750;
 export const PROVIDER_DEFAULT_WEIGHT = 1;
+
+// TODO: Pull this into an environment variable later.
+export const SIGNER_POOL_SIZE = 2;
 
 export const getProvider = async (
   config: KeeperConfig['providerApiKeys'],
@@ -70,11 +72,9 @@ export const run = async (config: KeeperConfig) => {
     },
   });
 
-  const wallet = Wallet.fromMnemonic(config.ethHdwalletMnemonic);
-  const signer = new NonceManager(wallet).connect(provider);
-  const signerPool = new SignerPool([signer]);
-
-  logger.info('Using keeper', { args: { address: wallet.address } });
+  const signers = createSigners(config.ethHdwalletMnemonic, provider, SIGNER_POOL_SIZE);
+  const signer = signers[0]; // There will always be at least 1.
+  const signerPool = new SignerPool(signers);
 
   const { markets, pyth, marketSettings, exchangeRates } = await getSynthetixPerpsContracts(
     config.network,

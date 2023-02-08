@@ -15,7 +15,7 @@ export const createLogger = (label: string): winston.Logger => {
       format.timestamp(),
       format.printf(({ timestamp, level, label, component, message, args }) => {
         const argsMessage = map(args, (value, key) => `${key}=${value}`).join(' ');
-        return [timestamp, level, label, component, '-', message, argsMessage]
+        return [timestamp, level, label, component, message, argsMessage]
           .filter(x => !!x)
           .join(' ');
       })

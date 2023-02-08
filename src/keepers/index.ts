@@ -28,18 +28,18 @@ export class Keeper {
   ) {
     this.metricDimensions.KeeperName = name;
 
-    this.logger = createLogger(`[${baseAsset}] ${name}`);
+    this.logger = createLogger(`${name} [${baseAsset}]`);
     this.logger.info(`Market deployed at '${market.address}'`);
   }
 
   /* In-place update the keeper's index based on block, event data and market asset price. */
   async updateIndex(events: Event[], block?: providers.Block, assetPrice?: number): Promise<void> {
-    new Error('NotImplementedError');
+    throw new Error('NotImplementedError');
   }
 
   /* Executes this keeper. It's up to the keeper to decide the context and how frequently to operate. */
   async execute(): Promise<void> {
-    new Error('NotImplementedError');
+    throw new Error('NotImplementedError');
   }
 
   protected async execAsyncKeeperCallback(id: string, cb: () => Promise<void>): Promise<void> {

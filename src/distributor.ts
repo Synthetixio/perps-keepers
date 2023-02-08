@@ -15,7 +15,7 @@ export class Distributor {
   private readonly keepers: Keeper[] = [];
   private lastProcessedBlock?: number;
 
-  private readonly LISTEN_ERROR_WAIT_TIME = 60 * 1000; // 1min
+  private readonly LISTEN_ERROR_WAIT_TIME = 15 * 1000; // 15s
   protected readonly START_TIME = Date.now();
 
   constructor(
@@ -27,7 +27,7 @@ export class Distributor {
     private readonly fromBlock: number | string,
     private readonly distributorProcessInterval: number
   ) {
-    this.logger = createLogger(`[${baseAsset}] Distributor`);
+    this.logger = createLogger(`Distributor [${baseAsset}] Distributor`);
   }
 
   /* Given an array of keepers, track and include in bulk executions. */
@@ -99,15 +99,20 @@ export class Distributor {
   //
   // The metric namespace can be further chunked by keeper type e.g. PerpsV2MainnetOvm/Liquidations/KeeperUpTime
   async healthcheck(): Promise<void> {
-    const uptime = Date.now() - this.START_TIME;
-    const balance = wei(await this.signer.getBalance()).toNumber();
-    this.logger.info('Performing keeper healthcheck', { args: { uptime, balance } });
+    try {
+      const uptime = Date.now() - this.START_TIME;
+      const balance = wei(await this.signer.getBalance()).toNumber();
+      this.logger.info('Performing keeper healthcheck', { args: { uptime, balance } });
 
-    // A failure to submit metric should not cause application to halt. Instead, alerts will pick this up if it happens
-    // for a long enough duration. Essentially, do _not_ force keeper to slowdown operation just to track metrics
-    // for offline usage/monitoring.
-    this.metrics.time(Metric.KEEPER_UPTIME, uptime);
-    this.metrics.send(Metric.KEEPER_ETH_BALANCE, balance);
+      // A failure to submit metric should not cause application to halt. Instead, alerts will pick this up if it happens
+      // for a long enough duration. Essentially, do _not_ force keeper to slowdown operation just to track metrics
+      // for offline usage/monitoring.
+      this.metrics.time(Metric.KEEPER_UPTIME, uptime);
+      this.metrics.send(Metric.KEEPER_ETH_BALANCE, balance);
+    } catch (err) {
+      // NOTE: We do _not_ rethrow because healthchecks aren't `await` wrapped.
+      this.logger.error('Distributor healthcheck failed', err);
+    }
   }
 
   /* Listen on new blocks produced then subsequently bulk op. */
