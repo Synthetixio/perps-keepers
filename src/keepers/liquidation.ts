@@ -1,11 +1,13 @@
 import { TransactionResponse } from '@ethersproject/abstract-provider';
 import { wei } from '@synthetixio/wei';
-import { BigNumber, Contract, Event, providers, utils, Wallet } from 'ethers';
+import { BigNumber, Contract, Event, providers, utils } from 'ethers';
 import { chunk, flatten } from 'lodash';
 import { Keeper } from '.';
 import { UNIT } from './helpers';
 import { PerpsEvent, Position } from '../typed';
 import { Metric, Metrics } from '../metrics';
+import { delay } from '../utils';
+import { SignerPool } from '../signerpool';
 
 export class LiquidationKeeper extends Keeper {
   // Required for sorting position by proximity of liquidation price to current price
@@ -24,12 +26,12 @@ export class LiquidationKeeper extends Keeper {
   constructor(
     market: Contract,
     baseAsset: string,
-    signer: Wallet,
+    signerPool: SignerPool,
     provider: providers.BaseProvider,
     metrics: Metrics,
     network: string
   ) {
-    super('LiquidationKeeper', market, baseAsset, signer, provider, metrics, network);
+    super('LiquidationKeeper', market, baseAsset, signerPool, provider, metrics, network);
   }
 
   async updateIndex(events: Event[], block?: providers.Block, assetPrice?: number): Promise<void> {
@@ -156,14 +158,19 @@ export class LiquidationKeeper extends Keeper {
     }
 
     try {
-      this.logger.info('Liquidating position...', { args: { account } });
-      const tx: TransactionResponse = await this.market
-        .connect(this.signer)
-        .liquidatePosition(account);
-      this.logger.info('Successfully submitted transaction, waiting for completion...', {
-        args: { account, nonce: tx.nonce },
-      });
-      await this.waitAndLogTx(tx);
+      await this.signerPool.withSigner(
+        async signer => {
+          this.logger.info('Liquidating position...', { args: { account } });
+          const tx: TransactionResponse = await this.market
+            .connect(signer)
+            .liquidatePosition(account);
+          this.logger.info('Successfully submitted transaction, waiting for completion...', {
+            args: { account, nonce: tx.nonce },
+          });
+          await this.waitAndLogTx(tx);
+        },
+        { asset: this.baseAsset }
+      );
     } catch (err) {
       this.metrics.count(Metric.KEEPER_ERROR, this.metricDimensions);
       throw err;
@@ -199,7 +206,7 @@ export class LiquidationKeeper extends Keeper {
             this.execAsyncKeeperCallback(id, () => this.liquidatePosition(account))
           );
           await Promise.all(batches);
-          await this.delay(this.BATCH_WAIT_TIME);
+          await delay(this.BATCH_WAIT_TIME);
         }
       }
     } catch (err) {

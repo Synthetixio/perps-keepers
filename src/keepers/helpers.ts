@@ -38,9 +38,9 @@ export const getEvents = async (
       }
 
       const events = await Promise.all(
-        pagination.map(({ fromBlock, toBlock }) => {
-          return contract.queryFilter(contract.filters[eventName](), fromBlock, toBlock);
-        })
+        pagination.map(({ fromBlock, toBlock }) =>
+          contract.queryFilter(contract.filters[eventName](), fromBlock, toBlock)
+        )
       );
       return events.flat(1);
     })

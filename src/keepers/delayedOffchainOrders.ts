@@ -1,10 +1,12 @@
 import { Block } from '@ethersproject/abstract-provider';
-import { BigNumber, Contract, ethers, Event, providers, utils, Wallet } from 'ethers';
+import { BigNumber, Contract, ethers, Event, providers, utils } from 'ethers';
 import { Keeper } from '.';
 import { DelayedOrder, PerpsEvent } from '../typed';
 import { chunk } from 'lodash';
 import { EvmPriceServiceConnection } from '@pythnetwork/pyth-evm-js';
 import { Metric, Metrics } from '../metrics';
+import { delay } from '../utils';
+import { SignerPool } from '../signerpool';
 
 export class DelayedOffchainOrdersKeeper extends Keeper {
   // The index
@@ -36,13 +38,13 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
     private readonly pythContract: Contract,
     private readonly marketKey: string,
     baseAsset: string,
-    signer: Wallet,
+    signerPool: SignerPool,
     provider: providers.BaseProvider,
     metrics: Metrics,
     network: string,
     private readonly maxExecAttempts: number
   ) {
-    super('DelayedOffchainOrdersKeeper', market, baseAsset, signer, provider, metrics, network);
+    super('DelayedOffchainOrdersKeeper', market, baseAsset, signerPool, provider, metrics, network);
 
     this.pythConnection = new EvmPriceServiceConnection(offchainEndpoint, {
       httpRetries: this.PYTH_MAX_RETRIES,
@@ -150,29 +152,35 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
     }
 
     try {
-      this.logger.info('Fetching Pyth off-chain price data', {
-        args: { feed: this.offchainPriceFeedId, account },
-      });
+      await this.signerPool.withSigner(
+        async signer => {
+          this.logger.info('Fetching Pyth off-chain price data', {
+            args: { feed: this.offchainPriceFeedId, account },
+          });
 
-      // Grab Pyth offchain data to send with the `executeOffchainDelayedOrder` call.
-      const priceUpdateData = await this.pythConnection.getPriceFeedsUpdateData([
-        this.offchainPriceFeedId,
-      ]);
-      const updateFee = await this.pythContract.getUpdateFee(priceUpdateData);
+          // Grab Pyth offchain data to send with the `executeOffchainDelayedOrder` call.
+          const priceUpdateData = await this.pythConnection.getPriceFeedsUpdateData([
+            this.offchainPriceFeedId,
+          ]);
+          const updateFee = await this.pythContract.getUpdateFee(priceUpdateData);
 
-      this.logger.info('Executing off-chain order...', {
-        args: { account, fee: updateFee.toString() },
-      });
-
-      const tx = await this.market.executeOffchainDelayedOrder(account, priceUpdateData, {
-        value: updateFee,
-        gasLimit: 1_500_000,
-      });
-      this.logger.info('Successfully submitted transaction, waiting for completion...', {
-        args: { account, nonce: tx.nonce },
-      });
-      await this.waitAndLogTx(tx);
-      delete this.orders[account];
+          this.logger.info('Executing off-chain order...', {
+            args: { account, fee: updateFee.toString() },
+          });
+          const tx = await this.market
+            .connect(signer)
+            .executeOffchainDelayedOrder(account, priceUpdateData, {
+              value: updateFee,
+              gasLimit: 1_500_000,
+            });
+          this.logger.info('Successfully submitted transaction, waiting for completion...', {
+            args: { account, nonce: tx.nonce },
+          });
+          await this.waitAndLogTx(tx);
+          delete this.orders[account];
+        },
+        { asset: this.baseAsset }
+      );
     } catch (err) {
       order.executionFailures += 1;
       this.metrics.count(Metric.KEEPER_ERROR, this.metricDimensions);
@@ -247,7 +255,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
         );
         await Promise.all(batches);
         this.logger.info(`Processed processed with '${batch.length}' orders(s) to kept`);
-        await this.delay(this.BATCH_WAIT_TIME);
+        await delay(this.BATCH_WAIT_TIME);
       }
     } catch (err) {
       this.logger.error('Failed to execute off-chain order', { args: { err } });
