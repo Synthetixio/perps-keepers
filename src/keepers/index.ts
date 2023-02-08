@@ -1,8 +1,9 @@
 import { TransactionResponse } from '@ethersproject/providers';
-import { Contract, Event, providers, Wallet } from 'ethers';
+import { Contract, Event, providers } from 'ethers';
 import { Logger } from 'winston';
 import { createLogger } from '../logging';
 import { Metrics } from '../metrics';
+import { SignerPool } from '../signerpool';
 import { PerpsEvent } from '../typed';
 
 export class Keeper {
@@ -20,7 +21,7 @@ export class Keeper {
     protected readonly name: string,
     protected readonly market: Contract,
     protected readonly baseAsset: string,
-    protected readonly signer: Wallet,
+    protected readonly signerPool: SignerPool,
     protected readonly provider: providers.BaseProvider,
     protected readonly metrics: Metrics,
     protected readonly network: string
@@ -63,9 +64,5 @@ export class Keeper {
     this.logger.info('Transaction completed!', {
       args: { tx: transactionHash, blockNumber, status, gasUsed },
     });
-  }
-
-  delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }

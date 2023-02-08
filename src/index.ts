@@ -11,7 +11,8 @@ require('dotenv').config({
 import logProcessError from 'log-process-errors';
 import { createLogger } from './logging';
 import { getConfig, KeeperConfig } from './config';
-import { utils, Wallet, providers } from 'ethers';
+import { Wallet, providers } from 'ethers';
+import { NonceManager } from '@ethersproject/experimental';
 import { getSynthetixPerpsContracts } from './utils';
 import { Distributor } from './distributor';
 import { LiquidationKeeper } from './keepers/liquidation';
@@ -19,6 +20,7 @@ import { DelayedOrdersKeeper } from './keepers/delayedOrders';
 import { DelayedOffchainOrdersKeeper } from './keepers/delayedOffchainOrders';
 import { Metric, Metrics } from './metrics';
 import { Network } from './typed';
+import { SignerPool } from './signerpool';
 
 const logger = createLogger('Application');
 
@@ -68,8 +70,11 @@ export const run = async (config: KeeperConfig) => {
     },
   });
 
-  const signer = Wallet.fromMnemonic(config.ethHdwalletMnemonic).connect(provider);
-  logger.info('Using keeper', { args: { address: signer.address } });
+  const wallet = Wallet.fromMnemonic(config.ethHdwalletMnemonic);
+  const signer = new NonceManager(wallet).connect(provider);
+  const signerPool = new SignerPool([signer]);
+
+  logger.info('Using keeper', { args: { address: wallet.address } });
 
   const { markets, pyth, marketSettings, exchangeRates } = await getSynthetixPerpsContracts(
     config.network,
@@ -98,7 +103,14 @@ export const run = async (config: KeeperConfig) => {
 
     const keepers = [];
     keepers.push(
-      new LiquidationKeeper(market.contract, baseAsset, signer, provider, metrics, config.network)
+      new LiquidationKeeper(
+        market.contract,
+        baseAsset,
+        signerPool,
+        provider,
+        metrics,
+        config.network
+      )
     );
 
     // If we do not include a Pyth price feed, do not register an off-chain keeper.
@@ -112,7 +124,7 @@ export const run = async (config: KeeperConfig) => {
           pyth.contract,
           marketKey,
           baseAsset,
-          signer,
+          signerPool,
           provider,
           metrics,
           config.network,
@@ -128,7 +140,7 @@ export const run = async (config: KeeperConfig) => {
         market.contract,
         exchangeRates,
         baseAsset,
-        signer,
+        signerPool,
         provider,
         metrics,
         config.network,

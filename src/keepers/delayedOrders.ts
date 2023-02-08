@@ -1,9 +1,11 @@
 import { Block } from '@ethersproject/abstract-provider';
-import { BigNumber, Contract, Event, providers, utils, Wallet } from 'ethers';
+import { BigNumber, Contract, Event, providers, utils } from 'ethers';
 import { Keeper } from '.';
 import { DelayedOrder, PerpsEvent } from '../typed';
 import { chunk } from 'lodash';
 import { Metric, Metrics } from '../metrics';
+import { delay } from '../utils';
+import { SignerPool } from '../signerpool';
 
 export class DelayedOrdersKeeper extends Keeper {
   // The index
@@ -18,13 +20,13 @@ export class DelayedOrdersKeeper extends Keeper {
     market: Contract,
     private readonly exchangeRates: Contract,
     baseAsset: string,
-    signer: Wallet,
+    signerPool: SignerPool,
     provider: providers.BaseProvider,
     metrics: Metrics,
     network: string,
     private readonly maxExecAttempts: number
   ) {
-    super('DelayedOrdersKeeper', market, baseAsset, signer, provider, metrics, network);
+    super('DelayedOrdersKeeper', market, baseAsset, signerPool, provider, metrics, network);
   }
 
   async updateIndex(events: Event[]): Promise<void> {
@@ -113,14 +115,16 @@ export class DelayedOrdersKeeper extends Keeper {
     // TODO: Remove DelayedOrders that cannot be executed (and only be cancelled).
 
     try {
-      this.logger.info('Executing delayed order...', { args: { account } });
-      const tx = await this.market.executeDelayedOrder(account);
+      await this.signerPool.withSigner(async signer => {
+        this.logger.info('Executing delayed order...', { args: { account } });
+        const tx = await this.market.connect(signer).executeDelayedOrder(account);
 
-      this.logger.info('Successfully submitted transaction, waiting for completion...', {
-        args: { account, nonce: tx.nonce },
+        this.logger.info('Successfully submitted transaction, waiting for completion...', {
+          args: { account, nonce: tx.nonce },
+        });
+        await this.waitAndLogTx(tx);
+        delete this.orders[account];
       });
-      await this.waitAndLogTx(tx);
-      delete this.orders[account];
     } catch (err) {
       order.executionFailures += 1;
       this.metrics.count(Metric.KEEPER_ERROR, this.metricDimensions);
@@ -161,7 +165,7 @@ export class DelayedOrdersKeeper extends Keeper {
           this.execAsyncKeeperCallback(account, () => this.executeOrder(account))
         );
         await Promise.all(batches);
-        await this.delay(this.BATCH_WAIT_TIME);
+        await delay(this.BATCH_WAIT_TIME);
       }
     } catch (err) {
       this.logger.error('Failed to execute delayed order', { args: { err } });
