@@ -46,10 +46,12 @@ export class SignerPool {
     this.signers = signers;
     this.pool = Array.from(Array(this.signers.length).keys());
     this.logger = logger;
+
+    this.logger.info(`Initialized pool s=${this.pool.join(',')}`);
   }
 
   private async acquire(ctx: WithSignerContext): Promise<[number, NonceManager]> {
-    this.logger.info(`[${ctx.asset}] Awaiting signer`);
+    this.logger.info(`[${ctx.asset}] Awaiting signer...`);
     let i = this.pool.pop();
 
     while (i === undefined) {
@@ -57,17 +59,13 @@ export class SignerPool {
       i = this.pool.pop();
     }
 
-    this.logger.info(
-      `[${ctx.asset}] Acquired signer i=${i} n=${this.signers.length} idle=${this.pool.length}`
-    );
+    this.logger.info(`[${ctx.asset}] Acquired signer i=${i}, s=${this.pool.join(',')}`);
     return [i, this.signers[i]];
   }
 
   private release(i: number, ctx: WithSignerContext) {
-    this.logger.info(
-      `[${ctx.asset}] Released signer i=${i} n=${this.signers.length} idle=${this.pool.length}`
-    );
     this.pool.push(i);
+    this.logger.info(`[${ctx.asset}] Released signer i=${i}, s=${this.pool.join(',')}`);
   }
 
   async withSigner(
@@ -75,12 +73,11 @@ export class SignerPool {
     ctx: WithSignerContext
   ): Promise<void> {
     const [i, signer] = await this.acquire(ctx);
-
     try {
       await cb(signer);
     } catch (err) {
       if (isObjectOrErrorWithCode(err)) {
-        // Special handeling for NONCE_EXPIRED
+        // Special handling for NONCE_EXPIRED
         if (err.code === 'NONCE_EXPIRED') {
           this.logger.error(err.toString());
           const nonce = signer.getTransactionCount('latest');

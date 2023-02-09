@@ -91,10 +91,15 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
           // startup time as it avoids one HTTP call out to the RPC provider.
           let timestamp: number;
           if (!intentionTime) {
-            if (!blockCache[blockNumber]) {
-              blockCache[blockNumber] = await evt.getBlock();
+            try {
+              if (!blockCache[blockNumber]) {
+                blockCache[blockNumber] = await evt.getBlock();
+              }
+              timestamp = blockCache[blockNumber].timestamp;
+            } catch (err) {
+              this.logger.error(`Fetching block for evt failed '${evt.blockNumber}'`, err);
+              timestamp = 0;
             }
-            timestamp = blockCache[blockNumber].timestamp;
           } else {
             timestamp = intentionTime.toNumber();
           }
@@ -181,15 +186,14 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
         },
         { asset: this.baseAsset }
       );
+      this.metrics.count(Metric.OFFCHAIN_ORDER_EXECUTED, this.metricDimensions);
     } catch (err) {
       order.executionFailures += 1;
       this.metrics.count(Metric.KEEPER_ERROR, this.metricDimensions);
       this.logger.error('Off-chain order execution failed', {
         args: { executionFailures: order.executionFailures, account: order.account },
       });
-      throw err;
     }
-    this.metrics.count(Metric.OFFCHAIN_ORDER_EXECUTED, this.metricDimensions);
   }
 
   private async getOffchainMinMaxAge(): Promise<{

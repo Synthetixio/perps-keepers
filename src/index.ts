@@ -35,7 +35,7 @@ export const SIGNER_POOL_SIZE = 2;
 export const getProvider = async (
   config: KeeperConfig['providerApiKeys'],
   network: Network
-): Promise<providers.BaseProvider> => {
+): Promise<providers.FallbackProvider> => {
   // Infura has the highest priority (indicated by the lowest priority number).
   const providersConfig: providers.FallbackProviderConfig[] = [
     {
@@ -54,6 +54,8 @@ export const getProvider = async (
       weight: PROVIDER_DEFAULT_WEIGHT,
     });
   }
+
+  // @see: https://docs.ethers.org/v5/api/providers/other/#FallbackProvider
   return new providers.FallbackProvider(providersConfig);
 };
 
@@ -64,7 +66,7 @@ export const run = async (config: KeeperConfig) => {
   const provider = await getProvider(config.providerApiKeys, config.network);
   const latestBlock = await provider.getBlock('latest');
 
-  logger.info('Connected to OVM/EVM node', {
+  logger.info('Connected to node', {
     args: {
       network: config.network,
       latestBlockNumber: latestBlock.number,
@@ -83,7 +85,7 @@ export const run = async (config: KeeperConfig) => {
   );
 
   const marketKeys = Object.keys(markets);
-  logger.info('Creating XXX_Keeper per available market', {
+  logger.info('Creating n keeper(s) per kept market...', {
     args: { n: marketKeys.length },
   });
   for (const marketKey of marketKeys) {

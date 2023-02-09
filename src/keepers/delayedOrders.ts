@@ -54,10 +54,15 @@ export class DelayedOrdersKeeper extends Keeper {
           // see: `delayedOffchainOrders`.
           let timestamp: number;
           if (!intentionTime) {
-            if (!blockCache[blockNumber]) {
-              blockCache[blockNumber] = await evt.getBlock();
+            try {
+              if (!blockCache[blockNumber]) {
+                blockCache[blockNumber] = await evt.getBlock();
+              }
+              timestamp = blockCache[blockNumber].timestamp;
+            } catch (err) {
+              this.logger.error(`Fetching block for evt failed '${evt.blockNumber}'`, err);
+              timestamp = 0;
             }
-            timestamp = blockCache[blockNumber].timestamp;
           } else {
             timestamp = intentionTime.toNumber();
           }
@@ -128,16 +133,23 @@ export class DelayedOrdersKeeper extends Keeper {
         },
         { asset: this.baseAsset }
       );
+      this.metrics.count(Metric.DELAYED_ORDER_EXECUTED, this.metricDimensions);
     } catch (err) {
       order.executionFailures += 1;
       this.metrics.count(Metric.KEEPER_ERROR, this.metricDimensions);
       throw err;
     }
-    this.metrics.count(Metric.DELAYED_ORDER_EXECUTED, this.metricDimensions);
   }
 
   async execute(): Promise<void> {
     try {
+      const orders = Object.values(this.orders);
+
+      if (orders.length === 0) {
+        this.logger.info('No orders available... skipping');
+        return;
+      }
+
       // Get the latest CL roundId.
       const currentRoundId = await this.exchangeRates.getCurrentRoundId(
         utils.formatBytes32String(this.baseAsset)
@@ -146,7 +158,6 @@ export class DelayedOrdersKeeper extends Keeper {
       const block = await this.provider.getBlock(await this.provider.getBlockNumber());
 
       // Filter out orders that may be ready to execute.
-      const orders = Object.values(this.orders);
       const executableOrders = orders.filter(
         ({ executableAtTime, targetRoundId }) =>
           currentRoundId.gte(targetRoundId) || BigNumber.from(block.timestamp).gte(executableAtTime)
