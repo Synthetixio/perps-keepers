@@ -31,7 +31,7 @@ jobs:
           echo AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }} >> .env
           echo AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }} >> .env
           echo AWS_REGION=${{ secrets.AWS_REGION }} >> .env
-          echo FROM_BLOCK=4552552 >> .env  # mainnet deployment block
+          echo FROM_BLOCK=52456701 >> .env  # mainnet deployment block
           echo METRICS_ENABLED=1 >> .env
           echo DISTRIBUTOR_PROCESS_INTERVAL=2000 >> .env
           echo MAX_ORDER_EXEC_ATTEMPTS=20 >> .env
@@ -47,7 +47,7 @@ jobs:
           echo AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }} >> .env.staging
           echo AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }} >> .env.staging
           echo AWS_REGION=${{ secrets.AWS_REGION }} >> .env.staging
-          echo FROM_BLOCK=3146767 >> .env.staging  # goerli deployment block
+          echo FROM_BLOCK=3300784 >> .env.staging  # goerli deployment block
           echo METRICS_ENABLED=1 >> .env.staging
           echo DISTRIBUTOR_PROCESS_INTERVAL=3000 >> .env.staging
           echo MAX_ORDER_EXEC_ATTEMPTS=20 >> .env.staging
