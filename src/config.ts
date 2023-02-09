@@ -13,7 +13,6 @@ export const KeeperConfigSchema = z.object({
   fromBlock: z.coerce
     .number()
     .positive()
-    .or(z.literal('latest'))
     .default(DEFAULT_CONFIG.fromBlock),
   distributorProcessInterval: z.coerce
     .number()

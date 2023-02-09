@@ -18,13 +18,15 @@ export class Distributor {
   private readonly LISTEN_ERROR_WAIT_TIME = 15 * 1000; // 15s
   protected readonly START_TIME = Date.now();
 
+  private readonly MAX_BLOCK_RANGE = 1_000_000;
+
   constructor(
     private readonly market: Contract,
     protected readonly baseAsset: string,
     private readonly provider: providers.BaseProvider,
     private readonly metrics: Metrics,
     private readonly signer: NonceManager,
-    private readonly fromBlock: number | string,
+    private readonly fromBlock: number,
     private readonly distributorProcessInterval: number
   ) {
     this.logger = createLogger(`Distributor [${baseAsset}] Distributor`);
@@ -42,19 +44,31 @@ export class Distributor {
 
   /* Perform RPC calls to fetch past event data once then pass to keepers for indexing. */
   private async indexKeepers(): Promise<number> {
-    const toBlock = await this.provider.getBlockNumber();
-    const events = await getEvents(this.getEventsOfInterest(), this.market, {
-      fromBlock: this.fromBlock,
-      toBlock,
-      logger: this.logger,
-    });
+    const latestBlock = await this.provider.getBlockNumber();
+    let fromBlock = this.fromBlock;
 
-    this.logger.info('Rebuilding index...', {
-      args: { fromBlock: this.fromBlock, toBlock, events: events.length },
-    });
-    await Promise.all(this.keepers.map(keeper => keeper.updateIndex(events)));
+    while (fromBlock <= latestBlock) {
+      const toBlock = Math.min(fromBlock + this.MAX_BLOCK_RANGE, latestBlock);
+      const events = await getEvents(this.getEventsOfInterest(), this.market, {
+        fromBlock,
+        toBlock,
+        logger: this.logger,
+      });
 
-    return toBlock;
+      this.logger.info('Rebuilding index...', {
+        args: {
+          fromBlock,
+          toBlock,
+          events: events.length,
+          segments: (latestBlock - this.fromBlock) / this.MAX_BLOCK_RANGE,
+        },
+      });
+      await Promise.all(this.keepers.map(keeper => keeper.updateIndex(events)));
+
+      fromBlock = toBlock + 1;
+    }
+
+    return latestBlock;
   }
 
   private async updateKeeperIndexes(
