@@ -17,9 +17,6 @@ export enum Metric {
   // A metric sent upon startup (useful to track freq of crash & restarts).
   KEEPER_STARTUP = 'KeeperStartUp',
 
-  // Amount of ETH in the keeper address.
-  KEEPER_ETH_BALANCE = 'KeeperEthBalance',
-
   // When any error (liquidation or order execution) occurs.
   KEEPER_ERROR = 'KeeperError',
 

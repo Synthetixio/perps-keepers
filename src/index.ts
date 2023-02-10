@@ -98,7 +98,6 @@ export const run = async (config: KeeperConfig) => {
       baseAsset,
       provider,
       metrics,
-      signer,
       config.fromBlock,
       config.distributorProcessInterval
     );
