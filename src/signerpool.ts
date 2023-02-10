@@ -5,6 +5,7 @@ import { HDNode } from 'ethers/lib/utils';
 import { NonceManager } from '@ethersproject/experimental';
 import { delay } from './utils';
 import { range } from 'lodash';
+import { Metric, Metrics } from './metrics';
 
 const _logger = createLogger('SignerPool');
 
@@ -38,11 +39,14 @@ export interface WithSignerContext {
 export class SignerPool {
   private readonly ACQUIRE_SIGNER_DELAY = 100;
 
-  private readonly signers: NonceManager[];
   private readonly pool: number[];
   private readonly logger: Logger;
 
-  constructor(signers: NonceManager[], logger: Logger = _logger) {
+  constructor(
+    private readonly signers: NonceManager[],
+    private readonly metrics: Metrics,
+    logger: Logger = _logger
+  ) {
     this.signers = signers;
     this.pool = Array.from(Array(this.signers.length).keys());
     this.logger = logger;
@@ -58,17 +62,20 @@ export class SignerPool {
     this.logger.info(`[${ctx.asset}] Awaiting signer...`, { args: this.getLogArgs() });
     let i = this.pool.shift();
 
+    this.metrics.gauge(Metric.SIGNER_POOL_SIZE, this.pool.length);
     while (i === undefined) {
       await delay(this.ACQUIRE_SIGNER_DELAY);
       i = this.pool.shift();
     }
 
+    this.metrics.gauge(Metric.SIGNER_POOL_SIZE, this.pool.length);
     this.logger.info(`[${ctx.asset}] Acquired signer @ index '${i}'`, { args: this.getLogArgs() });
     return [i, this.signers[i]];
   }
 
   private release(i: number, ctx: WithSignerContext) {
     this.pool.push(i);
+    this.metrics.gauge(Metric.SIGNER_POOL_SIZE, this.pool.length);
     this.logger.info(`[${ctx.asset}] Released signer @ index '${i}'`, { args: this.getLogArgs() });
   }
 

@@ -37,6 +37,9 @@ export enum Metric {
   // Open position liquidated successfully.
   POSITION_LIQUIDATED = 'PositionLiquidated',
 
+  // Number of available signers in the signer pool (0 means transactions cannot be executed).
+  SIGNER_POOL_SIZE = 'SignerPoolSize',
+
   // TODO: Add metrics for time taken per keeper type.
 }
 
