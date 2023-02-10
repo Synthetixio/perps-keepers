@@ -137,7 +137,6 @@ export class DelayedOrdersKeeper extends Keeper {
     } catch (err) {
       order.executionFailures += 1;
       this.metrics.count(Metric.KEEPER_ERROR, this.metricDimensions);
-      throw err;
     }
   }
 
