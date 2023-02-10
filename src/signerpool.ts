@@ -63,13 +63,13 @@ export class SignerPool {
       i = this.pool.shift();
     }
 
-    this.logger.info(`[${ctx.asset}] Acquired signer index '${i}'`, { args: this.getLogArgs() });
+    this.logger.info(`[${ctx.asset}] Acquired signer @ index '${i}'`, { args: this.getLogArgs() });
     return [i, this.signers[i]];
   }
 
   private release(i: number, ctx: WithSignerContext) {
     this.pool.push(i);
-    this.logger.info(`[${ctx.asset}] Released signer '${i}'`, { args: this.getLogArgs() });
+    this.logger.info(`[${ctx.asset}] Released signer @ index '${i}'`, { args: this.getLogArgs() });
   }
 
   async withSigner(
