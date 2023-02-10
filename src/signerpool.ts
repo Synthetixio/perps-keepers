@@ -80,7 +80,7 @@ export class SignerPool {
         // Special handling for NONCE_EXPIRED
         if (err.code === 'NONCE_EXPIRED') {
           this.logger.error(err.toString());
-          const nonce = signer.getTransactionCount('latest');
+          const nonce = await signer.getTransactionCount('latest');
           this.logger.info(`[${ctx.asset}] Updating nonce for Nonce manager to nonce: '${nonce}'`);
           signer.setTransactionCount(nonce);
         }
