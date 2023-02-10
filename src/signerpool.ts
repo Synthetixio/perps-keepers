@@ -86,6 +86,8 @@ export class SignerPool {
     const [i, signer] = await this.acquire(ctx);
     try {
       await cb(signer);
+      const nonce = await signer.getTransactionCount('latest');
+      signer.setTransactionCount(nonce);
     } catch (err) {
       if (isObjectOrErrorWithCode(err)) {
         // Special handling for NONCE_EXPIRED

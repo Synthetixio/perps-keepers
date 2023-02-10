@@ -9,7 +9,10 @@ import { PerpsEvent } from '../typed';
 export class Keeper {
   protected readonly logger: Logger;
 
-  protected readonly MAX_BATCH_SIZE = 5;
+  // Maximum number of transactions to execute in parallel per batch.
+  protected readonly MAX_BATCH_SIZE = 4;
+
+  // Wait time between batches to process the next.
   protected readonly BATCH_WAIT_TIME = 100;
 
   protected activeKeeperTasks: Record<string, boolean> = {};
@@ -58,7 +61,7 @@ export class Keeper {
     delete this.activeKeeperTasks[id];
   }
 
-  protected async waitAndLogTx(tx: TransactionResponse): Promise<void> {
+  protected async waitTx(tx: TransactionResponse): Promise<void> {
     const receipt = await tx.wait(1);
     const { blockNumber, status, transactionHash, gasUsed } = receipt;
     this.logger.info('Transaction completed!', {

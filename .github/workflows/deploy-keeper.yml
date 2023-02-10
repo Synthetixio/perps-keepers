@@ -34,7 +34,7 @@ jobs:
           echo FROM_BLOCK=52456701 >> .env  # mainnet deployment block
           echo METRICS_ENABLED=1 >> .env
           echo DISTRIBUTOR_PROCESS_INTERVAL=2000 >> .env
-          echo MAX_ORDER_EXEC_ATTEMPTS=20 >> .env
+          echo MAX_ORDER_EXEC_ATTEMPTS=10 >> .env
           echo LOG_LEVEL=info >> .env
           echo SIGNER_POOL_SIZE=4 >> .env
         if: github.ref == 'refs/heads/master'
@@ -51,7 +51,7 @@ jobs:
           echo FROM_BLOCK=3300784 >> .env.staging  # goerli deployment block
           echo METRICS_ENABLED=1 >> .env.staging
           echo DISTRIBUTOR_PROCESS_INTERVAL=3000 >> .env.staging
-          echo MAX_ORDER_EXEC_ATTEMPTS=20 >> .env.staging
+          echo MAX_ORDER_EXEC_ATTEMPTS=10 >> .env.staging
           echo LOG_LEVEL=info >> .env.staging
           echo SIGNER_POOL_SIZE=4 >> .env.staging
         if: github.ref == 'refs/heads/develop'

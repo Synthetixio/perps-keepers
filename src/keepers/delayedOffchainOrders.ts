@@ -178,10 +178,10 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
               value: updateFee,
               gasLimit: 1_500_000,
             });
-          this.logger.info('Successfully submitted transaction, waiting for completion...', {
+          this.logger.info('Submitted transaction, waiting for completion...', {
             args: { account, nonce: tx.nonce },
           });
-          await this.waitAndLogTx(tx);
+          await this.waitTx(tx);
           delete this.orders[account];
         },
         { asset: this.baseAsset }
@@ -191,7 +191,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       order.executionFailures += 1;
       this.metrics.count(Metric.KEEPER_ERROR, this.metricDimensions);
       this.logger.error('Off-chain order execution failed', {
-        args: { executionFailures: order.executionFailures, account: order.account },
+        args: { executionFailures: order.executionFailures, account: order.account, err },
       });
     }
   }

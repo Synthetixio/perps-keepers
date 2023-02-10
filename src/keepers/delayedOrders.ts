@@ -125,10 +125,10 @@ export class DelayedOrdersKeeper extends Keeper {
           this.logger.info('Executing delayed order...', { args: { account } });
           const tx = await this.market.connect(signer).executeDelayedOrder(account);
 
-          this.logger.info('Successfully submitted transaction, waiting for completion...', {
+          this.logger.info('Submitted transaction, waiting for completion...', {
             args: { account, nonce: tx.nonce },
           });
-          await this.waitAndLogTx(tx);
+          await this.waitTx(tx);
           delete this.orders[account];
         },
         { asset: this.baseAsset }
@@ -137,6 +137,9 @@ export class DelayedOrdersKeeper extends Keeper {
     } catch (err) {
       order.executionFailures += 1;
       this.metrics.count(Metric.KEEPER_ERROR, this.metricDimensions);
+      this.logger.error('Delayed order execution failed', {
+        args: { executionFailures: order.executionFailures, account: order.account, err },
+      });
     }
   }
 
