@@ -1,5 +1,4 @@
 import { Contract, providers, Event, utils } from 'ethers';
-import { NonceManager } from '@ethersproject/experimental';
 import { Logger } from 'winston';
 import { getEvents } from './keepers/helpers';
 import { Keeper } from './keepers';
