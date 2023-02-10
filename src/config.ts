@@ -7,6 +7,7 @@ export const DEFAULT_CONFIG = {
   maxOrderExecAttempts: 10,
   isMetricsEnabled: false,
   distributorProcessInterval: 3000,
+  signerPoolSize: 1,
 };
 
 export const KeeperConfigSchema = z.object({
@@ -18,6 +19,11 @@ export const KeeperConfigSchema = z.object({
     .number()
     .positive()
     .default(DEFAULT_CONFIG.distributorProcessInterval),
+  signerPoolSize: z.coerce
+    .number()
+    .positive()
+    .min(1)
+    .default(DEFAULT_CONFIG.signerPoolSize),
   providerApiKeys: z.object({
     infura: z.string().min(1),
     alchemy: z.string().optional(),
@@ -48,6 +54,7 @@ export const getConfig = (force = false): KeeperConfig => {
 
   const result = KeeperConfigSchema.safeParse({
     fromBlock: process.env.FROM_BLOCK,
+    signerPoolSize: process.env.SIGNER_POOL_SIZE,
     providerApiKeys: {
       infura: process.env.PROVIDER_API_KEY_INFURA,
       alchemy: process.env.PROVIDER_API_KEY_ALCHEMY,

@@ -17,9 +17,6 @@ export enum Metric {
   // A metric sent upon startup (useful to track freq of crash & restarts).
   KEEPER_STARTUP = 'KeeperStartUp',
 
-  // Amount of ETH in the keeper address.
-  KEEPER_ETH_BALANCE = 'KeeperEthBalance',
-
   // When any error (liquidation or order execution) occurs.
   KEEPER_ERROR = 'KeeperError',
 
@@ -39,6 +36,9 @@ export enum Metric {
 
   // Open position liquidated successfully.
   POSITION_LIQUIDATED = 'PositionLiquidated',
+
+  // Number of available signers in the signer pool (0 means transactions cannot be executed).
+  SIGNER_POOL_SIZE = 'SignerPoolSize',
 
   // TODO: Add metrics for time taken per keeper type.
 }

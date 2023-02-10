@@ -5,6 +5,7 @@ import { HDNode } from 'ethers/lib/utils';
 import { NonceManager } from '@ethersproject/experimental';
 import { delay } from './utils';
 import { range } from 'lodash';
+import { Metric, Metrics } from './metrics';
 
 const _logger = createLogger('SignerPool');
 
@@ -38,36 +39,44 @@ export interface WithSignerContext {
 export class SignerPool {
   private readonly ACQUIRE_SIGNER_DELAY = 100;
 
-  private readonly signers: NonceManager[];
   private readonly pool: number[];
   private readonly logger: Logger;
 
-  constructor(signers: NonceManager[], logger: Logger = _logger) {
+  constructor(
+    private readonly signers: NonceManager[],
+    private readonly metrics: Metrics,
+    logger: Logger = _logger
+  ) {
     this.signers = signers;
     this.pool = Array.from(Array(this.signers.length).keys());
     this.logger = logger;
+
+    this.logger.info('Initialized signer pool', { args: this.getLogArgs() });
+  }
+
+  private getLogArgs(): Record<string, string | number> {
+    return { pool: this.pool.join(','), n: this.pool.length };
   }
 
   private async acquire(ctx: WithSignerContext): Promise<[number, NonceManager]> {
-    this.logger.info(`[${ctx.asset}] Awaiting signer`);
-    let i = this.pool.pop();
+    this.logger.info(`[${ctx.asset}] Awaiting signer...`, { args: this.getLogArgs() });
+    let i = this.pool.shift();
 
+    this.metrics.gauge(Metric.SIGNER_POOL_SIZE, this.pool.length);
     while (i === undefined) {
       await delay(this.ACQUIRE_SIGNER_DELAY);
-      i = this.pool.pop();
+      i = this.pool.shift();
     }
 
-    this.logger.info(
-      `[${ctx.asset}] Acquired signer i=${i} n=${this.signers.length} idle=${this.pool.length}`
-    );
+    this.metrics.gauge(Metric.SIGNER_POOL_SIZE, this.pool.length);
+    this.logger.info(`[${ctx.asset}] Acquired signer @ index '${i}'`, { args: this.getLogArgs() });
     return [i, this.signers[i]];
   }
 
   private release(i: number, ctx: WithSignerContext) {
-    this.logger.info(
-      `[${ctx.asset}] Released signer i=${i} n=${this.signers.length} idle=${this.pool.length}`
-    );
     this.pool.push(i);
+    this.metrics.gauge(Metric.SIGNER_POOL_SIZE, this.pool.length);
+    this.logger.info(`[${ctx.asset}] Released signer @ index '${i}'`, { args: this.getLogArgs() });
   }
 
   async withSigner(
@@ -75,15 +84,14 @@ export class SignerPool {
     ctx: WithSignerContext
   ): Promise<void> {
     const [i, signer] = await this.acquire(ctx);
-
     try {
       await cb(signer);
     } catch (err) {
       if (isObjectOrErrorWithCode(err)) {
-        // Special handeling for NONCE_EXPIRED
+        // Special handling for NONCE_EXPIRED
         if (err.code === 'NONCE_EXPIRED') {
           this.logger.error(err.toString());
-          const nonce = signer.getTransactionCount('latest');
+          const nonce = await signer.getTransactionCount('latest');
           this.logger.info(`[${ctx.asset}] Updating nonce for Nonce manager to nonce: '${nonce}'`);
           signer.setTransactionCount(nonce);
         }

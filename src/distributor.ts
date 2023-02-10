@@ -1,12 +1,10 @@
 import { Contract, providers, Event, utils } from 'ethers';
-import { NonceManager } from '@ethersproject/experimental';
 import { Logger } from 'winston';
 import { getEvents } from './keepers/helpers';
 import { Keeper } from './keepers';
 import { createLogger } from './logging';
 import { PerpsEvent } from './typed';
 import { Metric, Metrics } from './metrics';
-import { wei } from '@synthetixio/wei';
 import { uniq } from 'lodash';
 import { delay } from './utils';
 
@@ -25,7 +23,6 @@ export class Distributor {
     protected readonly baseAsset: string,
     private readonly provider: providers.BaseProvider,
     private readonly metrics: Metrics,
-    private readonly signer: NonceManager,
     private readonly fromBlock: number,
     private readonly distributorProcessInterval: number
   ) {
@@ -115,14 +112,12 @@ export class Distributor {
   async healthcheck(): Promise<void> {
     try {
       const uptime = Date.now() - this.START_TIME;
-      const balance = wei(await this.signer.getBalance()).toNumber();
-      this.logger.info('Performing keeper healthcheck', { args: { uptime, balance } });
+      this.logger.info('Performing keeper healthcheck', { args: { uptime } });
 
       // A failure to submit metric should not cause application to halt. Instead, alerts will pick this up if it happens
       // for a long enough duration. Essentially, do _not_ force keeper to slowdown operation just to track metrics
       // for offline usage/monitoring.
       this.metrics.time(Metric.KEEPER_UPTIME, uptime);
-      this.metrics.send(Metric.KEEPER_ETH_BALANCE, balance);
     } catch (err) {
       // NOTE: We do _not_ rethrow because healthchecks aren't `await` wrapped.
       this.logger.error('Distributor healthcheck failed', err);
