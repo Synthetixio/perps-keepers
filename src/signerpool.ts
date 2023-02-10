@@ -51,21 +51,21 @@ export class SignerPool {
   }
 
   private async acquire(ctx: WithSignerContext): Promise<[number, NonceManager]> {
-    this.logger.info(`[${ctx.asset}] Awaiting signer...`);
-    let i = this.pool.pop();
+    this.logger.info(`[${ctx.asset}] Awaiting signer...`, { pool: this.pool });
+    let i = this.pool.shift();
 
     while (i === undefined) {
       await delay(this.ACQUIRE_SIGNER_DELAY);
-      i = this.pool.pop();
+      i = this.pool.shift();
     }
 
-    this.logger.info(`[${ctx.asset}] Acquired signer i=${i}, s=${this.pool.join(',')}`);
+    this.logger.info(`[${ctx.asset}] Acquired signer index '${i}'`, { pool: this.pool });
     return [i, this.signers[i]];
   }
 
   private release(i: number, ctx: WithSignerContext) {
     this.pool.push(i);
-    this.logger.info(`[${ctx.asset}] Released signer i=${i}, s=${this.pool.join(',')}`);
+    this.logger.info(`[${ctx.asset}] Released signer '${i}'`, { pool: this.pool });
   }
 
   async withSigner(
