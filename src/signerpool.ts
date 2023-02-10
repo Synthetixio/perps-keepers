@@ -47,11 +47,15 @@ export class SignerPool {
     this.pool = Array.from(Array(this.signers.length).keys());
     this.logger = logger;
 
-    this.logger.info(`Initialized pool s=${this.pool.join(',')}`);
+    this.logger.info('Initialized signer pool', { args: this.getLogArgs() });
+  }
+
+  private getLogArgs(): Record<string, string | number> {
+    return { pool: this.pool.join(','), n: this.pool.length };
   }
 
   private async acquire(ctx: WithSignerContext): Promise<[number, NonceManager]> {
-    this.logger.info(`[${ctx.asset}] Awaiting signer...`, { pool: this.pool });
+    this.logger.info(`[${ctx.asset}] Awaiting signer...`, { args: this.getLogArgs() });
     let i = this.pool.shift();
 
     while (i === undefined) {
@@ -59,13 +63,13 @@ export class SignerPool {
       i = this.pool.shift();
     }
 
-    this.logger.info(`[${ctx.asset}] Acquired signer index '${i}'`, { pool: this.pool });
+    this.logger.info(`[${ctx.asset}] Acquired signer index '${i}'`, { args: this.getLogArgs() });
     return [i, this.signers[i]];
   }
 
   private release(i: number, ctx: WithSignerContext) {
     this.pool.push(i);
-    this.logger.info(`[${ctx.asset}] Released signer '${i}'`, { pool: this.pool });
+    this.logger.info(`[${ctx.asset}] Released signer '${i}'`, { args: this.getLogArgs() });
   }
 
   async withSigner(

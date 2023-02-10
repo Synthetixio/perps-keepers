@@ -29,9 +29,6 @@ const logger = createLogger('Application');
 export const PROVIDER_STALL_TIMEOUT = 750;
 export const PROVIDER_DEFAULT_WEIGHT = 1;
 
-// TODO: Pull this into an environment variable later.
-export const SIGNER_POOL_SIZE = 2;
-
 export const getProvider = async (
   config: KeeperConfig['providerApiKeys'],
   network: Network
@@ -74,7 +71,7 @@ export const run = async (config: KeeperConfig) => {
     },
   });
 
-  const signers = createSigners(config.ethHdwalletMnemonic, provider, SIGNER_POOL_SIZE);
+  const signers = createSigners(config.ethHdwalletMnemonic, provider, config.signerPoolSize);
   const signer = signers[0]; // There will always be at least 1.
   const signerPool = new SignerPool(signers);
 

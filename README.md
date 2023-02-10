@@ -27,6 +27,7 @@ Variables for configuration are defined as environment variables. During develop
 | `PROVIDER_API_KEY_ALCHEMY`     | No       | An optional Alchemy RPC API key to fallback if Infura falls key    |                 |
 | `NETWORK`                      | No       | Network to keep against (goerli-ovm, mainnet-ovm)                  | optimism-goerli |
 | `FROM_BLOCK`                   | No       | Default block to index from                                        | 1               |
+| `SIGNER_POOL_SIZE`             | No       | Number of accounts from ETH_HD_WALLET to use as signers            | 1               |
 | `DISTRIBUTOR_PROCESS_INTERVAL` | No       | Number of ms to wait before processing the next batch of blocks    | 3000            |
 | `MAX_ORDER_EXEC_ATTEMPTS`      | No       | Maximum number of order execution attempst to try before ignoring  | 10              |
 | `METRICS_ENABLED`              | No       | Metrics enabled/disabled (1 = enabled, everything else = disabled) | 0               |
