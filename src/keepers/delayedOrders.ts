@@ -140,6 +140,7 @@ export class DelayedOrdersKeeper extends Keeper {
       this.logger.error('Delayed order execution failed', {
         args: { executionFailures: order.executionFailures, account: order.account, err },
       });
+      this.logger.error((err as Error).stack);
     }
   }
 
