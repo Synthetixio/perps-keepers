@@ -8,6 +8,11 @@ export const DEFAULT_CONFIG = {
   isMetricsEnabled: false,
   distributorProcessInterval: 3000,
   signerPoolSize: 1,
+
+  // @see: https://github.com/pyth-network/pyth-js/tree/main/pyth-evm-js
+  //   'https://xc-testnet.pyth.network'
+  //   'https://xc-mainnet.pyth.network'
+  pythPriceServer: 'https://xc-testnet.pyth.network',
 };
 
 export const KeeperConfigSchema = z.object({
@@ -28,6 +33,10 @@ export const KeeperConfigSchema = z.object({
     infura: z.string().min(1),
     alchemy: z.string().optional(),
   }),
+  pythPriceServer: z
+    .string()
+    .url()
+    .default(DEFAULT_CONFIG.pythPriceServer),
   network: z.nativeEnum(Network).default(DEFAULT_CONFIG.network),
   ethHdwalletMnemonic: z.string().min(1),
   maxOrderExecAttempts: z.coerce
@@ -62,6 +71,7 @@ export const getConfig = (force = false): KeeperConfig => {
     distributorProcessInterval: process.env.DISTRIBUTOR_PROCESS_INTERVAL,
     network: process.env.NETWORK,
     ethHdwalletMnemonic: process.env.ETH_HDWALLET_MNEMONIC,
+    pythPriceServer: process.env.PYTH_PRICE_SERVER,
     maxOrderExecAttempts: process.env.MAX_ORDER_EXEC_ATTEMPTS,
     isMetricsEnabled: process.env.METRICS_ENABLED === '1',
 

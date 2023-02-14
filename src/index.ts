@@ -12,7 +12,7 @@ import logProcessError from 'log-process-errors';
 import { createLogger } from './logging';
 import { getConfig, KeeperConfig } from './config';
 import { providers } from 'ethers';
-import { getSynthetixPerpsContracts } from './utils';
+import { getPerpsContracts } from './utils';
 import { Distributor } from './distributor';
 import { LiquidationKeeper } from './keepers/liquidation';
 import { DelayedOrdersKeeper } from './keepers/delayedOrders';
@@ -75,8 +75,9 @@ export const run = async (config: KeeperConfig) => {
   const signer = signers[0]; // There will always be at least 1.
   const signerPool = new SignerPool(signers, metrics);
 
-  const { markets, pyth, marketSettings, exchangeRates } = await getSynthetixPerpsContracts(
+  const { markets, pyth, marketSettings, exchangeRates } = await getPerpsContracts(
     config.network,
+    config.pythPriceServer,
     signer,
     provider
   );
