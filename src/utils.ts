@@ -16,12 +16,6 @@ interface KeeperContracts {
   pyth: { priceFeedIds: Record<string, string>; endpoint: string; contract: Contract };
 }
 
-// @see: https://github.com/pyth-network/pyth-js/tree/main/pyth-evm-js
-const PYTH_NETWORK_ENDPOINTS: Record<Network, string> = {
-  [Network.OPT_GOERLI]: 'https://xc-testnet.pyth.network',
-  [Network.OPT]: 'https://xc-mainnet.pyth.network',
-};
-
 // @see: https://docs.pyth.network/consume-data/evm
 const PYTH_CONTRACT_ADDRESSES: Record<Network, string> = {
   [Network.OPT_GOERLI]: '0xff1a0f4744e8582DF1aE09D5611b887B6a12925C',
@@ -52,8 +46,9 @@ const getSynthetixContractByName = (
   return new Contract(address, abi, provider);
 };
 
-export const getSynthetixPerpsContracts = async (
+export const getPerpsContracts = async (
   network: Network,
+  pythPriceServer: string,
   signer: Signer,
   provider: providers.BaseProvider
 ): Promise<KeeperContracts> => {
@@ -105,10 +100,12 @@ export const getSynthetixPerpsContracts = async (
 
   logger.info(`Keeping ${marketValues.length}/${marketSummaries.length} markets`);
   const pyth = {
-    endpoint: PYTH_NETWORK_ENDPOINTS[network],
+    endpoint: pythPriceServer,
     priceFeedIds,
     contract: new Contract(PYTH_CONTRACT_ADDRESSES[network], PythAbi, provider),
   };
+  logger.info(`Configuring off-chain with server '${pythPriceServer}'`);
+
   return { exchangeRates, marketManager, marketSettings, markets, pyth };
 };
 

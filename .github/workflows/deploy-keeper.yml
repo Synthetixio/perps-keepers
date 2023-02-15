@@ -35,6 +35,7 @@ jobs:
           echo METRICS_ENABLED=1 >> .env
           echo DISTRIBUTOR_PROCESS_INTERVAL=2000 >> .env
           echo MAX_ORDER_EXEC_ATTEMPTS=10 >> .env
+          echo PYTH_PRICE_SERVER=https://xc-mainnet.pyth.network >> .env
           echo LOG_LEVEL=info >> .env
           echo SIGNER_POOL_SIZE=4 >> .env
         if: github.ref == 'refs/heads/master'
@@ -52,6 +53,7 @@ jobs:
           echo METRICS_ENABLED=1 >> .env.staging
           echo DISTRIBUTOR_PROCESS_INTERVAL=3000 >> .env.staging
           echo MAX_ORDER_EXEC_ATTEMPTS=10 >> .env.staging
+          echo PYTH_PRICE_SERVER=${{ secrets.PYTH_PRICE_SERVER_TESTNET }} >> .env.staging
           echo LOG_LEVEL=info >> .env.staging
           echo SIGNER_POOL_SIZE=4 >> .env.staging
         if: github.ref == 'refs/heads/develop'
