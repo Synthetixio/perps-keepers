@@ -176,7 +176,6 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
             .connect(signer)
             .executeOffchainDelayedOrder(account, priceUpdateData, {
               value: updateFee,
-              gasLimit: 1_500_000,
             });
           this.logger.info('Submitted transaction, waiting for completion...', {
             args: { account, nonce: tx.nonce },
