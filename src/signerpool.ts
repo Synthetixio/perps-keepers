@@ -106,16 +106,19 @@ export class SignerPool {
   }
 
   monitor(interval: number): NodeJS.Timer {
-    return setInterval(async () => {
+    const trackEthBalance = async () => {
       this.logger.info(`Performing signer monitor...`, { args: { interval } });
       for (const signer of this.signers) {
         const balance = wei(await signer.getBalance()).toNumber();
         const address = await signer.getAddress();
-        this.logger.info(`Tracking ETH balance for signer...`, { args: { address } });
+        this.logger.info(`Tracking ETH balance for signer...`, { args: { address, balance } });
         await this.metrics.gauge(Metric.KEEPER_SIGNER_ETH_BALANCE, balance, {
           SignerAddress: address,
         });
       }
-    }, interval);
+    };
+
+    trackEthBalance();
+    return setInterval(trackEthBalance, interval);
   }
 }
