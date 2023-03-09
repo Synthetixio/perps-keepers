@@ -74,6 +74,7 @@ export const run = async (config: KeeperConfig) => {
   const signers = createSigners(config.ethHdwalletMnemonic, provider, config.signerPoolSize);
   const signer = signers[0]; // There will always be at least 1.
   const signerPool = new SignerPool(signers, metrics);
+  signerPool.monitor(config.signerPoolMonitorInterval);
 
   const { markets, pyth, marketSettings, exchangeRates } = await getPerpsContracts(
     config.network,
