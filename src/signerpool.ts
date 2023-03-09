@@ -107,12 +107,14 @@ export class SignerPool {
 
   monitor(interval: number): NodeJS.Timer {
     return setInterval(async () => {
-      this.logger.info(`Performing signer monitor...`, { args: { interval }});
+      this.logger.info(`Performing signer monitor...`, { args: { interval } });
       for (const signer of this.signers) {
         const balance = wei(await signer.getBalance()).toNumber();
         const address = await signer.getAddress();
-        this.logger.info(`Tracking ETH balance for signer...`, { args: { address }});
-        await this.metrics.gauge(Metric.KEEPER_SIGNER_ETH_BALANCE, balance, { SignerAddress: address });
+        this.logger.info(`Tracking ETH balance for signer...`, { args: { address } });
+        await this.metrics.gauge(Metric.KEEPER_SIGNER_ETH_BALANCE, balance, {
+          SignerAddress: address,
+        });
       }
     }, interval);
   }
