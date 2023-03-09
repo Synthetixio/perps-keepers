@@ -112,9 +112,7 @@ export class SignerPool {
         const balance = wei(await signer.getBalance()).toNumber();
         const address = await signer.getAddress();
         this.logger.info(`Tracking ETH balance for signer...`, { args: { address, balance } });
-        await this.metrics.gauge(Metric.KEEPER_SIGNER_ETH_BALANCE, balance, {
-          SignerAddress: address,
-        });
+        await this.metrics.gauge(Metric.KEEPER_SIGNER_ETH_BALANCE, balance);
       }
     };
 
