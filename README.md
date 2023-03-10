@@ -28,6 +28,7 @@ Variables for configuration are defined as environment variables. During develop
 | `NETWORK`                      | No       | Network to keep against (goerli-ovm, mainnet-ovm)                  | optimism-goerli                 |
 | `FROM_BLOCK`                   | No       | Default block to index from                                        | 1                               |
 | `SIGNER_POOL_SIZE`             | No       | Number of accounts from ETH_HD_WALLET to use as signers            | 1                               |
+| `SIGNER_POOL_MONITOR_INTERVAL` | No       | Amount of time between signer monitor in ms                        | 600000                          |
 | `DISTRIBUTOR_PROCESS_INTERVAL` | No       | Number of ms to wait before processing the next batch of blocks    | 3000                            |
 | `MAX_ORDER_EXEC_ATTEMPTS`      | No       | Maximum number of order execution attempst to try before ignoring  | 10                              |
 | `METRICS_ENABLED`              | No       | Metrics enabled/disabled (1 = enabled, everything else = disabled) | 0                               |

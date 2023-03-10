@@ -8,6 +8,7 @@ export const DEFAULT_CONFIG = {
   isMetricsEnabled: false,
   distributorProcessInterval: 3000,
   signerPoolSize: 1,
+  signerPoolMonitorInterval: 1000 * 60, // 1min
 
   // @see: https://github.com/pyth-network/pyth-js/tree/main/pyth-evm-js
   //   'https://xc-testnet.pyth.network'
@@ -29,6 +30,11 @@ export const KeeperConfigSchema = z.object({
     .positive()
     .min(1)
     .default(DEFAULT_CONFIG.signerPoolSize),
+  signerPoolMonitorInterval: z.coerce
+    .number()
+    .positive()
+    .min(1000)
+    .default(DEFAULT_CONFIG.signerPoolMonitorInterval),
   providerApiKeys: z.object({
     infura: z.string().min(1),
     alchemy: z.string().optional(),

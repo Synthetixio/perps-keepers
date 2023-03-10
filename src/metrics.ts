@@ -14,6 +14,9 @@ export enum Metric {
   // How long this keeper has been up and executing.
   KEEPER_UPTIME = 'KeeperUpTime',
 
+  // Amount of ETH in the keeper address.
+  KEEPER_SIGNER_ETH_BALANCE = 'KeeperSignerEthBalance',
+
   // A metric sent upon startup (useful to track freq of crash & restarts).
   KEEPER_STARTUP = 'KeeperStartUp',
 

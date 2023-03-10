@@ -3,6 +3,7 @@ import { createLogger } from './logging';
 import { providers, Wallet } from 'ethers';
 import { HDNode } from 'ethers/lib/utils';
 import { NonceManager } from '@ethersproject/experimental';
+import { wei } from '@synthetixio/wei';
 import { delay } from './utils';
 import { range } from 'lodash';
 import { Metric, Metrics } from './metrics';
@@ -102,5 +103,20 @@ export class SignerPool {
     } finally {
       this.release(i, ctx);
     }
+  }
+
+  monitor(interval: number): NodeJS.Timer {
+    const trackEthBalance = async () => {
+      this.logger.info(`Performing signer monitor...`, { args: { interval } });
+      for (const signer of this.signers) {
+        const balance = wei(await signer.getBalance()).toNumber();
+        const address = await signer.getAddress();
+        this.logger.info(`Tracking ETH balance for signer...`, { args: { address, balance } });
+        await this.metrics.gauge(Metric.KEEPER_SIGNER_ETH_BALANCE, balance);
+      }
+    };
+
+    trackEthBalance();
+    return setInterval(trackEthBalance, interval);
   }
 }
