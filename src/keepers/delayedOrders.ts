@@ -122,6 +122,15 @@ export class DelayedOrdersKeeper extends Keeper {
     try {
       await this.signerPool.withSigner(
         async signer => {
+          // Perform one last check on-chain to see if order actually exists.
+          const order = await this.market.delayedOrders(account);
+          if (order.sizeDelta === 0) {
+            this.logger.info('Order does not exist, avoiding execution', { args: { account } });
+            delete this.orders[account];
+            this.metrics.count(Metric.DELAYED_ORDER_ALREADY_EXECUTED, this.metricDimensions);
+            return;
+          }
+
           this.logger.info('Executing delayed order...', { args: { account } });
           const tx = await this.market.connect(signer).executeDelayedOrder(account);
 
