@@ -6,6 +6,7 @@ export enum PerpsEvent {
   FundingRecomputed = 'FundingRecomputed',
   DelayedOrderSubmitted = 'DelayedOrderSubmitted',
   DelayedOrderRemoved = 'DelayedOrderRemoved',
+  PositionFlagged = 'PositionFlagged',
 }
 
 export interface Position {
