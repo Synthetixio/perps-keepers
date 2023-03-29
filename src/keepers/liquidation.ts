@@ -158,8 +158,21 @@ export class LiquidationKeeper extends Keeper {
     try {
       await this.signerPool.withSigner(
         async (signer) => {
-          this.logger.info('Liquidating position...', { args: { account } });
+          this.logger.info('Flagging position...', { args: { account } });
           const tx: TransactionResponse = await this.market.connect(signer).flagPosition(account);
+          this.logger.info('Submitted transaction, waiting for completion...', {
+            args: { account, nonce: tx.nonce },
+          });
+          await this.waitTx(tx);
+        },
+        { asset: this.baseAsset }
+      );
+      await this.signerPool.withSigner(
+        async (signer) => {
+          this.logger.info('Liquidating position...', { args: { account } });
+          const tx: TransactionResponse = await this.market
+            .connect(signer)
+            .liquidatePosition(account);
           this.logger.info('Submitted transaction, waiting for completion...', {
             args: { account, nonce: tx.nonce },
           });
