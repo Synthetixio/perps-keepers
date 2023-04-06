@@ -74,8 +74,15 @@ export class LiquidationKeeper extends Keeper {
             id,
             event,
             account,
-            size: wei(size).div(UNIT).toNumber(),
-            leverage: wei(size).abs().mul(lastPrice).div(margin).div(UNIT).toNumber(),
+            size: wei(size)
+              .div(UNIT)
+              .toNumber(),
+            leverage: wei(size)
+              .abs()
+              .mul(lastPrice)
+              .div(margin)
+              .div(UNIT)
+              .toNumber(),
             liqPrice: -1, // will be updated by keeper routine
             liqPriceUpdatedTimestamp: 0,
           };
@@ -104,14 +111,14 @@ export class LiquidationKeeper extends Keeper {
     farPriceRecencyCutoff = 6 * 3600 // interval during which the liquidation price is considered up to date if it's far
   ) {
     // group
-    const knownLiqPrice = posArr.filter((p) => p.liqPrice !== -1);
-    const unknownLiqPrice = posArr.filter((p) => p.liqPrice === -1);
+    const knownLiqPrice = posArr.filter(p => p.liqPrice !== -1);
+    const unknownLiqPrice = posArr.filter(p => p.liqPrice === -1);
 
     const liqPriceClose = knownLiqPrice.filter(
-      (p) => Math.abs(p.liqPrice - this.assetPrice) / this.assetPrice <= priceProximityThreshold
+      p => Math.abs(p.liqPrice - this.assetPrice) / this.assetPrice <= priceProximityThreshold
     );
     const liqPriceFar = knownLiqPrice.filter(
-      (p) => Math.abs(p.liqPrice - this.assetPrice) / this.assetPrice > priceProximityThreshold
+      p => Math.abs(p.liqPrice - this.assetPrice) / this.assetPrice > priceProximityThreshold
     );
 
     // sort close prices by liquidation price and leverage
@@ -127,7 +134,7 @@ export class LiquidationKeeper extends Keeper {
     unknownLiqPrice.sort((p1, p2) => p2.leverage - p1.leverage); //desc
 
     const outdatedLiqPrices = liqPriceFar.filter(
-      (p) => p.liqPriceUpdatedTimestamp < this.blockTipTimestamp - farPriceRecencyCutoff
+      p => p.liqPriceUpdatedTimestamp < this.blockTipTimestamp - farPriceRecencyCutoff
     );
     // sort far liquidation prices by how out of date they are
     // this should constantly update old positions' liq price
@@ -156,19 +163,21 @@ export class LiquidationKeeper extends Keeper {
     }
 
     try {
+      await this.signerPool
+        .withSigner(
+          async signer => {
+            this.logger.info('Flagging position...', { args: { account } });
+            const tx: TransactionResponse = await this.market.connect(signer).flagPosition(account);
+            this.logger.info('Submitted transaction, waiting for completion...', {
+              args: { account, nonce: tx.nonce },
+            });
+            await this.waitTx(tx);
+          },
+          { asset: this.baseAsset }
+        )
+        .catch(err => {});
       await this.signerPool.withSigner(
-        async (signer) => {
-          this.logger.info('Flagging position...', { args: { account } });
-          const tx: TransactionResponse = await this.market.connect(signer).flagPosition(account);
-          this.logger.info('Submitted transaction, waiting for completion...', {
-            args: { account, nonce: tx.nonce },
-          });
-          await this.waitTx(tx);
-        },
-        { asset: this.baseAsset }
-      );
-      await this.signerPool.withSigner(
-        async (signer) => {
+        async signer => {
           this.logger.info('Liquidating position...', { args: { account } });
           const tx: TransactionResponse = await this.market
             .connect(signer)
@@ -190,7 +199,7 @@ export class LiquidationKeeper extends Keeper {
   async execute(): Promise<void> {
     try {
       // Grab all open positions.
-      const openPositions = Object.values(this.positions).filter((p) => Math.abs(p.size) > 0);
+      const openPositions = Object.values(this.positions).filter(p => Math.abs(p.size) > 0);
 
       // Order the position in groups of priority that shouldn't be mixed in same batches
       const positionGroups = this.liquidationGroups(openPositions);
