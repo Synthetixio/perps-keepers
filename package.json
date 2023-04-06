@@ -31,7 +31,7 @@
     "lodash": "4.17.21",
     "log-process-errors": "6.3.0",
     "pm2": "5.1.2",
-    "synthetix": "^2.85.0",
+    "synthetix": "github:synthetixio/synthetix#caph-release-v2.86.1",
     "winston": "3.7.2",
     "winston-cloudwatch": "4.0.1",
     "zod": "^3.20.2"
