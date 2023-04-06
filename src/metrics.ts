@@ -34,6 +34,9 @@ export enum Metric {
   // Delayed order executed successfully.
   DELAYED_ORDER_EXECUTED = 'DelayedOrderExecuted',
 
+  // Delayed order executed mid-processing (includes off/on chain).
+  DELAYED_ORDER_ALREADY_EXECUTED = 'DelayedOrderAlreadyExecuted',
+
   // Offchain order executed successfully.
   OFFCHAIN_ORDER_EXECUTED = 'OffchainOrderExecuted',
 

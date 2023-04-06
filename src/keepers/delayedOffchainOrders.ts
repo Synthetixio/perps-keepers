@@ -16,8 +16,8 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
   // An additional buffer added to minAge to avoid calling too early.
   //
   // Note: Since we don't use block.timestamp but rather Date.now, timestamps on-chain
-  // may not be up to date as a result, executing a tiny bit too early.
-  private readonly MIN_AGE_BUFFER = 3;
+  // may not be up to date as a result, executing a tiny bit too early (as seconds).
+  private readonly MIN_AGE_BUFFER = 10;
 
   // An additional buffer added to maxAge to determine if an order is stale.
   private readonly MAX_AGE_BUFFER = 60 * 5; // 5mins (in seconds).
@@ -168,6 +168,20 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
             this.offchainPriceFeedId,
           ]);
           const updateFee = await this.pythContract.getUpdateFee(priceUpdateData);
+
+          // Perform one last check on-chain to see if order actually exists.
+          //
+          // Do this right before execution to minimise actions that could occur before this check
+          // and execution.
+          const order = await this.market.delayedOrders(account);
+          if (order.sizeDelta.eq(0)) {
+            this.logger.info('Order does not exist, avoiding execution', { args: { account } });
+            delete this.orders[account];
+            this.metrics.count(Metric.DELAYED_ORDER_ALREADY_EXECUTED, this.metricDimensions);
+            return;
+          } else {
+            this.logger.info('Order found on-chain. Continuing...', { args: { account } });
+          }
 
           this.logger.info('Executing off-chain order...', {
             args: { account, fee: updateFee.toString() },
