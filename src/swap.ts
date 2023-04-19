@@ -1,7 +1,6 @@
 import { providers, BigNumber } from 'ethers';
 import { createLogger } from './logging';
 import { Logger } from 'winston';
-import { Metrics } from './metrics';
 import { SignerPool } from './signerpool';
 import { Network } from './typed';
 import { getSynthetixContractByName } from './utils';
@@ -23,7 +22,6 @@ export class TokenSwap {
     private readonly autoSwapSusdEnabled: boolean,
     private readonly signerPool: SignerPool,
     private readonly provider: providers.BaseProvider,
-    private readonly metrics: Metrics,
     private readonly network: Network
   ) {
     const chainId = this.provider.network.chainId;
@@ -53,7 +51,7 @@ export class TokenSwap {
     });
     const allowance = BigNumber.from(allownaceRes.data.allowance);
     if (allowance.gte(sUSDBalance)) {
-      this.logger.info(`sUSD allowance approve not necessary`, {
+      this.logger.info('sUSD allowance approve not necessary', {
         args: {
           limit: allowance.toString(),
           signerAddress,
@@ -98,7 +96,7 @@ export class TokenSwap {
     signer: NonceManager
   ): Promise<void> {
     if (sUSDBalance.lt(this.autoSwapMinSusdAmount.toString())) {
-      this.logger.info(`Not enough sUSD to swap Min=${this.autoSwapMinSusdAmount}`, {
+      this.logger.info('Not enough sUSD to swap', {
         args: { min: this.autoSwapMinSusdAmount, signerAddress },
       });
       return;
@@ -146,7 +144,7 @@ export class TokenSwap {
 
     const tx = await signer.sendTransaction(rawSwapTransaction);
     await tx.wait();
-    this.logger.info(`Successfully swapped sUSD<>ETH Tx='${tx.hash}'`, {
+    this.logger.info('Successfully swapped sUSD<>ETH', {
       args: { tx: tx.hash, signerAddress },
     });
   }
@@ -170,12 +168,22 @@ export class TokenSwap {
       'ProxyERC20'
     );
 
-    for (const signer of this.signerPool.getSigners()) {
-      const signerAddress = await signer.getAddress();
-      const sUSDBalance = await sUSDContract.balanceOf(signerAddress);
+    try {
+      for (const signer of this.signerPool.getSigners()) {
+        const signerAddress = await signer.getAddress();
+        const sUSDBalance = await sUSDContract.balanceOf(signerAddress);
 
-      await this.approveSusdUsage(sUSDBalance, sUSDContract.address, signerAddress, signer);
-      await this.performSusdToEthSwap(sUSDBalance, sUSDContract.address, signerAddress, signer);
+        await this.approveSusdUsage(sUSDBalance, sUSDContract.address, signerAddress, signer);
+        await this.performSusdToEthSwap(sUSDBalance, sUSDContract.address, signerAddress, signer);
+      }
+
+      this.lastSwappedAt = Date.now();
+      this.logger.info('Swaps completed', { args: { ts: this.lastSwappedAt } });
+    } catch (err) {
+      this.logger.error(err);
+      this.logger.error('Something went wrong swapping sUSD<>ETH. Retry later', {
+        args: { lastSwappedAt: this.lastSwappedAt },
+      });
     }
   }
 }
