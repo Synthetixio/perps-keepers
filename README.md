@@ -35,7 +35,7 @@ Variables for configuration are defined as environment variables. During develop
 | `PYTH_PRICE_SERVER`            | No       | Off-chain HTTP API endpoint sued to fetch Pyth oracle prices       | https://xc-testnet.pyth.network |
 | `LOG_LEVEL`                    | No       | Application log level                                              | info                            |
 | `AUTO_SWAP_SUSD_ENABLED`       | No       | Whether to swap sUSD rewards for ETH (via 1inch)                   | 0                               |
-| `AUTO_SWAP_MIN_SUSD`           | No       | Minimum amount of sUSD before swapping no 1inch                    | \$10 USD (10^18)                |
+| `AUTO_SWAP_MIN_SUSD`           | No       | Minimum amount of sUSD before swapping no 1inch                    | \$50 USD (10^18)                |
 | `AUTO_SWAP_INTERVAL`           | No       | Amount of time between to wait between swapping                    | 24hrs (ms)                      |
 
 _For an example `.env` see `.env.example`. All input variables are validated, see `./src/config.ts` for more details (including defaults). Speak with another developer for `.env` values._

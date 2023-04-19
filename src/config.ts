@@ -11,7 +11,7 @@ export const DEFAULT_CONFIG = {
   signerPoolMonitorInterval: 1000 * 60, // 1min
 
   autoSwapSusdEnabled: false,
-  autoSwapMinSusd: Math.pow(10, 18) * 10, // $10 USD
+  autoSwapMinSusd: Math.pow(10, 18) * 50, // $50 USD
   autoSwapInterval: 1000 * 60 * 60 * 24, // 24hrs
 
   // @see: https://github.com/pyth-network/pyth-js/tree/main/pyth-evm-js
