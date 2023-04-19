@@ -79,6 +79,8 @@ export const run = async (config: KeeperConfig) => {
 
   const tokenSwap = new TokenSwap(
     config.autoSwapMinSusd,
+    config.autoSwapInterval,
+    config.autoSwapSusdEnabled,
     signerPool,
     provider,
     metrics,
@@ -108,6 +110,7 @@ export const run = async (config: KeeperConfig) => {
   //     baseAsset,
   //     provider,
   //     metrics,
+  //     tokenSwap,
   //     config.fromBlock,
   //     config.distributorProcessInterval
   //   );

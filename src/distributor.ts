@@ -7,6 +7,7 @@ import { PerpsEvent } from './typed';
 import { Metric, Metrics } from './metrics';
 import { uniq } from 'lodash';
 import { delay } from './utils';
+import { TokenSwap } from './swap';
 
 export class Distributor {
   private readonly logger: Logger;
@@ -23,6 +24,7 @@ export class Distributor {
     protected readonly baseAsset: string,
     private readonly provider: providers.BaseProvider,
     private readonly metrics: Metrics,
+    private readonly tokenSwap: TokenSwap,
     private readonly fromBlock: number,
     private readonly distributorProcessInterval: number
   ) {
@@ -149,6 +151,8 @@ export class Distributor {
           this.healthcheck();
 
           await this.executeKeepers();
+
+          await this.tokenSwap.swap();
 
           this.metrics.time(Metric.DISTRIBUTOR_BLOCK_PROCESS_TIME, Date.now() - startTime);
         } catch (err) {

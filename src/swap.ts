@@ -11,39 +11,30 @@ import { NonceManager } from '@ethersproject/experimental';
 export class TokenSwap {
   private readonly logger: Logger;
 
-  private readonly oneInchBroadcastApiUrl: string;
+  private lastSwappedAt: number;
   private readonly oneInchApiBaseUrl: string;
 
+  private readonly MAX_SWAP_SLIPPAGE = 1; // 1%
   private readonly ETH_TOKEN_ADDRESS = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 
   constructor(
-    private readonly minSusdAmount: number,
+    private readonly autoSwapMinSusdAmount: number,
+    private readonly autoSwapSusdInterval: number,
+    private readonly autoSwapSusdEnabled: boolean,
     private readonly signerPool: SignerPool,
     private readonly provider: providers.BaseProvider,
     private readonly metrics: Metrics,
     private readonly network: Network
   ) {
     const chainId = this.provider.network.chainId;
-
-    this.oneInchBroadcastApiUrl = `https://tx-gateway.1inch.io/v1.1/${chainId}/broadcast`;
     this.oneInchApiBaseUrl = `https://api.1inch.io/v5.0/${chainId}`;
+
+    this.lastSwappedAt = 0;
     this.logger = createLogger(`TokenSwap`);
   }
 
   private getRequestUrl(action: string, queryParams: any): string {
     return `${this.oneInchApiBaseUrl}${action}?${new URLSearchParams(queryParams).toString()}`;
-  }
-
-  private async broadcastRawTransaction(
-    rawTransaction: providers.TransactionRequest
-  ): Promise<string> {
-    const broadcastRes = await axios({
-      method: 'post',
-      url: this.oneInchBroadcastApiUrl,
-      data: JSON.stringify(rawTransaction),
-      headers: { 'Content-Type': 'application/json' },
-    });
-    return broadcastRes.data.transactionHash;
   }
 
   private async approveSusdUsage(
@@ -62,11 +53,18 @@ export class TokenSwap {
     });
     const allowance = BigNumber.from(allownaceRes.data.allowance);
     if (allowance.gte(sUSDBalance)) {
-      this.logger.info(`sUSD allowance approve not necessary Limit=${allowance.toString()}`);
+      this.logger.info(`sUSD allowance approve not necessary`, {
+        args: {
+          limit: allowance.toString(),
+          signerAddress,
+        },
+      });
       return;
     }
 
-    this.logger.info('Initiating sUSD token approval...');
+    this.logger.info('Initiating sUSD token approval...', {
+      args: { signerAddress },
+    });
 
     // Build approval transaction using the 1inch API.
     const approveRes = await axios({
@@ -88,22 +86,29 @@ export class TokenSwap {
     // Sign and broadcast transaction.
     const tx = await signer.sendTransaction(rawApproveTransaction);
     await tx.wait();
-    // await this.broadcastRawTransaction(rawApproveTransaction);
-    this.logger.info(`Successfully approved sUSD for trade Tx='${tx.hash}'`);
+    this.logger.info(`Successfully approved sUSD for trade`, {
+      args: { tx: tx.hash, signerAddress },
+    });
   }
 
-  private async performSusdSwap(
+  private async performSusdToEthSwap(
     sUSDBalance: BigNumber,
     sUSDTokenAddress: string,
     signerAddress: string,
     signer: NonceManager
   ): Promise<void> {
-    this.logger.info('Initiating sUSD<>ETH token swap...');
-
-    if (sUSDBalance.lt(BigNumber.from(this.minSusdAmount))) {
-      this.logger.info(`Not enough sUSD to perform sUSD<>ETH swap Min=${this.minSusdAmount}`);
+    if (sUSDBalance.lt(this.autoSwapMinSusdAmount.toString())) {
+      this.logger.info(`Not enough sUSD to swap Min=${this.autoSwapMinSusdAmount}`, {
+        args: { min: this.autoSwapMinSusdAmount, signerAddress },
+      });
       return;
     }
+
+    this.logger.info('Initiating sUSD<>ETH token swap...', {
+      args: {
+        signerAddress,
+      },
+    });
 
     // Build swap transaction using 1inch API.
     //
@@ -113,7 +118,7 @@ export class TokenSwap {
       toTokenAddress: this.ETH_TOKEN_ADDRESS,
       amount: sUSDBalance.toString(),
       fromAddress: signerAddress,
-      slippage: 1,
+      slippage: this.MAX_SWAP_SLIPPAGE,
       disableEstimate: false,
       allowPartialFill: false,
     };
@@ -141,12 +146,22 @@ export class TokenSwap {
 
     const tx = await signer.sendTransaction(rawSwapTransaction);
     await tx.wait();
-    // await this.broadcastRawTransaction(rawApproveTransaction);
-    this.logger.info(`Successfully swapped sUSD<>ETH Tx='${tx.hash}'`);
+    this.logger.info(`Successfully swapped sUSD<>ETH Tx='${tx.hash}'`, {
+      args: { tx: tx.hash, signerAddress },
+    });
   }
 
   async swap(): Promise<void> {
-    this.logger.info('Initiating sUSD<>ETH swap');
+    if (!this.autoSwapSusdEnabled || this.network === Network.OPT_GOERLI) {
+      this.logger.debug('Swaps are disabled', {
+        args: { enabled: this.autoSwapSusdEnabled, network: this.network },
+      });
+      return;
+    }
+    if (this.lastSwappedAt !== 0 && this.lastSwappedAt + this.autoSwapSusdInterval > Date.now()) {
+      this.logger.debug('Not ready or enough sUSD for swap');
+      return;
+    }
 
     const sUSDContract = getSynthetixContractByName(
       'ProxyERC20sUSD',
@@ -155,16 +170,12 @@ export class TokenSwap {
       'ProxyERC20'
     );
 
-    const signer = this.signerPool.getSigners()[3];
-    const signerAddress = await signer.getAddress();
-    const sUSDBalance = await sUSDContract.balanceOf(signerAddress);
+    for (const signer of this.signerPool.getSigners()) {
+      const signerAddress = await signer.getAddress();
+      const sUSDBalance = await sUSDContract.balanceOf(signerAddress);
 
-    await this.approveSusdUsage(sUSDBalance, sUSDContract.address, signerAddress, signer);
-    await this.performSusdSwap(sUSDBalance, sUSDContract.address, signerAddress, signer);
-  }
-
-  async listen(interval: number): Promise<void> {
-    this.logger.info('Start TokenSwap.listen for swaps');
-    // Perform a setInterval which calls `swap` on some interval.
+      await this.approveSusdUsage(sUSDBalance, sUSDContract.address, signerAddress, signer);
+      await this.performSusdToEthSwap(sUSDBalance, sUSDContract.address, signerAddress, signer);
+    }
   }
 }
