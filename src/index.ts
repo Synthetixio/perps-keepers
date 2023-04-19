@@ -20,6 +20,7 @@ import { DelayedOffchainOrdersKeeper } from './keepers/delayedOffchainOrders';
 import { Metric, Metrics } from './metrics';
 import { Network } from './typed';
 import { createSigners, SignerPool } from './signerpool';
+import { TokenSwap } from './swap';
 
 const logger = createLogger('Application');
 
@@ -76,87 +77,97 @@ export const run = async (config: KeeperConfig) => {
   const signerPool = new SignerPool(signers, metrics);
   signerPool.monitor(config.signerPoolMonitorInterval);
 
-  const { markets, pyth, marketSettings, exchangeRates } = await getPerpsContracts(
-    config.network,
-    config.pythPriceServer,
-    signer,
-    provider
+  const tokenSwap = new TokenSwap(
+    config.autoSwapMinSusd,
+    signerPool,
+    provider,
+    metrics,
+    config.network
   );
 
-  const marketKeys = Object.keys(markets);
-  logger.info('Creating n keeper(s) per kept market...', {
-    args: { n: marketKeys.length },
-  });
-  for (const marketKey of marketKeys) {
-    const market = markets[marketKey];
-    const baseAsset = market.asset;
+  await tokenSwap.swap();
 
-    logger.info('Configuring distributor/keepers for market', { args: { marketKey, baseAsset } });
-    const distributor = new Distributor(
-      market.contract,
-      baseAsset,
-      provider,
-      metrics,
-      config.fromBlock,
-      config.distributorProcessInterval
-    );
+  // const { markets, pyth, marketSettings, exchangeRates } = await getPerpsContracts(
+  //   config.network,
+  //   config.pythPriceServer,
+  //   signer,
+  //   provider
+  // );
 
-    const keepers = [];
-    keepers.push(
-      new LiquidationKeeper(
-        market.contract,
-        baseAsset,
-        signerPool,
-        provider,
-        metrics,
-        config.network
-      )
-    );
+  // const marketKeys = Object.keys(markets);
+  // logger.info('Creating n keeper(s) per kept market...', {
+  //   args: { n: marketKeys.length },
+  // });
+  // for (const marketKey of marketKeys) {
+  //   const market = markets[marketKey];
+  //   const baseAsset = market.asset;
 
-    // If we do not include a Pyth price feed, do not register an off-chain keeper.
-    if (pyth.priceFeedIds[baseAsset]) {
-      keepers.push(
-        new DelayedOffchainOrdersKeeper(
-          market.contract,
-          marketSettings,
-          pyth.endpoint,
-          pyth.priceFeedIds[baseAsset],
-          pyth.contract,
-          marketKey,
-          baseAsset,
-          signerPool,
-          provider,
-          metrics,
-          config.network,
-          config.maxOrderExecAttempts
-        )
-      );
-    } else {
-      logger.debug('Not registering off-chain keeper as feed not defined', { args: { baseAsset } });
-    }
+  //   logger.info('Configuring distributor/keepers for market', { args: { marketKey, baseAsset } });
+  //   const distributor = new Distributor(
+  //     market.contract,
+  //     baseAsset,
+  //     provider,
+  //     metrics,
+  //     config.fromBlock,
+  //     config.distributorProcessInterval
+  //   );
 
-    keepers.push(
-      new DelayedOrdersKeeper(
-        market.contract,
-        exchangeRates,
-        baseAsset,
-        signerPool,
-        provider,
-        metrics,
-        config.network,
-        config.maxOrderExecAttempts
-      )
-    );
-    logger.info('Registering keepers to distributor', { args: { n: keepers.length } });
+  //   const keepers = [];
+  //   keepers.push(
+  //     new LiquidationKeeper(
+  //       market.contract,
+  //       baseAsset,
+  //       signerPool,
+  //       provider,
+  //       metrics,
+  //       config.network
+  //     )
+  //   );
 
-    // Register all instantiated keepers. The order of importance is as follows:
-    //
-    // 1. Liquidations
-    // 2. Delayed off-chain orders (Pyth)
-    // 3. Delayed on-chain orders (CL)
-    distributor.registerKeepers(keepers);
-    distributor.listen();
-  }
+  //   // If we do not include a Pyth price feed, do not register an off-chain keeper.
+  //   if (pyth.priceFeedIds[baseAsset]) {
+  //     keepers.push(
+  //       new DelayedOffchainOrdersKeeper(
+  //         market.contract,
+  //         marketSettings,
+  //         pyth.endpoint,
+  //         pyth.priceFeedIds[baseAsset],
+  //         pyth.contract,
+  //         marketKey,
+  //         baseAsset,
+  //         signerPool,
+  //         provider,
+  //         metrics,
+  //         config.network,
+  //         config.maxOrderExecAttempts
+  //       )
+  //     );
+  //   } else {
+  //     logger.debug('Not registering off-chain keeper as feed not defined', { args: { baseAsset } });
+  //   }
+
+  //   keepers.push(
+  //     new DelayedOrdersKeeper(
+  //       market.contract,
+  //       exchangeRates,
+  //       baseAsset,
+  //       signerPool,
+  //       provider,
+  //       metrics,
+  //       config.network,
+  //       config.maxOrderExecAttempts
+  //     )
+  //   );
+  //   logger.info('Registering keepers to distributor', { args: { n: keepers.length } });
+
+  //   // Register all instantiated keepers. The order of importance is as follows:
+  //   //
+  //   // 1. Liquidations
+  //   // 2. Delayed off-chain orders (Pyth)
+  //   // 3. Delayed on-chain orders (CL)
+  //   distributor.registerKeepers(keepers);
+  //   distributor.listen();
+  // }
 };
 
 logProcessError({

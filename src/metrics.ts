@@ -23,6 +23,12 @@ export enum Metric {
   // When any error (liquidation or order execution) occurs.
   KEEPER_ERROR = 'KeeperError',
 
+  // # units per swap.
+  SUSD_SWAP_SIZE = 'SusdSwapSize',
+
+  // Price of ETH at each sUSD<>ETH swap.
+  SUSD_SWAP_ETH_PRICE = 'SusdSwapEthPrice',
+
   // TODO: Consider tracking open promises
 
   // Number of blocks since the last time the distributor has index/processed blocks.

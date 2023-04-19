@@ -33,13 +33,18 @@ export const networkToSynthetixNetworkName = (network: Network): string => {
   }
 };
 
-const getSynthetixContractByName = (
+export const getSynthetixContractByName = (
   name: string,
   network: Network,
-  provider: providers.BaseProvider
+  provider: providers.BaseProvider,
+  source?: string
 ): Contract => {
   const snxNetwork = networkToSynthetixNetworkName(network);
-  const abi = synthetix.getSource({ network: snxNetwork, contract: name }).abi;
+
+  // Sometimes the `target` and `source` are _not_ the same. Most of the time this is not true. If
+  // a `source` is provided then `source` is used as the name in `getSource` and `name` for target.
+  // However, when `source` is not defined, `name` is used for both.
+  const abi = synthetix.getSource({ network: snxNetwork, contract: source ?? name }).abi;
   const address = synthetix.getTarget({ network: snxNetwork, contract: name }).address;
 
   logger.info(`Found ${name} contract at '${address}'`);
