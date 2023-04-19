@@ -8,7 +8,6 @@ jobs:
     # Ensure it only runs on master and develop, the branches array above is using pattern matching
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop'
     steps:
-
       - name: Install SSH key
         uses: synthetixio/ssh-key-action@v2
         with:
@@ -33,7 +32,7 @@ jobs:
           echo AWS_REGION=${{ secrets.AWS_REGION }} >> .env
           echo FROM_BLOCK=52456701 >> .env  # mainnet deployment block
           echo METRICS_ENABLED=1 >> .env
-          echo DISTRIBUTOR_PROCESS_INTERVAL=5000 >> .env
+          echo DISTRIBUTOR_PROCESS_INTERVAL=3000 >> .env
           echo MAX_ORDER_EXEC_ATTEMPTS=10 >> .env
           echo PYTH_PRICE_SERVER=${{ secrets.PYTH_PRICE_SERVER_MAINNET }} >> .env
           echo LOG_LEVEL=info >> .env
