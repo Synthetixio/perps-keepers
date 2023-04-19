@@ -14,7 +14,7 @@ export class TokenSwap {
   private readonly oneInchBroadcastApiUrl: string;
   private readonly oneInchApiBaseUrl: string;
 
-  private readonly ETH_ADDRESS = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+  private readonly ETH_TOKEN_ADDRESS = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 
   constructor(
     private readonly minSusdAmount: number,
@@ -48,14 +48,17 @@ export class TokenSwap {
 
   private async approveSusdUsage(
     sUSDBalance: BigNumber,
-    tokenAddress: string,
+    sUSDTokenAddress: string,
     signerAddress: string,
     signer: NonceManager
   ): Promise<void> {
     // Check if allownace is gte sUSD to swap.
     const allownaceRes = await axios({
       method: 'get',
-      url: this.getRequestUrl('/approve/allowance', { tokenAddress, walletAddress: signerAddress }),
+      url: this.getRequestUrl('/approve/allowance', {
+        tokenAddress: sUSDTokenAddress,
+        walletAddress: signerAddress,
+      }),
     });
     const allowance = BigNumber.from(allownaceRes.data.allowance);
     if (allowance.gte(sUSDBalance)) {
@@ -63,12 +66,12 @@ export class TokenSwap {
       return;
     }
 
-    this.logger.info('Initiating sUSD token approval');
+    this.logger.info('Initiating sUSD token approval...');
 
     // Build approval transaction using the 1inch API.
     const approveRes = await axios({
       method: 'get',
-      url: this.getRequestUrl('/approve/transaction', { tokenAddress }),
+      url: this.getRequestUrl('/approve/transaction', { tokenAddress: sUSDTokenAddress }),
     });
     const { to, data, gasPrice } = approveRes.data;
     const rawTransaction = { to, data };
@@ -85,8 +88,61 @@ export class TokenSwap {
     // Sign and broadcast transaction.
     const tx = await signer.sendTransaction(rawApproveTransaction);
     await tx.wait();
-    await this.broadcastRawTransaction(rawApproveTransaction);
+    // await this.broadcastRawTransaction(rawApproveTransaction);
     this.logger.info(`Successfully approved sUSD for trade Tx='${tx.hash}'`);
+  }
+
+  private async performSusdSwap(
+    sUSDBalance: BigNumber,
+    sUSDTokenAddress: string,
+    signerAddress: string,
+    signer: NonceManager
+  ): Promise<void> {
+    this.logger.info('Initiating sUSD<>ETH token swap...');
+
+    if (sUSDBalance.lt(BigNumber.from(this.minSusdAmount))) {
+      this.logger.info(`Not enough sUSD to perform sUSD<>ETH swap Min=${this.minSusdAmount}`);
+      return;
+    }
+
+    // Build swap transaction using 1inch API.
+    //
+    // @see: https://docs.1inch.io/docs/aggregation-protocol/api/swap-params/
+    const swapParams = {
+      fromTokenAddress: sUSDTokenAddress,
+      toTokenAddress: this.ETH_TOKEN_ADDRESS,
+      amount: sUSDBalance.toString(),
+      fromAddress: signerAddress,
+      slippage: 1,
+      disableEstimate: false,
+      allowPartialFill: false,
+    };
+    const swapRes = await axios({
+      method: 'get',
+      url: this.getRequestUrl('/swap', swapParams),
+    });
+    const { to, from, data, gasPrice } = swapRes.data.tx;
+
+    const rawTransaction = {
+      to,
+      from,
+      data,
+      gasPrice: BigNumber.from(gasPrice),
+    };
+
+    // Estimate the gas to proceed with swap.
+    const gas = await this.provider.estimateGas(rawTransaction);
+
+    const rawSwapTransaction = {
+      ...rawTransaction,
+      gasPrice: BigNumber.from(gasPrice),
+      gasLimit: gas,
+    };
+
+    const tx = await signer.sendTransaction(rawSwapTransaction);
+    await tx.wait();
+    // await this.broadcastRawTransaction(rawApproveTransaction);
+    this.logger.info(`Successfully swapped sUSD<>ETH Tx='${tx.hash}'`);
   }
 
   async swap(): Promise<void> {
@@ -104,11 +160,7 @@ export class TokenSwap {
     const sUSDBalance = await sUSDContract.balanceOf(signerAddress);
 
     await this.approveSusdUsage(sUSDBalance, sUSDContract.address, signerAddress, signer);
-
-    // Get the total amount of sUSD available in each signer.
-    // Approve sUSD for swap if not yet approved
-    // Perform swap
-    // Done.
+    await this.performSusdSwap(sUSDBalance, sUSDContract.address, signerAddress, signer);
   }
 
   async listen(interval: number): Promise<void> {
