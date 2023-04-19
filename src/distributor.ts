@@ -26,7 +26,7 @@ export class Distributor {
     private readonly fromBlock: number,
     private readonly distributorProcessInterval: number
   ) {
-    this.logger = createLogger(`Distributor [${baseAsset}] Distributor`);
+    this.logger = createLogger(`Distributor [${baseAsset}]`);
   }
 
   /* Given an array of keepers, track and include in bulk executions. */
