@@ -55,6 +55,10 @@ export class SignerPool {
     this.logger.info('Initialized signer pool', { args: this.getLogArgs() });
   }
 
+  getSigners(): NonceManager[] {
+    return this.signers;
+  }
+
   private getLogArgs(): Record<string, string | number> {
     return { pool: this.pool.join(','), n: this.pool.length };
   }

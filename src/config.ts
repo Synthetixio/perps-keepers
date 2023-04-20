@@ -10,6 +10,10 @@ export const DEFAULT_CONFIG = {
   signerPoolSize: 1,
   signerPoolMonitorInterval: 1000 * 60, // 1min
 
+  autoSwapSusdEnabled: false,
+  autoSwapMinSusd: Math.pow(10, 18) * 50, // $50 USD
+  autoSwapInterval: 1000 * 60 * 60 * 24, // 24hrs
+
   // @see: https://github.com/pyth-network/pyth-js/tree/main/pyth-evm-js
   //   'https://xc-testnet.pyth.network'
   //   'https://xc-mainnet.pyth.network'
@@ -51,6 +55,15 @@ export const KeeperConfigSchema = z.object({
     .max(1024)
     .default(DEFAULT_CONFIG.maxOrderExecAttempts),
   isMetricsEnabled: z.coerce.boolean().default(DEFAULT_CONFIG.isMetricsEnabled),
+  autoSwapSusdEnabled: z.coerce.boolean().default(DEFAULT_CONFIG.autoSwapSusdEnabled),
+  autoSwapMinSusd: z.coerce
+    .number()
+    .min(1)
+    .default(DEFAULT_CONFIG.autoSwapMinSusd),
+  autoSwapInterval: z.coerce
+    .number()
+    .min(1000 * 60)
+    .default(DEFAULT_CONFIG.autoSwapInterval),
   aws: z.object({
     region: z.string().optional(),
     accessKeyId: z.string().optional(),
@@ -80,6 +93,10 @@ export const getConfig = (force = false): KeeperConfig => {
     pythPriceServer: process.env.PYTH_PRICE_SERVER,
     maxOrderExecAttempts: process.env.MAX_ORDER_EXEC_ATTEMPTS,
     isMetricsEnabled: process.env.METRICS_ENABLED === '1',
+
+    autoSwapSusdEnabled: process.env.AUTO_SWAP_SUSD_ENABLED === '1',
+    autoSwapMinSusd: process.env.AUTO_SWAP_MIN_SUSD,
+    autoSwapInterval: process.env.AUTO_SWAP_INTERVAL,
 
     // This should really not exist? If deployed to AWS, VM should be IAM configured.
     aws: {

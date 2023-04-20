@@ -20,6 +20,7 @@ import { DelayedOffchainOrdersKeeper } from './keepers/delayedOffchainOrders';
 import { Metric, Metrics } from './metrics';
 import { Network } from './typed';
 import { createSigners, SignerPool } from './signerpool';
+import { TokenSwap } from './swap';
 
 const logger = createLogger('Application');
 
@@ -76,6 +77,15 @@ export const run = async (config: KeeperConfig) => {
   const signerPool = new SignerPool(signers, metrics);
   signerPool.monitor(config.signerPoolMonitorInterval);
 
+  const tokenSwap = new TokenSwap(
+    config.autoSwapMinSusd,
+    config.autoSwapInterval,
+    config.autoSwapSusdEnabled,
+    signerPool,
+    provider,
+    config.network
+  );
+
   const { markets, pyth, marketSettings, exchangeRates } = await getPerpsContracts(
     config.network,
     config.pythPriceServer,
@@ -97,6 +107,7 @@ export const run = async (config: KeeperConfig) => {
       baseAsset,
       provider,
       metrics,
+      tokenSwap,
       config.fromBlock,
       config.distributorProcessInterval
     );

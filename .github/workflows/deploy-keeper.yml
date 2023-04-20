@@ -37,6 +37,7 @@ jobs:
           echo PYTH_PRICE_SERVER=${{ secrets.PYTH_PRICE_SERVER_MAINNET }} >> .env
           echo LOG_LEVEL=info >> .env
           echo SIGNER_POOL_SIZE=4 >> .env
+          echo AUTO_SWAP_SUSD_ENABLED=1 >> .env
         if: github.ref == 'refs/heads/master'
 
       - name: Create .env.staging file
@@ -55,6 +56,7 @@ jobs:
           echo PYTH_PRICE_SERVER=${{ secrets.PYTH_PRICE_SERVER_TESTNET }} >> .env.staging
           echo LOG_LEVEL=info >> .env.staging
           echo SIGNER_POOL_SIZE=4 >> .env.staging
+          echo AUTO_SWAP_SUSD_ENABLED=0 >> .env.staging
         if: github.ref == 'refs/heads/develop'
 
       - name: Deploy
