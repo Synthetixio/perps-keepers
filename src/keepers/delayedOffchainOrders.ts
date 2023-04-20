@@ -7,6 +7,7 @@ import { EvmPriceServiceConnection } from '@pythnetwork/pyth-evm-js';
 import { Metric, Metrics } from '../metrics';
 import { delay } from '../utils';
 import { SignerPool } from '../signerpool';
+import { wei } from '@synthetixio/wei';
 
 export class DelayedOffchainOrdersKeeper extends Keeper {
   // The index
@@ -186,11 +187,26 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
           this.logger.info('Executing off-chain order...', {
             args: { account, fee: updateFee.toString() },
           });
-          const tx = await this.market
-            .connect(signer)
-            .executeOffchainDelayedOrder(account, priceUpdateData, {
+
+          const market = this.market.connect(signer);
+          const gasEstimation = await market.estimateGas.executeOffchainDelayedOrder(
+            account,
+            priceUpdateData,
+            {
               value: updateFee,
-            });
+            }
+          );
+          const gasLimit = wei(gasEstimation)
+            .mul(1.2)
+            .toBN();
+
+          this.logger.info('Estimated gas with upped limits', {
+            args: { account, estimation: gasEstimation.toString(), limit: gasLimit.toString() },
+          });
+          const tx = await market.executeOffchainDelayedOrder(account, priceUpdateData, {
+            value: updateFee,
+            gasLimit,
+          });
           this.logger.info('Submitted transaction, waiting for completion...', {
             args: { account, nonce: tx.nonce },
           });
