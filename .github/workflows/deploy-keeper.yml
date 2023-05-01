@@ -38,6 +38,7 @@ jobs:
           echo LOG_LEVEL=info >> .env
           echo SIGNER_POOL_SIZE=4 >> .env
           echo AUTO_SWAP_SUSD_ENABLED=1 >> .env
+          echo ENABLED_KEEPERS=Liquidator,DelayedOrder >> .env
         if: github.ref == 'refs/heads/master'
 
       - name: Create .env.staging file
@@ -57,6 +58,7 @@ jobs:
           echo LOG_LEVEL=info >> .env.staging
           echo SIGNER_POOL_SIZE=4 >> .env.staging
           echo AUTO_SWAP_SUSD_ENABLED=0 >> .env.staging
+          echo ENABLED_KEEPERS=Liquidator,DelayedOrder >> .env.staging
         if: github.ref == 'refs/heads/develop'
 
       - name: Deploy
