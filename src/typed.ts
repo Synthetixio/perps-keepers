@@ -1,5 +1,11 @@
 import { ethers } from 'ethers';
 
+export enum KeeperType {
+  DelayedOrder = 'DelayedOrder',
+  OffchainOrder = 'OffchainOrder',
+  Liquidator = 'Liquidator',
+}
+
 export enum PerpsEvent {
   PositionModified = 'PositionModified',
   PositionLiquidated = 'PositionLiquidated',

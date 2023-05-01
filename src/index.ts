@@ -18,7 +18,7 @@ import { LiquidationKeeper } from './keepers/liquidation';
 import { DelayedOrdersKeeper } from './keepers/delayedOrders';
 import { DelayedOffchainOrdersKeeper } from './keepers/delayedOffchainOrders';
 import { Metric, Metrics } from './metrics';
-import { Network } from './typed';
+import { KeeperType, Network } from './typed';
 import { createSigners, SignerPool } from './signerpool';
 import { TokenSwap } from './swap';
 
@@ -113,19 +113,22 @@ export const run = async (config: KeeperConfig) => {
     );
 
     const keepers = [];
-    keepers.push(
-      new LiquidationKeeper(
-        market.contract,
-        baseAsset,
-        signerPool,
-        provider,
-        metrics,
-        config.network
-      )
-    );
+
+    if (config.enabledKeepers.includes(KeeperType.Liquidator)) {
+      keepers.push(
+        new LiquidationKeeper(
+          market.contract,
+          baseAsset,
+          signerPool,
+          provider,
+          metrics,
+          config.network
+        )
+      );
+    }
 
     // If we do not include a Pyth price feed, do not register an off-chain keeper.
-    if (pyth.priceFeedIds[baseAsset]) {
+    if (pyth.priceFeedIds[baseAsset] && config.enabledKeepers.includes(KeeperType.OffchainOrder)) {
       keepers.push(
         new DelayedOffchainOrdersKeeper(
           market.contract,
@@ -146,18 +149,21 @@ export const run = async (config: KeeperConfig) => {
       logger.debug('Not registering off-chain keeper as feed not defined', { args: { baseAsset } });
     }
 
-    keepers.push(
-      new DelayedOrdersKeeper(
-        market.contract,
-        exchangeRates,
-        baseAsset,
-        signerPool,
-        provider,
-        metrics,
-        config.network,
-        config.maxOrderExecAttempts
-      )
-    );
+    if (config.enabledKeepers.includes(KeeperType.DelayedOrder)) {
+      keepers.push(
+        new DelayedOrdersKeeper(
+          market.contract,
+          exchangeRates,
+          baseAsset,
+          signerPool,
+          provider,
+          metrics,
+          config.network,
+          config.maxOrderExecAttempts
+        )
+      );
+    }
+
     logger.info('Registering keepers to distributor', { args: { n: keepers.length } });
 
     // Register all instantiated keepers. The order of importance is as follows:

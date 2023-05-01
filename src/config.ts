@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Network } from './typed';
+import { KeeperType, Network } from './typed';
 
 export const DEFAULT_CONFIG = {
   fromBlock: 1,
@@ -13,6 +13,8 @@ export const DEFAULT_CONFIG = {
   autoSwapSusdEnabled: false,
   autoSwapMinSusd: Math.pow(10, 18) * 50, // $50 USD
   autoSwapInterval: 1000 * 60 * 60 * 24, // 24hrs
+
+  enabledKeepers: [KeeperType.DelayedOrder, KeeperType.OffchainOrder, KeeperType.Liquidator],
 
   // @see: https://github.com/pyth-network/pyth-js/tree/main/pyth-evm-js
   //   'https://xc-testnet.pyth.network'
@@ -64,6 +66,11 @@ export const KeeperConfigSchema = z.object({
     .number()
     .min(1000 * 60)
     .default(DEFAULT_CONFIG.autoSwapInterval),
+  enabledKeepers: z
+    .nativeEnum(KeeperType)
+    .array()
+    .min(1)
+    .default(DEFAULT_CONFIG.enabledKeepers),
   aws: z.object({
     region: z.string().optional(),
     accessKeyId: z.string().optional(),
@@ -97,6 +104,10 @@ export const getConfig = (force = false): KeeperConfig => {
     autoSwapSusdEnabled: process.env.AUTO_SWAP_SUSD_ENABLED === '1',
     autoSwapMinSusd: process.env.AUTO_SWAP_MIN_SUSD,
     autoSwapInterval: process.env.AUTO_SWAP_INTERVAL,
+
+    enabledKeepers: !process.env.ENABLED_KEEPERS
+      ? undefined
+      : process.env.ENABLED_KEEPERS.split(','),
 
     // This should really not exist? If deployed to AWS, VM should be IAM configured.
     aws: {
