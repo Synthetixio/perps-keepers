@@ -51,12 +51,12 @@ jobs:
           echo AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }} >> .env.staging
           echo AWS_REGION=${{ secrets.AWS_REGION }} >> .env.staging
           echo FROM_BLOCK=3300784 >> .env.staging  # goerli deployment block
-          echo METRICS_ENABLED=1 >> .env.staging
-          echo DISTRIBUTOR_PROCESS_INTERVAL=5000 >> .env.staging
-          echo MAX_ORDER_EXEC_ATTEMPTS=10 >> .env.staging
+          echo METRICS_ENABLED=0 >> .env.staging
+          echo DISTRIBUTOR_PROCESS_INTERVAL=6000 >> .env.staging
+          echo MAX_ORDER_EXEC_ATTEMPTS=3 >> .env.staging
           echo PYTH_PRICE_SERVER=${{ secrets.PYTH_PRICE_SERVER_TESTNET }} >> .env.staging
           echo LOG_LEVEL=info >> .env.staging
-          echo SIGNER_POOL_SIZE=2 >> .env.staging
+          echo SIGNER_POOL_SIZE=1 >> .env.staging
           echo AUTO_SWAP_SUSD_ENABLED=0 >> .env.staging
           echo ENABLED_KEEPERS=Liquidator >> .env.staging
         if: github.ref == 'refs/heads/develop'
