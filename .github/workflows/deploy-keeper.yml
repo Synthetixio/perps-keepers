@@ -32,11 +32,11 @@ jobs:
           echo AWS_REGION=${{ secrets.AWS_REGION }} >> .env
           echo FROM_BLOCK=52456701 >> .env  # mainnet deployment block
           echo METRICS_ENABLED=1 >> .env
-          echo DISTRIBUTOR_PROCESS_INTERVAL=3000 >> .env
-          echo MAX_ORDER_EXEC_ATTEMPTS=10 >> .env
+          echo DISTRIBUTOR_PROCESS_INTERVAL=5000 >> .env
+          echo MAX_ORDER_EXEC_ATTEMPTS=3 >> .env
           echo PYTH_PRICE_SERVER=${{ secrets.PYTH_PRICE_SERVER_MAINNET }} >> .env
           echo LOG_LEVEL=info >> .env
-          echo SIGNER_POOL_SIZE=2 >> .env
+          echo SIGNER_POOL_SIZE=1 >> .env
           echo AUTO_SWAP_SUSD_ENABLED=0 >> .env
           echo ENABLED_KEEPERS=Liquidator >> .env
         if: github.ref == 'refs/heads/master'
@@ -52,8 +52,8 @@ jobs:
           echo AWS_REGION=${{ secrets.AWS_REGION }} >> .env.staging
           echo FROM_BLOCK=3300784 >> .env.staging  # goerli deployment block
           echo METRICS_ENABLED=0 >> .env.staging
-          echo DISTRIBUTOR_PROCESS_INTERVAL=6000 >> .env.staging
-          echo MAX_ORDER_EXEC_ATTEMPTS=3 >> .env.staging
+          echo DISTRIBUTOR_PROCESS_INTERVAL=10000 >> .env.staging
+          echo MAX_ORDER_EXEC_ATTEMPTS=1 >> .env.staging
           echo PYTH_PRICE_SERVER=${{ secrets.PYTH_PRICE_SERVER_TESTNET }} >> .env.staging
           echo LOG_LEVEL=info >> .env.staging
           echo SIGNER_POOL_SIZE=1 >> .env.staging
