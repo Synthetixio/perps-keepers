@@ -24,7 +24,7 @@
     "@ethersproject/abstract-provider": "5.5.1",
     "@ethersproject/experimental": "5.6.0",
     "@pythnetwork/pyth-evm-js": "^1.1.0",
-    "@synthetixio/contracts-interface": "^2.77.1",
+    "@synthetixio/contracts-interface": "^2.77.3",
     "@synthetixio/wei": "^2.74.4",
     "axios": "^1.3.5",
     "dotenv": "^16.0.3",
@@ -32,7 +32,7 @@
     "lodash": "4.17.21",
     "log-process-errors": "6.3.0",
     "pm2": "5.1.2",
-    "synthetix": "^2.86.1",
+    "synthetix": "^2.88.1",
     "winston": "3.7.2",
     "winston-cloudwatch": "4.0.1",
     "zod": "^3.20.2"
