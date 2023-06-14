@@ -15,7 +15,6 @@ import { providers } from 'ethers';
 import { getPerpsContracts } from './utils';
 import { Distributor } from './distributor';
 import { LiquidationKeeper } from './keepers/liquidation';
-import { DelayedOrdersKeeper } from './keepers/delayedOrders';
 import { DelayedOffchainOrdersKeeper } from './keepers/delayedOffchainOrders';
 import { Metric, Metrics } from './metrics';
 import { KeeperType, Network } from './typed';
@@ -149,28 +148,12 @@ export const run = async (config: KeeperConfig) => {
       logger.debug('Not registering off-chain keeper as feed not defined', { args: { baseAsset } });
     }
 
-    if (config.enabledKeepers.includes(KeeperType.DelayedOrder)) {
-      keepers.push(
-        new DelayedOrdersKeeper(
-          market.contract,
-          exchangeRates,
-          baseAsset,
-          signerPool,
-          provider,
-          metrics,
-          config.network,
-          config.maxOrderExecAttempts
-        )
-      );
-    }
-
     logger.info('Registering keepers to distributor', { args: { n: keepers.length } });
 
     // Register all instantiated keepers. The order of importance is as follows:
     //
     // 1. Liquidations
     // 2. Delayed off-chain orders (Pyth)
-    // 3. Delayed on-chain orders (CL)
     distributor.registerKeepers(keepers);
     distributor.listen();
   }
