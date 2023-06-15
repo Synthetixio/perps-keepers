@@ -3,7 +3,7 @@
 **Welcome to perps-keepers!**
 
 > **Note**
-> PLEASE USE THIS REPOSITORY AS AN EXAMPLE TO BUILD YOUR OWN KEEPER.
+> PLEASE _ONLY_ USE THIS REPOSITORY AS AN EXAMPLE TO BUILD YOUR OWN KEEPER.
 
 This repository houses Synthetix Perps keepers to maintain the health and provide a better UX for traders on frontends such as Kwenta and Decentrex. `perps-keepers` provides 3 main functions. These include:
 

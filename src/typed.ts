@@ -16,7 +16,6 @@ export enum PerpsEvent {
 
 export interface Position {
   id: string;
-  event: string;
   account: string;
   size: number;
   leverage: number;

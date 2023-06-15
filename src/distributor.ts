@@ -6,7 +6,7 @@ import { createLogger } from './logging';
 import { PerpsEvent } from './typed';
 import { Metric, Metrics } from './metrics';
 import { uniq } from 'lodash';
-import { delay } from './utils';
+import { delay, getOpenPositions } from './utils';
 import { TokenSwap } from './swap';
 
 export class Distributor {
@@ -20,6 +20,7 @@ export class Distributor {
   private readonly MAX_BLOCK_RANGE = 1_000_000;
 
   constructor(
+    private readonly multicall: Contract,
     private readonly market: Contract,
     protected readonly baseAsset: string,
     private readonly provider: providers.BaseProvider,
@@ -44,6 +45,8 @@ export class Distributor {
   /* Perform RPC calls to fetch past event data once then pass to keepers for indexing. */
   private async indexKeepers(): Promise<number> {
     const latestBlock = await this.provider.getBlockNumber();
+
+    // Fetch data from a specific start block defined in config.
     let fromBlock = this.fromBlock;
 
     while (fromBlock <= latestBlock) {
@@ -129,13 +132,14 @@ export class Distributor {
   /* Listen on new blocks produced then subsequently bulk op. */
   async listen(): Promise<void> {
     try {
+      // Initial index to track orders/positions.
       this.lastProcessedBlock = await this.indexKeepers();
       await this.executeKeepers();
 
       this.logger.info('Begin processing blocks 🚀...', {
         args: { lastProcessedBlock: this.lastProcessedBlock },
       });
-      while (1) {
+      while (true) {
         try {
           const startTime = Date.now();
           const toBlock = await this.provider.getBlock('latest');

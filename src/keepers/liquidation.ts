@@ -72,7 +72,6 @@ export class LiquidationKeeper extends Keeper {
           }
           this.positions[account] = {
             id,
-            event,
             account,
             size: wei(size)
               .div(UNIT)
@@ -102,6 +101,35 @@ export class LiquidationKeeper extends Keeper {
           });
       }
     });
+  }
+
+  hydrateIndex(positions: Position[], block: providers.Block) {
+    this.logger.debug('hydrating index from data on-chain', {
+      args: {
+        n: positions.length,
+      },
+    });
+
+    const prevPositionsLength = Object.keys(this.positions).length;
+    const newPositions: Record<string, Position> = {};
+
+    for (const position of positions) {
+      // ...order first because we want to override any default settings with existing values so that
+      // they can be persisted between hydration (e.g. status).
+      newPositions[position.account] = { ...position, ...this.positions[position.account] };
+    }
+    this.positions = newPositions;
+    this.blockTipTimestamp = block.timestamp;
+
+    const currPositionsLength = Object.keys(this.positions).length;
+    if (prevPositionsLength !== currPositionsLength) {
+      this.logger.info('Orders change detected', {
+        args: {
+          delta: currPositionsLength - prevPositionsLength,
+          n: currPositionsLength,
+        },
+      });
+    }
   }
 
   private liquidationGroups(
@@ -212,7 +240,7 @@ export class LiquidationKeeper extends Keeper {
       }
 
       this.logger.info(`Found ${positionCount}/${openPositions.length} open position(s) to check`);
-      for (let group of positionGroups) {
+      for (const group of positionGroups) {
         if (!group.length) {
           continue;
         }

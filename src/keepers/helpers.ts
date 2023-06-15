@@ -5,15 +5,20 @@ import { PerpsEvent } from '../typed';
 
 const MAX_BLOCKS = 200_000;
 
-export const getPaginatedFromAndTo = (fromBlock: number, toBlock: number) => {
+export const getPaginatedFromAndTo = (
+  fromBlock: number,
+  toBlock: number,
+  pageSize: number = MAX_BLOCKS
+) => {
   const numberOfBlocks = toBlock - fromBlock || 1;
-
-  const numberOfGroups = Math.ceil(numberOfBlocks / MAX_BLOCKS);
+  const numberOfGroups = Math.ceil(numberOfBlocks / pageSize);
   return range(0, numberOfGroups).map((x: number) => {
-    const newFrom = fromBlock + x * MAX_BLOCKS;
+    const newFrom = fromBlock + x * pageSize;
+    const newTo = Math.min(newFrom + pageSize, toBlock);
     return {
       fromBlock: newFrom,
-      toBlock: Math.min(newFrom + MAX_BLOCKS, toBlock),
+      toBlock: newTo,
+      size: newTo - newFrom,
     };
   });
 };

@@ -12,7 +12,7 @@ import logProcessError from 'log-process-errors';
 import { createLogger } from './logging';
 import { getConfig, KeeperConfig } from './config';
 import { providers } from 'ethers';
-import { getPerpsContracts } from './utils';
+import { getOpenPositions, getPerpsContracts } from './utils';
 import { Distributor } from './distributor';
 import { LiquidationKeeper } from './keepers/liquidation';
 import { DelayedOffchainOrdersKeeper } from './keepers/delayedOffchainOrders';
@@ -85,12 +85,19 @@ export const run = async (config: KeeperConfig) => {
     config.network
   );
 
-  const { markets, pyth, marketSettings, exchangeRates } = await getPerpsContracts(
+  const { markets, pyth, marketSettings, multicall } = await getPerpsContracts(
     config.network,
     config.pythPriceServer,
     signer,
     provider
   );
+
+  // n markets mean n distributors all pulling k blocks worth of z events through eth_getLogs. It also
+  // means n*y keepers (liquidator & off-chain delayed orders:wa) all waiting on events to come through
+  // for validation and subsequently execution.
+  const openPositionsByMarket = config.enabledKeepers.includes(KeeperType.Liquidator)
+    ? await getOpenPositions(markets, multicall, latestBlock)
+    : {};
 
   const marketKeys = Object.keys(markets);
   logger.info('Creating n keeper(s) per kept market...', {
@@ -102,28 +109,31 @@ export const run = async (config: KeeperConfig) => {
 
     logger.info('Configuring distributor/keepers for market', { args: { marketKey, baseAsset } });
     const distributor = new Distributor(
+      multicall,
       market.contract,
       baseAsset,
       provider,
       metrics,
       tokenSwap,
-      config.fromBlock,
+      latestBlock.number,
       config.distributorProcessInterval
     );
 
     const keepers = [];
 
     if (config.enabledKeepers.includes(KeeperType.Liquidator)) {
-      keepers.push(
-        new LiquidationKeeper(
-          market.contract,
-          baseAsset,
-          signerPool,
-          provider,
-          metrics,
-          config.network
-        )
+      const keeper = new LiquidationKeeper(
+        market.contract,
+        baseAsset,
+        signerPool,
+        provider,
+        metrics,
+        config.network
       );
+      keeper.hydrateIndex(openPositionsByMarket[marketKey] ?? [], latestBlock);
+      keepers.push(keeper);
+    } else {
+      logger.debug('Not registering liquidator', { args: { baseAsset } });
     }
 
     // If we do not include a Pyth price feed, do not register an off-chain keeper.
