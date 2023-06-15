@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { KeeperType, Network } from './typed';
 
 export const DEFAULT_CONFIG = {
-  fromBlock: 1,
   network: Network.OPT_GOERLI,
   maxOrderExecAttempts: 10,
   isMetricsEnabled: false,
@@ -23,10 +22,6 @@ export const DEFAULT_CONFIG = {
 };
 
 export const KeeperConfigSchema = z.object({
-  fromBlock: z.coerce
-    .number()
-    .positive()
-    .default(DEFAULT_CONFIG.fromBlock),
   distributorProcessInterval: z.coerce
     .number()
     .positive()
@@ -88,7 +83,6 @@ export const getConfig = (force = false): KeeperConfig => {
   }
 
   const result = KeeperConfigSchema.safeParse({
-    fromBlock: process.env.FROM_BLOCK,
     signerPoolSize: process.env.SIGNER_POOL_SIZE,
     providerApiKeys: {
       infura: process.env.PROVIDER_API_KEY_INFURA,

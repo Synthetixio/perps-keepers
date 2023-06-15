@@ -41,37 +41,6 @@ export class Distributor {
     return uniq(this.keepers.flatMap(k => k.EVENTS_OF_INTEREST));
   }
 
-  /* Perform RPC calls to fetch past event data once then pass to keepers for indexing. */
-  private async indexKeepers(): Promise<number> {
-    const latestBlock = await this.provider.getBlockNumber();
-
-    // Fetch data from a specific start block defined in config.
-    let fromBlock = this.fromBlock;
-
-    while (fromBlock <= latestBlock) {
-      const toBlock = Math.min(fromBlock + this.MAX_BLOCK_RANGE, latestBlock);
-      const events = await getEvents(this.getEventsOfInterest(), this.market, {
-        fromBlock,
-        toBlock,
-        logger: this.logger,
-      });
-
-      this.logger.info('Rebuilding index...', {
-        args: {
-          fromBlock,
-          toBlock,
-          events: events.length,
-          segments: (latestBlock - this.fromBlock) / this.MAX_BLOCK_RANGE,
-        },
-      });
-      await Promise.all(this.keepers.map(keeper => keeper.updateIndex(events)));
-
-      fromBlock = toBlock + 1;
-    }
-
-    return latestBlock;
-  }
-
   private async updateKeeperIndexes(
     events: Event[],
     block: providers.Block,
