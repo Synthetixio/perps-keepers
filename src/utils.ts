@@ -103,7 +103,7 @@ export const getPerpsContracts = async (
       marketKey = utils.parseBytes32String(marketKey);
       if (!proxied) {
         logger.info(`Skipping market (not proxied): '${marketKey} @ '${market}`);
-        return;
+        return acc;
       }
 
       const stateContractName = 'PerpsV2MarketState' + marketKey.replace(/^s/, '');
