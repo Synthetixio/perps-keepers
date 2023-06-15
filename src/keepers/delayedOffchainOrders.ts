@@ -72,7 +72,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       const { account } = args;
       switch (event) {
         case PerpsEvent.DelayedOrderSubmitted: {
-          const { targetRoundId, executableAtTime, intentionTime, isOffchain } = args;
+          const { executableAtTime, intentionTime, isOffchain } = args;
 
           if (!isOffchain) {
             this.logger.debug('Order is not off-chain, skipping', {
@@ -106,7 +106,6 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
           }
 
           this.orders[account] = {
-            targetRoundId: targetRoundId,
             executableAtTime: executableAtTime,
             account,
             intentionTime: timestamp,
@@ -126,6 +125,34 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
             args: { event, account, blockNumber },
           });
       }
+    }
+  }
+
+  hydrateIndex(orders: DelayedOrder[]) {
+    this.logger.debug('hydrating orders index from data on-chain', {
+      args: {
+        n: orders.length,
+      },
+    });
+
+    const prevOrdersLength = Object.keys(this.orders).length;
+    const newOrders: Record<string, DelayedOrder> = {};
+
+    for (const order of orders) {
+      // ...order first because we want to override any default settings with existing values so that
+      // they can be persisted between hydration (e.g. status).
+      newOrders[order.account] = { ...order, ...this.orders[order.account] };
+    }
+    this.orders = newOrders;
+    const currOrdersLength = Object.keys(this.orders).length;
+
+    if (prevOrdersLength !== currOrdersLength) {
+      this.logger.info('Orders change detected', {
+        args: {
+          delta: currOrdersLength - prevOrdersLength,
+          n: currOrdersLength,
+        },
+      });
     }
   }
 

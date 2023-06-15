@@ -12,7 +12,7 @@ import logProcessError from 'log-process-errors';
 import { createLogger } from './logging';
 import { getConfig, KeeperConfig } from './config';
 import { providers } from 'ethers';
-import { getOpenPositions, getPerpsContracts } from './utils';
+import { getOpenPositions, getPendingOrders, getPerpsContracts } from './utils';
 import { Distributor } from './distributor';
 import { LiquidationKeeper } from './keepers/liquidation';
 import { DelayedOffchainOrdersKeeper } from './keepers/delayedOffchainOrders';
@@ -92,11 +92,12 @@ export const run = async (config: KeeperConfig) => {
     provider
   );
 
-  // n markets mean n distributors all pulling k blocks worth of z events through eth_getLogs. It also
-  // means n*y keepers (liquidator & off-chain delayed orders:wa) all waiting on events to come through
-  // for validation and subsequently execution.
   const openPositionsByMarket = config.enabledKeepers.includes(KeeperType.Liquidator)
     ? await getOpenPositions(markets, multicall, latestBlock)
+    : {};
+
+  const pendingOrdersByMarket = config.enabledKeepers.includes(KeeperType.OffchainOrder)
+    ? await getPendingOrders(markets, multicall, latestBlock)
     : {};
 
   const marketKeys = Object.keys(markets);
@@ -109,7 +110,6 @@ export const run = async (config: KeeperConfig) => {
 
     logger.info('Configuring distributor/keepers for market', { args: { marketKey, baseAsset } });
     const distributor = new Distributor(
-      multicall,
       market.contract,
       baseAsset,
       provider,
@@ -138,22 +138,22 @@ export const run = async (config: KeeperConfig) => {
 
     // If we do not include a Pyth price feed, do not register an off-chain keeper.
     if (pyth.priceFeedIds[baseAsset] && config.enabledKeepers.includes(KeeperType.OffchainOrder)) {
-      keepers.push(
-        new DelayedOffchainOrdersKeeper(
-          market.contract,
-          marketSettings,
-          pyth.endpoint,
-          pyth.priceFeedIds[baseAsset],
-          pyth.contract,
-          marketKey,
-          baseAsset,
-          signerPool,
-          provider,
-          metrics,
-          config.network,
-          config.maxOrderExecAttempts
-        )
+      const keeper = new DelayedOffchainOrdersKeeper(
+        market.contract,
+        marketSettings,
+        pyth.endpoint,
+        pyth.priceFeedIds[baseAsset],
+        pyth.contract,
+        marketKey,
+        baseAsset,
+        signerPool,
+        provider,
+        metrics,
+        config.network,
+        config.maxOrderExecAttempts
       );
+      keeper.hydrateIndex(pendingOrdersByMarket[marketKey] ?? []);
+      keepers.push(keeper);
     } else {
       logger.debug('Not registering off-chain keeper as feed not defined', { args: { baseAsset } });
     }
@@ -165,7 +165,7 @@ export const run = async (config: KeeperConfig) => {
     // 1. Liquidations
     // 2. Delayed off-chain orders (Pyth)
     distributor.registerKeepers(keepers);
-    distributor.listen();
+    distributor.listen(latestBlock);
   }
 };
 

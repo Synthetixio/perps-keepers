@@ -6,7 +6,7 @@ import { createLogger } from './logging';
 import { PerpsEvent } from './typed';
 import { Metric, Metrics } from './metrics';
 import { uniq } from 'lodash';
-import { delay, getOpenPositions } from './utils';
+import { delay } from './utils';
 import { TokenSwap } from './swap';
 
 export class Distributor {
@@ -20,7 +20,6 @@ export class Distributor {
   private readonly MAX_BLOCK_RANGE = 1_000_000;
 
   constructor(
-    private readonly multicall: Contract,
     private readonly market: Contract,
     protected readonly baseAsset: string,
     private readonly provider: providers.BaseProvider,
@@ -88,7 +87,7 @@ export class Distributor {
   private async disburseToKeepers(toBlock: providers.Block): Promise<void> {
     const fromBlock = this.lastProcessedBlock ? this.lastProcessedBlock + 1 : toBlock.number;
     const blockDelta = toBlock.number - fromBlock;
-    this.metrics.gauge(Metric.DISTRIBUTOR_BLOCK_DELTA, blockDelta);
+    await this.metrics.gauge(Metric.DISTRIBUTOR_BLOCK_DELTA, blockDelta);
 
     const events = await getEvents(this.getEventsOfInterest(), this.market, {
       fromBlock,
@@ -130,10 +129,9 @@ export class Distributor {
   }
 
   /* Listen on new blocks produced then subsequently bulk op. */
-  async listen(): Promise<void> {
+  async listen(startBlock: providers.Block): Promise<void> {
     try {
-      // Initial index to track orders/positions.
-      this.lastProcessedBlock = await this.indexKeepers();
+      this.lastProcessedBlock = startBlock.number;
       await this.executeKeepers();
 
       this.logger.info('Begin processing blocks 🚀...', {
@@ -152,10 +150,9 @@ export class Distributor {
               args: { blockNumber: toBlock.number },
             });
           }
-          this.healthcheck();
 
+          await this.healthcheck();
           await this.executeKeepers();
-
           await this.tokenSwap.swap();
 
           this.metrics.time(Metric.DISTRIBUTOR_BLOCK_PROCESS_TIME, Date.now() - startTime);
@@ -169,11 +166,11 @@ export class Distributor {
       this.logger.error('Failed on listen or block consumption', {
         args: { waitTime: this.LISTEN_ERROR_WAIT_TIME },
       });
-      this.metrics.count(Metric.KEEPER_ERROR);
+      await this.metrics.count(Metric.KEEPER_ERROR);
 
       // Wait a minute and retry (may just be Node issues).
       await delay(this.LISTEN_ERROR_WAIT_TIME);
-      await this.listen();
+      await this.listen(startBlock);
     }
   }
 }
