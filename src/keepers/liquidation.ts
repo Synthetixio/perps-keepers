@@ -217,9 +217,9 @@ export class LiquidationKeeper extends Keeper {
         },
         { asset: this.baseAsset }
       );
-      this.metrics.count(Metric.POSITION_LIQUIDATED, this.metricDimensions);
+      await this.metrics.count(Metric.POSITION_LIQUIDATED, this.metricDimensions);
     } catch (err) {
-      this.metrics.count(Metric.KEEPER_ERROR, this.metricDimensions);
+      await this.metrics.count(Metric.KEEPER_ERROR, this.metricDimensions);
       throw err;
     }
   }

@@ -121,7 +121,7 @@ export class Distributor {
       // A failure to submit metric should not cause application to halt. Instead, alerts will pick this up if it happens
       // for a long enough duration. Essentially, do _not_ force keeper to slowdown operation just to track metrics
       // for offline usage/monitoring.
-      this.metrics.time(Metric.KEEPER_UPTIME, uptime);
+      await this.metrics.time(Metric.KEEPER_UPTIME, uptime);
     } catch (err) {
       // NOTE: We do _not_ rethrow because healthchecks aren't `await` wrapped.
       this.logger.error('Distributor healthcheck failed', err);
@@ -155,7 +155,7 @@ export class Distributor {
           await this.executeKeepers();
           await this.tokenSwap.swap();
 
-          this.metrics.time(Metric.DISTRIBUTOR_BLOCK_PROCESS_TIME, Date.now() - startTime);
+          await this.metrics.time(Metric.DISTRIBUTOR_BLOCK_PROCESS_TIME, Date.now() - startTime);
         } catch (err) {
           this.logger.error('Encountered error at distributor loop', { args: { err } });
         }
