@@ -8,7 +8,6 @@ require('dotenv').config({
       : require('path').resolve(__dirname, '../.env'),
 });
 
-import logProcessError from 'log-process-errors';
 import { createLogger } from './logging';
 import { getConfig, KeeperConfig } from './config';
 import { providers } from 'ethers';
@@ -17,7 +16,7 @@ import { Distributor } from './distributor';
 import { LiquidationKeeper } from './keepers/liquidation';
 import { DelayedOffchainOrdersKeeper } from './keepers/delayedOffchainOrders';
 import { Metric, Metrics } from './metrics';
-import { KeeperType, Network } from './typed';
+import { KeeperType } from './typed';
 import { createSigners, SignerPool } from './signerpool';
 import { TokenSwap } from './swap';
 
