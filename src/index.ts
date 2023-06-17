@@ -80,77 +80,77 @@ export const run = async (config: KeeperConfig) => {
     ? await getOpenPositions(markets, multicall, latestBlock, provider)
     : {};
 
-  // const pendingOrdersByMarket = config.enabledKeepers.includes(KeeperType.OffchainOrder)
-  //   ? await getPendingOrders(markets, multicall, latestBlock)
-  //   : {};
+  const pendingOrdersByMarket = config.enabledKeepers.includes(KeeperType.OffchainOrder)
+    ? await getPendingOrders(markets, multicall, latestBlock)
+    : {};
 
   const marketKeys = Object.keys(markets);
   logger.info('Creating n keeper(s) per kept market...', {
     args: { n: marketKeys.length },
   });
-  // for (const marketKey of marketKeys) {
-  //   const market = markets[marketKey];
-  //   const baseAsset = market.asset;
+  for (const marketKey of marketKeys) {
+    const market = markets[marketKey];
+    const baseAsset = market.asset;
 
-  //   logger.info('Configuring distributor/keepers for market', { args: { marketKey, baseAsset } });
-  //   const distributor = new Distributor(
-  //     market.contract,
-  //     baseAsset,
-  //     provider,
-  //     metrics,
-  //     tokenSwap,
-  //     latestBlock.number,
-  //     config.distributorProcessInterval
-  //   );
+    logger.info('Configuring distributor/keepers for market', { args: { marketKey, baseAsset } });
+    const distributor = new Distributor(
+      market.contract,
+      baseAsset,
+      provider,
+      metrics,
+      tokenSwap,
+      latestBlock.number,
+      config.distributorProcessInterval
+    );
 
-  //   const keepers = [];
+    const keepers = [];
 
-  //   if (config.enabledKeepers.includes(KeeperType.Liquidator)) {
-  //     const keeper = new LiquidationKeeper(
-  //       market.contract,
-  //       baseAsset,
-  //       signerPool,
-  //       provider,
-  //       metrics,
-  //       config.network
-  //     );
-  //     keeper.hydrateIndex(openPositionsByMarket[marketKey] ?? [], latestBlock);
-  //     keepers.push(keeper);
-  //   } else {
-  //     logger.debug('Not registering liquidator', { args: { baseAsset } });
-  //   }
+    if (config.enabledKeepers.includes(KeeperType.Liquidator)) {
+      const keeper = new LiquidationKeeper(
+        market.contract,
+        baseAsset,
+        signerPool,
+        provider,
+        metrics,
+        config.network
+      );
+      keeper.hydrateIndex(openPositionsByMarket[marketKey] ?? [], latestBlock);
+      keepers.push(keeper);
+    } else {
+      logger.debug('Not registering liquidator', { args: { baseAsset } });
+    }
 
-  //   // If we do not include a Pyth price feed, do not register an off-chain keeper.
-  //   if (pyth.priceFeedIds[baseAsset] && config.enabledKeepers.includes(KeeperType.OffchainOrder)) {
-  //     const keeper = new DelayedOffchainOrdersKeeper(
-  //       market.contract,
-  //       marketSettings,
-  //       pyth.endpoint,
-  //       pyth.priceFeedIds[baseAsset],
-  //       pyth.contract,
-  //       marketKey,
-  //       baseAsset,
-  //       signerPool,
-  //       provider,
-  //       metrics,
-  //       config.network,
-  //       config.maxOrderExecAttempts
-  //     );
-  //     keeper.hydrateIndex(pendingOrdersByMarket[marketKey] ?? []);
-  //     keepers.push(keeper);
-  //   } else {
-  //     logger.debug('Not registering off-chain keeper as feed not defined', { args: { baseAsset } });
-  //   }
+    // If we do not include a Pyth price feed, do not register an off-chain keeper.
+    if (pyth.priceFeedIds[baseAsset] && config.enabledKeepers.includes(KeeperType.OffchainOrder)) {
+      const keeper = new DelayedOffchainOrdersKeeper(
+        market.contract,
+        marketSettings,
+        pyth.endpoint,
+        pyth.priceFeedIds[baseAsset],
+        pyth.contract,
+        marketKey,
+        baseAsset,
+        signerPool,
+        provider,
+        metrics,
+        config.network,
+        config.maxOrderExecAttempts
+      );
+      keeper.hydrateIndex(pendingOrdersByMarket[marketKey] ?? []);
+      keepers.push(keeper);
+    } else {
+      logger.debug('Not registering off-chain keeper as feed not defined', { args: { baseAsset } });
+    }
 
-  //   logger.info('Registering keepers to distributor', { args: { n: keepers.length } });
+    logger.info('Registering keepers to distributor', { args: { n: keepers.length } });
 
-  //   // Register all instantiated keepers. The order of importance is as follows:
-  //   //
-  //   // 1. Liquidations
-  //   // 2. Delayed off-chain orders (Pyth)
-  //   distributor.registerKeepers(keepers);
-  //   distributor.listen(latestBlock);
-  // }
+    // Register all instantiated keepers. The order of importance is as follows:
+    //
+    // 1. Liquidations
+    // 2. Delayed off-chain orders (Pyth)
+    distributor.registerKeepers(keepers);
+    distributor.listen(latestBlock);
+  }
 };
 
 const config = getConfig();

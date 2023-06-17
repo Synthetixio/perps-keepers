@@ -177,47 +177,46 @@ export class LiquidationKeeper extends Keeper {
   }
 
   private async liquidatePosition(account: string) {
-    const canLiquidateOrder = await this.market.canLiquidate(account);
-    if (!canLiquidateOrder) {
-      // if it's not liquidatable update it's liquidation price
-      this.positions[account].liqPrice = parseFloat(
-        utils.formatUnits((await this.market.liquidationPrice(account)).price)
-      );
-      this.positions[account].liqPriceUpdatedTimestamp = this.blockTipTimestamp;
-      this.logger.info('Cannot liquidate position', {
-        args: { account, liqPrice: this.positions[account].liqPrice },
-      });
-      return;
-    }
-
     try {
+      this.logger.info('Checking if can liquidate', { args: { account } });
+      const canLiquidateOrder = await this.market.canLiquidate(account);
+      if (!canLiquidateOrder) {
+        // if it's not liquidatable update it's liquidation price
+        this.positions[account].liqPrice = parseFloat(
+          utils.formatUnits((await this.market.liquidationPrice(account)).price)
+        );
+        this.positions[account].liqPriceUpdatedTimestamp = this.blockTipTimestamp;
+        this.logger.info('Cannot liquidate position', {
+          args: { account, liqPrice: this.positions[account].liqPrice },
+        });
+        return;
+      }
+
       await this.signerPool
         .withSigner(
           async signer => {
+            const market = this.market.connect(signer);
+
             this.logger.info('Flagging position...', { args: { account } });
-            const tx: TransactionResponse = await this.market.connect(signer).flagPosition(account);
+            const flagTx: TransactionResponse = await market.connect(signer).flagPosition(account);
             this.logger.info('Submitted transaction, waiting for completion...', {
-              args: { account, nonce: tx.nonce },
+              args: { account, nonce: flagTx.nonce },
             });
-            await this.waitTx(tx);
+            await this.waitTx(flagTx);
+
+            this.logger.info('Liquidating position...', { args: { account } });
+            const liquidateTx: TransactionResponse = await market
+              .connect(signer)
+              .liquidatePosition(account);
+            this.logger.info('Submitted transaction, waiting for completion...', {
+              args: { account, nonce: liquidateTx.nonce },
+            });
+            await this.waitTx(liquidateTx);
+            await this.metrics.count(Metric.POSITION_LIQUIDATED, this.metricDimensions);
           },
           { asset: this.baseAsset }
         )
         .catch(err => {});
-      await this.signerPool.withSigner(
-        async signer => {
-          this.logger.info('Liquidating position...', { args: { account } });
-          const tx: TransactionResponse = await this.market
-            .connect(signer)
-            .liquidatePosition(account);
-          this.logger.info('Submitted transaction, waiting for completion...', {
-            args: { account, nonce: tx.nonce },
-          });
-          await this.waitTx(tx);
-        },
-        { asset: this.baseAsset }
-      );
-      await this.metrics.count(Metric.POSITION_LIQUIDATED, this.metricDimensions);
     } catch (err) {
       await this.metrics.count(Metric.KEEPER_ERROR, this.metricDimensions);
       throw err;

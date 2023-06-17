@@ -1,4 +1,4 @@
-import { Contract, providers, Signer, BigNumber, utils, Wallet } from 'ethers';
+import { Contract, providers, Signer, BigNumber, utils } from 'ethers';
 import { chunk, flatten, isEmpty, sum, zipObject } from 'lodash';
 import synthetix from 'synthetix';
 import PerpsV2MarketConsolidatedJson from './abi/PerpsV2MarketConsolidated.json';
@@ -16,8 +16,8 @@ enum PaginationEntityType {
 }
 
 export const MAX_ADDRESS_PAGE_SIZE = 1000;
-export const MAX_ADDRESS_PAGE_CALLS = 100;
-export const MAX_ENTITY_PAGE_CALLS = 500;
+export const MAX_ADDRESS_PAGE_CALLS = 1000;
+export const MAX_ENTITY_PAGE_CALLS = 1000;
 
 const logger = createLogger('Utils');
 
@@ -206,12 +206,11 @@ const getAddressLengthByMarket = async (
   return lengthByMarket;
 };
 
-const getAddressesByLengths = async (
+const getOrderAddressesByLengths = async (
   lengthByMarket: Record<string, BigNumber>,
   markets: KeeperContracts['markets'],
   multicall: Contract,
-  block: providers.Block,
-  type: PaginationEntityType
+  block: providers.Block
 ) => {
   const marketKeys = Object.keys(lengthByMarket); // may not include _all_ markets.
 
@@ -224,13 +223,7 @@ const getAddressesByLengths = async (
     ).map(pagination => ({ pagination, marketKey }));
   });
 
-  let rpcFunctionName: string;
-  if (type === PaginationEntityType.POSITION) {
-    rpcFunctionName = 'getPositionAddressesPage';
-  }
-  if (type === PaginationEntityType.ORDER) {
-    rpcFunctionName = 'getDelayedOrderAddressesPage';
-  }
+  const rpcFunctionName: string = 'getDelayedOrderAddressesPage';
 
   // Page the list of paginations - just in case there are _heaps_ of orders or
   // if MAX_POSITION_ADDRESS_PAGE_SIZE is really small or if we have a lot of markets.
@@ -281,35 +274,45 @@ const getPositionsByAddresses = async (
 
   const ordersByMarket: Record<string, Position[]> = {};
   for (const batch of chunk(flattenedAddressesWithMarketKey, MAX_ENTITY_PAGE_CALLS)) {
-    const delayedOrdersCalls = batch.map(({ address, marketKey }) => {
-      const { state } = markets[marketKey];
+    const marketKeysInBatch = new Set<string>();
+
+    const positionsCalls = batch.map(({ address, marketKey }) => {
+      marketKeysInBatch.add(marketKey);
+      const { contract } = markets[marketKey];
       return {
-        target: state.address,
-        callData: state.interface.encodeFunctionData(rpcFunctionName, [address]),
+        target: contract.address,
+        callData: contract.interface.encodeFunctionData(rpcFunctionName, [address]),
       };
     });
-
-    const result = await multicall.callStatic.aggregate(delayedOrdersCalls, {
-      blockTag: block.number,
+    const result = await multicall.callStatic.aggregate(positionsCalls, { blockTag: block.number });
+    logger.info('Fetching positions by chunk', {
+      args: { n: batch.length, marketKeys: Array.from(marketKeysInBatch).join(',') },
     });
 
-    result.returnData.forEach((data: string, i: number) => {
+    for (const [i, data] of result.returnData.entries()) {
       const { marketKey, address } = batch[i];
       const { state } = markets[marketKey];
-      const response = state.interface.decodeFunctionResult(
+
+      const { id, margin, lastPrice, size } = state.interface.decodeFunctionResult(
         state.interface.getFunction(rpcFunctionName),
         data
       )[0];
+
+      // Due to how positions are updated on-chain, this may exist but size=0 (id=0) and hence not open.
+      if (id.eq(0) && size.eq(0)) {
+        continue;
+      }
+
       const position: Position = {
         account: address,
-        id: response.id,
-        size: wei(response.size)
+        id: id.toString(),
+        size: wei(size)
           .div(UNIT)
           .toNumber(),
-        leverage: wei(response.size)
+        leverage: wei(size)
           .abs()
-          .mul(response.lastPrice)
-          .div(response.margin)
+          .mul(lastPrice)
+          .div(margin)
           .div(UNIT)
           .toNumber(),
         liqPrice: -1, // will be updated by keeper routine
@@ -317,7 +320,7 @@ const getPositionsByAddresses = async (
       };
 
       ordersByMarket[marketKey] = (ordersByMarket[marketKey] ?? []).concat([position]);
-    });
+    }
   }
 
   return ordersByMarket;
@@ -350,12 +353,9 @@ export const getOpenPositions = async (
   // possible values by lengths defined above.
   //
   // The expected output will match `getAddressesByLengths` (marketId -> address[]).
-
   const addressesByMarket: Record<string, string[]> = {};
   for (const marketKey in lengthByMarket) {
     const { state } = markets[marketKey];
-    console.log(state.address);
-
     const associatedContractAddress = (await state.associatedContracts())[0];
     const total = lengthByMarket[marketKey].toNumber();
 
@@ -371,15 +371,23 @@ export const getOpenPositions = async (
           blockTag: block.number,
         });
     });
-    const addresses = flatten(await Promise.all(getPositionAddressesCalls));
-    console.log(addresses);
-    addressesByMarket[marketKey] = addresses;
+    addressesByMarket[marketKey] = flatten(await Promise.all(getPositionAddressesCalls));
   }
 
-  const total = sum(Object.values(lengthByMarket).map(l => l.toNumber()));
-  logger.info('Fetched all on-chain positions', { args: { total } });
+  const totalAssumed = sum(Object.values(lengthByMarket).map(l => l.toNumber()));
+  logger.info('Fetched all (assumed) on-chain positions', { args: { n: totalAssumed } });
 
-  return await getPositionsByAddresses(addressesByMarket, markets, multicall, block);
+  const positionsByMarket = await getPositionsByAddresses(
+    addressesByMarket,
+    markets,
+    multicall,
+    block
+  );
+
+  const totalOpen = sum(Object.values(positionsByMarket).map(p => p.length));
+  logger.info('Fetched all (open) on-chain positions', { args: { n: totalOpen } });
+
+  return positionsByMarket;
 };
 
 const getOrdersByAddresses = async (
@@ -456,12 +464,11 @@ export const getPendingOrders = async (
   }
 
   // For markets that have orders, fetch the actual addresses, paginated.
-  const addressesByMarket = await getAddressesByLengths(
+  const addressesByMarket = await getOrderAddressesByLengths(
     lengthByMarket,
     markets,
     multicall,
-    block,
-    PaginationEntityType.ORDER
+    block
   );
 
   // Finally, for all addresses, fetch the actual delayed order.
