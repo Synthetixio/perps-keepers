@@ -22,6 +22,7 @@ export const DEFAULT_CONFIG = {
 };
 
 export const KeeperConfigSchema = z.object({
+  marketKeys: z.string().array(),
   distributorProcessInterval: z.coerce
     .number()
     .positive()
@@ -36,9 +37,15 @@ export const KeeperConfigSchema = z.object({
     .positive()
     .min(1000)
     .default(DEFAULT_CONFIG.signerPoolMonitorInterval),
-  providerApiKeys: z.object({
-    infura: z.string().min(1),
-    alchemy: z.string().optional(),
+  providerUrls: z.object({
+    infura: z
+      .string()
+      .url()
+      .optional(),
+    alchemy: z
+      .string()
+      .url()
+      .optional(),
   }),
   pythPriceServer: z
     .string()
@@ -83,10 +90,11 @@ export const getConfig = (force = false): KeeperConfig => {
   }
 
   const result = KeeperConfigSchema.safeParse({
+    marketKeys: !process.env.MARKET_KEYS ? [] : process.env.MARKET_KEYS.split(','),
     signerPoolSize: process.env.SIGNER_POOL_SIZE,
-    providerApiKeys: {
-      infura: process.env.PROVIDER_API_KEY_INFURA,
-      alchemy: process.env.PROVIDER_API_KEY_ALCHEMY,
+    providerUrls: {
+      infura: process.env.PROVIDER_URL_INFURA,
+      alchemy: process.env.PROVIDER_URL_ALCHEMY,
     },
     distributorProcessInterval: process.env.DISTRIBUTOR_PROCESS_INTERVAL,
     network: process.env.NETWORK,

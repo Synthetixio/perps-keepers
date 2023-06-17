@@ -1,5 +1,5 @@
-import { Contract, providers, Signer, BigNumber, utils } from 'ethers';
-import { chunk, isEmpty, zipObject } from 'lodash';
+import { Contract, providers, Signer, BigNumber, utils, Wallet } from 'ethers';
+import { chunk, flatten, isEmpty, sum, zipObject } from 'lodash';
 import synthetix from 'synthetix';
 import PerpsV2MarketConsolidatedJson from './abi/PerpsV2MarketConsolidated.json';
 import PythAbi from './abi/Pyth.json';
@@ -15,10 +15,9 @@ enum PaginationEntityType {
   ORDER = 'ORDER',
 }
 
-export const MAX_ADDRESS_PAGE_SIZE = 500;
+export const MAX_ADDRESS_PAGE_SIZE = 1000;
 export const MAX_ADDRESS_PAGE_CALLS = 100;
 export const MAX_ENTITY_PAGE_CALLS = 500;
-export const owner = '0x6d4a64c57612841c2c6745db2a4e4db34f002d20';
 
 const logger = createLogger('Utils');
 
@@ -71,6 +70,7 @@ export const getSynthetixContractByName = (
 };
 
 export const getPerpsContracts = async (
+  marketKeys: string[],
   network: Network,
   pythPriceServer: string,
   signer: Signer,
@@ -103,6 +103,11 @@ export const getPerpsContracts = async (
       marketKey = utils.parseBytes32String(marketKey);
       if (!proxied) {
         logger.info(`Skipping market (not proxied): '${marketKey} @ '${market}`);
+        return acc;
+      }
+
+      if (marketKeys.length > 0 && !marketKeys.includes(marketKey)) {
+        logger.info(`Skipping market (not explicit): '${marketKey}' @ ${market}`);
         return acc;
       }
 
@@ -235,10 +240,10 @@ const getAddressesByLengths = async (
   for (const batch of chunk(pages, MAX_ADDRESS_PAGE_CALLS)) {
     const getPageCalls = batch.map(({ pagination, marketKey }) => {
       const { state } = markets[marketKey];
-      const { fromBlock, size } = pagination;
+      const { from, size } = pagination;
       return {
         target: state.address,
-        callData: state.interface.encodeFunctionData(rpcFunctionName, [fromBlock, size]),
+        callData: state.interface.encodeFunctionData(rpcFunctionName, [from, size]),
       };
     });
     const result = await multicall.callStatic.aggregate(getPageCalls, {
@@ -322,7 +327,8 @@ const getPositionsByAddresses = async (
 export const getOpenPositions = async (
   markets: KeeperContracts['markets'],
   multicall: Contract,
-  block: Block
+  block: Block,
+  provider: providers.JsonRpcProvider
 ): Promise<Record<string, Position[]>> => {
   logger.info('Fetching on-chain positions pinned at block', {
     args: { blockNumber: block.number },
@@ -339,13 +345,39 @@ export const getOpenPositions = async (
     return {};
   }
 
-  const addressesByMarket = await getAddressesByLengths(
-    lengthByMarket,
-    markets,
-    multicall,
-    block,
-    PaginationEntityType.POSITION
-  );
+  // Unfortunately we cannot perform a multicall on position pagination due to `.call` and not `.delegate` on
+  // the multicall contract (addressesPage has a `onlyAssociatedContracts`). Instead, we'll simply iterate over
+  // possible values by lengths defined above.
+  //
+  // The expected output will match `getAddressesByLengths` (marketId -> address[]).
+
+  const addressesByMarket: Record<string, string[]> = {};
+  for (const marketKey in lengthByMarket) {
+    const { state } = markets[marketKey];
+    console.log(state.address);
+
+    const associatedContractAddress = (await state.associatedContracts())[0];
+    const total = lengthByMarket[marketKey].toNumber();
+
+    const pages = getPaginatedFromAndTo(0, total, MAX_ADDRESS_PAGE_SIZE);
+    logger.info('Fetching addresses', { args: { marketKey, total } });
+
+    const getPositionAddressesCalls = pages.map(page => {
+      const { from, size } = page;
+      return state
+        .connect(provider.getSigner(associatedContractAddress))
+        .getPositionAddressesPage(from, size, {
+          from: associatedContractAddress,
+          blockTag: block.number,
+        });
+    });
+    const addresses = flatten(await Promise.all(getPositionAddressesCalls));
+    console.log(addresses);
+    addressesByMarket[marketKey] = addresses;
+  }
+
+  const total = sum(Object.values(lengthByMarket).map(l => l.toNumber()));
+  logger.info('Fetched all on-chain positions', { args: { total } });
 
   return await getPositionsByAddresses(addressesByMarket, markets, multicall, block);
 };
