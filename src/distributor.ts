@@ -17,15 +17,12 @@ export class Distributor {
   private readonly LISTEN_ERROR_WAIT_TIME = 15 * 1000; // 15s
   protected readonly START_TIME = Date.now();
 
-  private readonly MAX_BLOCK_RANGE = 1_000_000;
-
   constructor(
     private readonly market: Contract,
     protected readonly baseAsset: string,
     private readonly provider: providers.BaseProvider,
     private readonly metrics: Metrics,
     private readonly tokenSwap: TokenSwap,
-    private readonly fromBlock: number,
     private readonly distributorProcessInterval: number
   ) {
     this.logger = createLogger(`Distributor [${baseAsset}]`);

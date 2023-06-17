@@ -98,7 +98,6 @@ export const run = async (config: KeeperConfig) => {
       provider,
       metrics,
       tokenSwap,
-      latestBlock.number,
       config.distributorProcessInterval
     );
 
