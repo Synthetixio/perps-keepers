@@ -72,7 +72,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
       const { account } = args;
       switch (event) {
         case PerpsEvent.DelayedOrderSubmitted: {
-          const { targetRoundId, executableAtTime, intentionTime, isOffchain } = args;
+          const { executableAtTime, intentionTime, isOffchain } = args;
 
           if (!isOffchain) {
             this.logger.debug('Order is not off-chain, skipping', {
@@ -106,7 +106,6 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
           }
 
           this.orders[account] = {
-            targetRoundId: targetRoundId,
             executableAtTime: executableAtTime,
             account,
             intentionTime: timestamp,
@@ -126,6 +125,34 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
             args: { event, account, blockNumber },
           });
       }
+    }
+  }
+
+  hydrateIndex(orders: DelayedOrder[]) {
+    this.logger.debug('hydrating orders index from data on-chain', {
+      args: {
+        n: orders.length,
+      },
+    });
+
+    const prevOrdersLength = Object.keys(this.orders).length;
+    const newOrders: Record<string, DelayedOrder> = {};
+
+    for (const order of orders) {
+      // ...order first because we want to override any default settings with existing values so that
+      // they can be persisted between hydration (e.g. status).
+      newOrders[order.account] = { ...order, ...this.orders[order.account] };
+    }
+    this.orders = newOrders;
+    const currOrdersLength = Object.keys(this.orders).length;
+
+    if (prevOrdersLength !== currOrdersLength) {
+      this.logger.info('Orders change detected', {
+        args: {
+          delta: currOrdersLength - prevOrdersLength,
+          n: currOrdersLength,
+        },
+      });
     }
   }
 
@@ -178,7 +205,7 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
           if (order.sizeDelta.eq(0)) {
             this.logger.info('Order does not exist, avoiding execution', { args: { account } });
             delete this.orders[account];
-            this.metrics.count(Metric.DELAYED_ORDER_ALREADY_EXECUTED, this.metricDimensions);
+            await this.metrics.count(Metric.DELAYED_ORDER_ALREADY_EXECUTED, this.metricDimensions);
             return;
           } else {
             this.logger.info('Order found on-chain. Continuing...', { args: { account } });
@@ -215,10 +242,10 @@ export class DelayedOffchainOrdersKeeper extends Keeper {
         },
         { asset: this.baseAsset }
       );
-      this.metrics.count(Metric.OFFCHAIN_ORDER_EXECUTED, this.metricDimensions);
+      await this.metrics.count(Metric.OFFCHAIN_ORDER_EXECUTED, this.metricDimensions);
     } catch (err) {
       order.executionFailures += 1;
-      this.metrics.count(Metric.KEEPER_ERROR, this.metricDimensions);
+      await this.metrics.count(Metric.KEEPER_ERROR, this.metricDimensions);
       this.logger.error('Off-chain order execution failed', {
         args: { executionFailures: order.executionFailures, account: order.account, err },
       });

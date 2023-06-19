@@ -67,20 +67,20 @@ export class SignerPool {
     this.logger.info(`[${ctx.asset}] Awaiting signer...`, { args: this.getLogArgs() });
     let i = this.pool.shift();
 
-    this.metrics.gauge(Metric.SIGNER_POOL_SIZE, this.pool.length);
+    await this.metrics.gauge(Metric.SIGNER_POOL_SIZE, this.pool.length);
     while (i === undefined) {
       await delay(this.ACQUIRE_SIGNER_DELAY);
       i = this.pool.shift();
     }
 
-    this.metrics.gauge(Metric.SIGNER_POOL_SIZE, this.pool.length);
+    await this.metrics.gauge(Metric.SIGNER_POOL_SIZE, this.pool.length);
     this.logger.info(`[${ctx.asset}] Acquired signer @ index '${i}'`, { args: this.getLogArgs() });
     return [i, this.signers[i]];
   }
 
-  private release(i: number, ctx: WithSignerContext) {
+  private async release(i: number, ctx: WithSignerContext) {
     this.pool.push(i);
-    this.metrics.gauge(Metric.SIGNER_POOL_SIZE, this.pool.length);
+    await this.metrics.gauge(Metric.SIGNER_POOL_SIZE, this.pool.length);
     this.logger.info(`[${ctx.asset}] Released signer @ index '${i}'`, { args: this.getLogArgs() });
   }
 
@@ -105,7 +105,7 @@ export class SignerPool {
       }
       throw err;
     } finally {
-      this.release(i, ctx);
+      await this.release(i, ctx);
     }
   }
 

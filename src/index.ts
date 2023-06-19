@@ -8,17 +8,15 @@ require('dotenv').config({
       : require('path').resolve(__dirname, '../.env'),
 });
 
-import logProcessError from 'log-process-errors';
 import { createLogger } from './logging';
 import { getConfig, KeeperConfig } from './config';
 import { providers } from 'ethers';
-import { getPerpsContracts } from './utils';
+import { getOpenPositions, getPendingOrders, getPerpsContracts } from './utils';
 import { Distributor } from './distributor';
 import { LiquidationKeeper } from './keepers/liquidation';
-import { DelayedOrdersKeeper } from './keepers/delayedOrders';
 import { DelayedOffchainOrdersKeeper } from './keepers/delayedOffchainOrders';
 import { Metric, Metrics } from './metrics';
-import { KeeperType, Network } from './typed';
+import { KeeperType } from './typed';
 import { createSigners, SignerPool } from './signerpool';
 import { TokenSwap } from './swap';
 
@@ -30,38 +28,21 @@ const logger = createLogger('Application');
 export const PROVIDER_STALL_TIMEOUT = 750;
 export const PROVIDER_DEFAULT_WEIGHT = 1;
 
-export const getProvider = async (
-  config: KeeperConfig['providerApiKeys'],
-  network: Network
-): Promise<providers.FallbackProvider> => {
-  // Infura has the highest priority (indicated by the lowest priority number).
-  const providersConfig: providers.FallbackProviderConfig[] = [
-    {
-      provider: new providers.InfuraProvider(network, config.infura),
-      priority: 10,
-      stallTimeout: PROVIDER_STALL_TIMEOUT,
-      weight: PROVIDER_DEFAULT_WEIGHT,
-    },
-  ];
+export const getProvider = (config: KeeperConfig['providerUrls']): providers.JsonRpcProvider => {
   if (config.alchemy) {
-    logger.info('Alchemy API key provided. Adding as fallback provider');
-    providersConfig.push({
-      provider: new providers.AlchemyProvider(network, config.alchemy),
-      priority: 20,
-      stallTimeout: PROVIDER_STALL_TIMEOUT,
-      weight: PROVIDER_DEFAULT_WEIGHT,
-    });
+    return new providers.JsonRpcProvider(config.alchemy);
   }
-
-  // @see: https://docs.ethers.org/v5/api/providers/other/#FallbackProvider
-  return new providers.FallbackProvider(providersConfig);
+  if (config.infura) {
+    return new providers.JsonRpcProvider(config.infura);
+  }
+  throw new Error('No provider URL found');
 };
 
 export const run = async (config: KeeperConfig) => {
   const metrics = Metrics.create(config.isMetricsEnabled, config.network, config.aws);
-  metrics.count(Metric.KEEPER_STARTUP);
+  await metrics.count(Metric.KEEPER_STARTUP);
 
-  const provider = await getProvider(config.providerApiKeys, config.network);
+  const provider = getProvider(config.providerUrls);
   const latestBlock = await provider.getBlock('latest');
 
   logger.info('Connected to node', {
@@ -86,12 +67,21 @@ export const run = async (config: KeeperConfig) => {
     config.network
   );
 
-  const { markets, pyth, marketSettings, exchangeRates } = await getPerpsContracts(
+  const { markets, pyth, marketSettings, multicall } = await getPerpsContracts(
+    config.marketKeys,
     config.network,
     config.pythPriceServer,
     signer,
     provider
   );
+
+  const openPositionsByMarket = config.enabledKeepers.includes(KeeperType.Liquidator)
+    ? await getOpenPositions(markets, multicall, latestBlock, provider)
+    : {};
+
+  const pendingOrdersByMarket = config.enabledKeepers.includes(KeeperType.OffchainOrder)
+    ? await getPendingOrders(markets, multicall, latestBlock)
+    : {};
 
   const marketKeys = Object.keys(markets);
   logger.info('Creating n keeper(s) per kept market...', {
@@ -108,60 +98,46 @@ export const run = async (config: KeeperConfig) => {
       provider,
       metrics,
       tokenSwap,
-      config.fromBlock,
       config.distributorProcessInterval
     );
 
     const keepers = [];
 
     if (config.enabledKeepers.includes(KeeperType.Liquidator)) {
-      keepers.push(
-        new LiquidationKeeper(
-          market.contract,
-          baseAsset,
-          signerPool,
-          provider,
-          metrics,
-          config.network
-        )
+      const keeper = new LiquidationKeeper(
+        market.contract,
+        baseAsset,
+        signerPool,
+        provider,
+        metrics,
+        config.network
       );
+      keeper.hydrateIndex(openPositionsByMarket[marketKey] ?? [], latestBlock);
+      keepers.push(keeper);
+    } else {
+      logger.debug('Not registering liquidator', { args: { baseAsset } });
     }
 
     // If we do not include a Pyth price feed, do not register an off-chain keeper.
     if (pyth.priceFeedIds[baseAsset] && config.enabledKeepers.includes(KeeperType.OffchainOrder)) {
-      keepers.push(
-        new DelayedOffchainOrdersKeeper(
-          market.contract,
-          marketSettings,
-          pyth.endpoint,
-          pyth.priceFeedIds[baseAsset],
-          pyth.contract,
-          marketKey,
-          baseAsset,
-          signerPool,
-          provider,
-          metrics,
-          config.network,
-          config.maxOrderExecAttempts
-        )
+      const keeper = new DelayedOffchainOrdersKeeper(
+        market.contract,
+        marketSettings,
+        pyth.endpoint,
+        pyth.priceFeedIds[baseAsset],
+        pyth.contract,
+        marketKey,
+        baseAsset,
+        signerPool,
+        provider,
+        metrics,
+        config.network,
+        config.maxOrderExecAttempts
       );
+      keeper.hydrateIndex(pendingOrdersByMarket[marketKey] ?? []);
+      keepers.push(keeper);
     } else {
       logger.debug('Not registering off-chain keeper as feed not defined', { args: { baseAsset } });
-    }
-
-    if (config.enabledKeepers.includes(KeeperType.DelayedOrder)) {
-      keepers.push(
-        new DelayedOrdersKeeper(
-          market.contract,
-          exchangeRates,
-          baseAsset,
-          signerPool,
-          provider,
-          metrics,
-          config.network,
-          config.maxOrderExecAttempts
-        )
-      );
     }
 
     logger.info('Registering keepers to distributor', { args: { n: keepers.length } });
@@ -170,17 +146,10 @@ export const run = async (config: KeeperConfig) => {
     //
     // 1. Liquidations
     // 2. Delayed off-chain orders (Pyth)
-    // 3. Delayed on-chain orders (CL)
     distributor.registerKeepers(keepers);
-    distributor.listen();
+    distributor.listen(latestBlock);
   }
 };
-
-logProcessError({
-  log(err, level) {
-    logger.log(level, `${err}, ${err.stack}`);
-  },
-});
 
 const config = getConfig();
 run(config);

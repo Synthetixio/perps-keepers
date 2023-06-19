@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { KeeperType, Network } from './typed';
 
 export const DEFAULT_CONFIG = {
-  fromBlock: 1,
   network: Network.OPT_GOERLI,
   maxOrderExecAttempts: 10,
   isMetricsEnabled: false,
@@ -14,7 +13,7 @@ export const DEFAULT_CONFIG = {
   autoSwapMinSusd: Math.pow(10, 18) * 50, // $50 USD
   autoSwapInterval: 1000 * 60 * 60 * 24, // 24hrs
 
-  enabledKeepers: [KeeperType.DelayedOrder, KeeperType.OffchainOrder, KeeperType.Liquidator],
+  enabledKeepers: [KeeperType.OffchainOrder, KeeperType.Liquidator],
 
   // @see: https://github.com/pyth-network/pyth-js/tree/main/pyth-evm-js
   //   'https://xc-testnet.pyth.network'
@@ -23,10 +22,7 @@ export const DEFAULT_CONFIG = {
 };
 
 export const KeeperConfigSchema = z.object({
-  fromBlock: z.coerce
-    .number()
-    .positive()
-    .default(DEFAULT_CONFIG.fromBlock),
+  marketKeys: z.string().array(),
   distributorProcessInterval: z.coerce
     .number()
     .positive()
@@ -41,9 +37,15 @@ export const KeeperConfigSchema = z.object({
     .positive()
     .min(1000)
     .default(DEFAULT_CONFIG.signerPoolMonitorInterval),
-  providerApiKeys: z.object({
-    infura: z.string().min(1),
-    alchemy: z.string().optional(),
+  providerUrls: z.object({
+    infura: z
+      .string()
+      .url()
+      .optional(),
+    alchemy: z
+      .string()
+      .url()
+      .optional(),
   }),
   pythPriceServer: z
     .string()
@@ -88,11 +90,11 @@ export const getConfig = (force = false): KeeperConfig => {
   }
 
   const result = KeeperConfigSchema.safeParse({
-    fromBlock: process.env.FROM_BLOCK,
+    marketKeys: !process.env.MARKET_KEYS ? [] : process.env.MARKET_KEYS.split(','),
     signerPoolSize: process.env.SIGNER_POOL_SIZE,
-    providerApiKeys: {
-      infura: process.env.PROVIDER_API_KEY_INFURA,
-      alchemy: process.env.PROVIDER_API_KEY_ALCHEMY,
+    providerUrls: {
+      infura: process.env.PROVIDER_URL_INFURA,
+      alchemy: process.env.PROVIDER_URL_ALCHEMY,
     },
     distributorProcessInterval: process.env.DISTRIBUTOR_PROCESS_INTERVAL,
     network: process.env.NETWORK,

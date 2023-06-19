@@ -17,15 +17,12 @@ export class Distributor {
   private readonly LISTEN_ERROR_WAIT_TIME = 15 * 1000; // 15s
   protected readonly START_TIME = Date.now();
 
-  private readonly MAX_BLOCK_RANGE = 1_000_000;
-
   constructor(
     private readonly market: Contract,
     protected readonly baseAsset: string,
     private readonly provider: providers.BaseProvider,
     private readonly metrics: Metrics,
     private readonly tokenSwap: TokenSwap,
-    private readonly fromBlock: number,
     private readonly distributorProcessInterval: number
   ) {
     this.logger = createLogger(`Distributor [${baseAsset}]`);
@@ -39,35 +36,6 @@ export class Distributor {
 
   private getEventsOfInterest(): PerpsEvent[] {
     return uniq(this.keepers.flatMap(k => k.EVENTS_OF_INTEREST));
-  }
-
-  /* Perform RPC calls to fetch past event data once then pass to keepers for indexing. */
-  private async indexKeepers(): Promise<number> {
-    const latestBlock = await this.provider.getBlockNumber();
-    let fromBlock = this.fromBlock;
-
-    while (fromBlock <= latestBlock) {
-      const toBlock = Math.min(fromBlock + this.MAX_BLOCK_RANGE, latestBlock);
-      const events = await getEvents(this.getEventsOfInterest(), this.market, {
-        fromBlock,
-        toBlock,
-        logger: this.logger,
-      });
-
-      this.logger.info('Rebuilding index...', {
-        args: {
-          fromBlock,
-          toBlock,
-          events: events.length,
-          segments: (latestBlock - this.fromBlock) / this.MAX_BLOCK_RANGE,
-        },
-      });
-      await Promise.all(this.keepers.map(keeper => keeper.updateIndex(events)));
-
-      fromBlock = toBlock + 1;
-    }
-
-    return latestBlock;
   }
 
   private async updateKeeperIndexes(
@@ -85,7 +53,7 @@ export class Distributor {
   private async disburseToKeepers(toBlock: providers.Block): Promise<void> {
     const fromBlock = this.lastProcessedBlock ? this.lastProcessedBlock + 1 : toBlock.number;
     const blockDelta = toBlock.number - fromBlock;
-    this.metrics.gauge(Metric.DISTRIBUTOR_BLOCK_DELTA, blockDelta);
+    await this.metrics.gauge(Metric.DISTRIBUTOR_BLOCK_DELTA, blockDelta);
 
     const events = await getEvents(this.getEventsOfInterest(), this.market, {
       fromBlock,
@@ -119,7 +87,7 @@ export class Distributor {
       // A failure to submit metric should not cause application to halt. Instead, alerts will pick this up if it happens
       // for a long enough duration. Essentially, do _not_ force keeper to slowdown operation just to track metrics
       // for offline usage/monitoring.
-      this.metrics.time(Metric.KEEPER_UPTIME, uptime);
+      await this.metrics.time(Metric.KEEPER_UPTIME, uptime);
     } catch (err) {
       // NOTE: We do _not_ rethrow because healthchecks aren't `await` wrapped.
       this.logger.error('Distributor healthcheck failed', err);
@@ -127,15 +95,15 @@ export class Distributor {
   }
 
   /* Listen on new blocks produced then subsequently bulk op. */
-  async listen(): Promise<void> {
+  async listen(startBlock: providers.Block): Promise<void> {
     try {
-      this.lastProcessedBlock = await this.indexKeepers();
+      this.lastProcessedBlock = startBlock.number;
       await this.executeKeepers();
 
       this.logger.info('Begin processing blocks 🚀...', {
         args: { lastProcessedBlock: this.lastProcessedBlock },
       });
-      while (1) {
+      while (true) {
         try {
           const startTime = Date.now();
           const toBlock = await this.provider.getBlock('latest');
@@ -148,13 +116,12 @@ export class Distributor {
               args: { blockNumber: toBlock.number },
             });
           }
-          this.healthcheck();
 
+          await this.healthcheck();
           await this.executeKeepers();
-
           await this.tokenSwap.swap();
 
-          this.metrics.time(Metric.DISTRIBUTOR_BLOCK_PROCESS_TIME, Date.now() - startTime);
+          await this.metrics.time(Metric.DISTRIBUTOR_BLOCK_PROCESS_TIME, Date.now() - startTime);
         } catch (err) {
           this.logger.error('Encountered error at distributor loop', { args: { err } });
         }
@@ -165,11 +132,11 @@ export class Distributor {
       this.logger.error('Failed on listen or block consumption', {
         args: { waitTime: this.LISTEN_ERROR_WAIT_TIME },
       });
-      this.metrics.count(Metric.KEEPER_ERROR);
+      await this.metrics.count(Metric.KEEPER_ERROR);
 
       // Wait a minute and retry (may just be Node issues).
       await delay(this.LISTEN_ERROR_WAIT_TIME);
-      await this.listen();
+      await this.listen(startBlock);
     }
   }
 }
