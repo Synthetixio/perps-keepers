@@ -178,7 +178,7 @@ export class LiquidationKeeper extends Keeper {
 
   private async liquidatePosition(account: string) {
     try {
-      this.logger.info('Checking if can liquidate', { args: { account } });
+      this.logger.debug('Checking if can liquidate', { args: { account } });
       const canLiquidateOrder = await this.market.canLiquidate(account);
       if (!canLiquidateOrder) {
         // if it's not liquidatable update it's liquidation price
@@ -234,7 +234,7 @@ export class LiquidationKeeper extends Keeper {
 
       // No positions. Move on.
       if (positionCount === 0) {
-        this.logger.info('No positions ready... skipping');
+        this.logger.debug('No positions ready... skipping');
         return;
       }
 

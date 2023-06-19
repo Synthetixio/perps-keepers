@@ -299,7 +299,7 @@ const getPositionsByAddresses = async (
       )[0];
 
       // Due to how positions are updated on-chain, this may exist but size=0 (id=0) and hence not open.
-      if (id.eq(0) && size.eq(0)) {
+      if (id.eq(0) || size.eq(0)) {
         continue;
       }
 
