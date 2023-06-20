@@ -1,12 +1,11 @@
 name: "Deploy"
 on:
   push:
-    branches: [master, develop]
+    branches: [master]
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # Ensure it only runs on master and develop, the branches array above is using pattern matching
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/master'
     steps:
       - name: Install SSH key
         uses: synthetixio/ssh-key-action@v2
@@ -24,15 +23,14 @@ jobs:
         run: |
           touch .env
           echo ETH_HDWALLET_MNEMONIC=${{ secrets.ETH_HDWALLET_MNEMONIC }} >> .env
-          echo PROVIDER_API_KEY_INFURA=${{ secrets.INFURA_PROJECT_ID }} >> .env
-          echo PROVIDER_API_KEY_ALCHEMY=${{ secrets.ALCHEMY_PROJECT_ID }} >> .env
+          echo PROVIDER_URL_ALCHEMY=${{ secrets.PROVIDER_URL_ALCHEMY }} >> .env
+          echo PROVIDER_URL_INFURA=${{ secrets.PROVIDER_URL_INFURA }} >> .env
           echo NETWORK=optimism >> .env
           echo AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }} >> .env
           echo AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }} >> .env
           echo AWS_REGION=${{ secrets.AWS_REGION }} >> .env
-          echo FROM_BLOCK=52456701 >> .env  # mainnet deployment block
           echo METRICS_ENABLED=1 >> .env
-          echo DISTRIBUTOR_PROCESS_INTERVAL=5000 >> .env
+          echo DISTRIBUTOR_PROCESS_INTERVAL=30000 >> .env
           echo MAX_ORDER_EXEC_ATTEMPTS=3 >> .env
           echo PYTH_PRICE_SERVER=${{ secrets.PYTH_PRICE_SERVER_MAINNET }} >> .env
           echo LOG_LEVEL=info >> .env
@@ -40,26 +38,6 @@ jobs:
           echo AUTO_SWAP_SUSD_ENABLED=0 >> .env
           echo ENABLED_KEEPERS=Liquidator >> .env
         if: github.ref == 'refs/heads/master'
-
-      - name: Create .env.staging file
-        run: |
-          touch .env.staging
-          echo ETH_HDWALLET_MNEMONIC=${{ secrets.ETH_HDWALLET_MNEMONIC }} >> .env.staging
-          echo PROVIDER_API_KEY_INFURA=${{ secrets.INFURA_PROJECT_ID }} >> .env.staging
-          echo NETWORK=optimism-goerli >> .env.staging
-          echo AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }} >> .env.staging
-          echo AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }} >> .env.staging
-          echo AWS_REGION=${{ secrets.AWS_REGION }} >> .env.staging
-          echo FROM_BLOCK=3300784 >> .env.staging  # goerli deployment block
-          echo METRICS_ENABLED=0 >> .env.staging
-          echo DISTRIBUTOR_PROCESS_INTERVAL=10000 >> .env.staging
-          echo MAX_ORDER_EXEC_ATTEMPTS=1 >> .env.staging
-          echo PYTH_PRICE_SERVER=${{ secrets.PYTH_PRICE_SERVER_TESTNET }} >> .env.staging
-          echo LOG_LEVEL=info >> .env.staging
-          echo SIGNER_POOL_SIZE=1 >> .env.staging
-          echo AUTO_SWAP_SUSD_ENABLED=0 >> .env.staging
-          echo ENABLED_KEEPERS=Liquidator >> .env.staging
-        if: github.ref == 'refs/heads/develop'
 
       - name: Deploy
         run: sh ./deploy.sh "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}" "${{secrets.SERVER_PATH}}" "$GITHUB_REF_NAME"
