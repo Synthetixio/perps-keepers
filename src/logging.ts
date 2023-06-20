@@ -3,8 +3,6 @@ import winston, { format, transports } from 'winston';
 import WinstonCloudWatch from 'winston-cloudwatch';
 import { getConfig } from './config';
 
-const date = new Date();
-const logStreamName = date.toDateString() + ' - ' + date.getTime();
 const config = getConfig();
 
 export const createLogger = (label: string): winston.Logger => {
@@ -38,7 +36,7 @@ export const createLogger = (label: string): winston.Logger => {
     logger.add(
       new WinstonCloudWatch({
         logGroupName,
-        logStreamName,
+        logStreamName: 'latest',
         messageFormatter: ({ level, message, component, args }) => {
           const argsMessage = map(args, (value, key) => `${key}=${value}`).join(' ');
           return [level, label, component, '-', message, argsMessage].filter(x => !!x).join(' ');
