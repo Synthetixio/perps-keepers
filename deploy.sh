@@ -15,7 +15,7 @@ join_path() {
     echo "${1:+$1/}$2" | sed 's#//#/#g'
 }
 
-FULL_SERVER_PATH=$(join_path $SERVER_HOME_PATH $FOLDER_NAME)
+FULL_SERVER_PATH=$(join_path $SERVER_HOME_PATH perps-keepers)
 
 echo "Creating folder if not exists"
 ssh "$USER_AT_IP" mkdir -p "$FULL_SERVER_PATH"
@@ -27,7 +27,6 @@ rsync \
     --exclude 'coverage' \
     --exclude 'cache' \
     --exclude 'git' \
-    --delete-after \
     -e "ssh" -Pav "$PWD/" "$USER_AT_IP":"$FULL_SERVER_PATH"
 
 echo "Installing deps, transpiling typescript"
