@@ -4,12 +4,9 @@
   "main": "src/index.js",
   "license": "MIT",
   "scripts": {
-    "start": "pm2 start ecosystem.config.js",
     "start:mainnet": "pm2 start ecosystem.config.js --only perps-keeper-mainnet",
-    "start:goerli": "pm2 start ecosystem.config.js --only perps-keeper-goerli",
-    "dev": "name=perps-keeper-goerli ts-node-dev --respawn --transpile-only src/index.ts run",
     "dev:mainnet": "name=perps-keeper-mainnet ts-node-dev --respawn --transpile-only src/index.ts run",
-    "build": "tsc && touch .env && touch .env.staging && cp .env build/ && cp .env.staging build/",
+    "build": "rm -rf build/ && tsc && touch .env && cp .env build/",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "test": "jest",

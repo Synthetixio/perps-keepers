@@ -1,7 +1,6 @@
 #!/bin/sh
 set -ex
 
-
 if [ -z $1 ] ; then
     echo "USER:IP parameter required!" && exit 1;
 fi
@@ -11,15 +10,6 @@ fi
 
 USER_AT_IP=$1
 SERVER_HOME_PATH=$2
-BRANCH=${3:-"develop"}
-
-if [ "$BRANCH" = "master" ]; then
-    ENVIRONMENT="production"
-    FOLDER_NAME="perps-keepers"
-else
-    FOLDER_NAME="perps-keepers-staging"
-    ENVIRONMENT="staging"
-fi
 
 join_path() {
     echo "${1:+$1/}$2" | sed 's#//#/#g'
@@ -36,16 +26,12 @@ rsync \
     --exclude 'build' \
     --exclude 'coverage' \
     --exclude 'cache' \
+    --exclude 'git' \
     --delete-after \
     -e "ssh" -Pav "$PWD/" "$USER_AT_IP":"$FULL_SERVER_PATH"
 
 echo "Installing deps, transpiling typescript"
-ssh "$USER_AT_IP" "cd $FOLDER_NAME;npm i;npm run build"
+ssh "$USER_AT_IP" "cd perps-keepers;npm i;npm run build"
 
-if [ "$ENVIRONMENT" = "production" ]; then
-    echo "Starting mainnet keeper"
-    ssh "$USER_AT_IP" "cd $FOLDER_NAME;npm run start:mainnet"
-else
-    echo "Starting goerli keeper"
-    ssh "$USER_AT_IP" "cd $FOLDER_NAME;npm run start:goerli"
-fi
+echo "Starting mainnet keeper"
+ssh "$USER_AT_IP" "cd perps-keepers;npm run start:mainnet"
